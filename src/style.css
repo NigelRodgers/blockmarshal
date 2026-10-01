@@ -454,3 +454,45 @@ h3 {
   background: #4a1d1d;
   color: #ff8a80;
 }
+
+/* ---------- Tutorial coach ---------- */
+
+#coach {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #2a2416;
+  border: 1px solid #5c4a1f;
+}
+
+.coach-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #ffd54f;
+  font-size: 13px;
+}
+
+#btn-skip-tut {
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+#coach-text {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+#btn-skip-gate {
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: underline;
+  padding: 4px;
+}

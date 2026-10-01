@@ -9,6 +9,8 @@ export interface ViewState {
   half: boolean;
   revealAll: boolean;
   fx: Effects;
+  /** Tiles to draw attention to (tutorial coaching). */
+  highlight?: number[];
 }
 
 const NUMBER_COLORS = ['', '#1565c0', '#2e7d32', '#c62828', '#4a148c', '#bf360c', '#00838f', '#212121', '#616161'];
@@ -153,8 +155,27 @@ export class Renderer {
       }
     }
 
+    if (view.highlight?.length) this.drawHighlights(state, view.highlight, s);
+
     view.fx.draw(ctx, this.toScreen, s);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  /** Pulsing ring around tiles the tutorial points at. */
+  private drawHighlights(state: GameState, tiles: number[], s: number): void {
+    const { ctx } = this;
+    const pulse = (Math.sin(performance.now() / 260) + 1) / 2;
+    ctx.save();
+    ctx.strokeStyle = `rgba(255, 213, 79, ${0.55 + pulse * 0.45})`;
+    ctx.lineWidth = Math.max(2, s * 0.08);
+    for (const i of tiles) {
+      if (i < 0) continue;
+      const [cx, cy] = this.toScreen((i % state.w) + 0.5, Math.floor(i / state.w) + 0.5);
+      ctx.beginPath();
+      ctx.arc(cx, cy, s * (0.62 + pulse * 0.12), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   /** Dashed outline of a selected watchtower's 7x7 area. */

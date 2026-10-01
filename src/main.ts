@@ -18,7 +18,9 @@ import { clearQueue as engineClear, createGame, playerStats, queueMove, stunTick
 import { Memory, Terrain, type GameState } from './engine/types';
 import { Effects } from './ui/effects';
 import { Input } from './ui/input';
+import type { LayoutGame } from './engine/layout';
 import { createBots, runTick } from './session';
+import { TUTORIAL } from './tutorial';
 import { formatArmy, Renderer } from './ui/renderer';
 
 const HUMAN = 0;
@@ -30,14 +32,16 @@ interface Settings {
   speed: 'chill' | 'normal' | 'blitz';
 }
 
-/** custom = menu settings; ranked = today's one attempt; practice = today's map, unranked. */
-type GameMode = 'custom' | 'ranked' | 'practice';
+/** custom = menu settings; ranked = today's one attempt; practice = today's map, unranked; tutorial = coached levels. */
+type GameMode = 'custom' | 'ranked' | 'practice' | 'tutorial';
 
 const SIZES = { S: { w: 12, h: 16 }, M: { w: 15, h: 21 }, L: { w: 18, h: 26 } };
 const TICK_MS = { chill: 700, normal: 500, blitz: 320 };
 const SETTINGS_KEY = 'blockmarshal.settings';
 const DEFAULT_TILE_PX = 30;
+const TUTORIAL_MIN_TILE_PX = 22;
 const MAX_STRIKES = 3;
+const TUTORIAL_KEY = 'blockmarshal.tutorial';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -54,6 +58,9 @@ let daily: DailyConfig | null = null;
 /** Today's ranked attempt; null until the first move locks it in. */
 let ranked: DailyRecord | null = null;
 let tickMs = TICK_MS.normal;
+let tutLevel = 0;
+let tutStep = 0;
+let tutGame: LayoutGame | null = null;
 let mineHits = 0;
 let selected = -1;
 let half = false;
@@ -82,6 +89,23 @@ function saveSettings(): void {
   }
 }
 
+/** Ranked play unlocks once the tutorial is finished or skipped. */
+function tutorialCleared(): boolean {
+  try {
+    return !!localStorage.getItem(TUTORIAL_KEY);
+  } catch {
+    return true;
+  }
+}
+
+function setTutorial(value: 'done' | 'skipped'): void {
+  try {
+    if (localStorage.getItem(TUTORIAL_KEY) !== 'done') localStorage.setItem(TUTORIAL_KEY, value);
+  } catch {
+    /* storage unavailable: gate simply won't persist */
+  }
+}
+
 document.querySelectorAll<HTMLElement>('.seg').forEach((seg) => {
   const key = seg.dataset.key as keyof Settings;
   const sync = () => seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === settings[key]));
@@ -100,7 +124,15 @@ document.querySelectorAll<HTMLElement>('.seg').forEach((seg) => {
 function startGame(kind: GameMode): void {
   gameMode = kind;
   ranked = null;
-  if (kind === 'custom') {
+  tutGame = null;
+  if (kind === 'tutorial') {
+    daily = null;
+    tutGame = TUTORIAL[tutLevel].create();
+    tutStep = 0;
+    state = tutGame.state;
+    bots = [];
+    tickMs = TICK_MS.normal;
+  } else if (kind === 'custom') {
     daily = null;
     const { w, h } = SIZES[settings.size];
     const n = 1 + Number(settings.opponents);
@@ -131,11 +163,16 @@ function startGame(kind: GameMode): void {
   for (const id of ['menu', 'gameover', 'pause', 'strike']) show(id, false);
   show('hud-top', true);
   show('hud-bottom', true);
+  show('coach', kind === 'tutorial');
+  show('board-ranks', kind !== 'tutorial');
+  if (kind === 'tutorial') updateCoach();
   measureInsets();
   renderer.fit(state.w, state.h);
   // Phones: don't shrink tiles below a readable size; pinch out to see more.
-  if (renderer.cam.scale < DEFAULT_TILE_PX) {
-    renderer.cam.scale = DEFAULT_TILE_PX;
+  // Tutorial boards are small and the coach points at far tiles, so keep them whole.
+  const minTile = kind === 'tutorial' ? TUTORIAL_MIN_TILE_PX : DEFAULT_TILE_PX;
+  if (renderer.cam.scale < minTile) {
+    renderer.cam.scale = minTile;
     renderer.centerOn(state, selected);
   }
   if (kind === 'ranked') toast('Ranked: your attempt starts with your first move');
@@ -183,6 +220,49 @@ function finishRanked(status: DailyStatus): void {
   saveRecords(records);
 }
 
+// ---------- Tutorial ----------
+
+function updateCoach(): void {
+  const level = TUTORIAL[tutLevel];
+  $('coach-title').textContent = `Tutorial ${tutLevel + 1}/${TUTORIAL.length}: ${level.title}`;
+  $('coach-text').textContent = level.steps[Math.min(tutStep, level.steps.length - 1)].text;
+}
+
+/** Advance through any steps the player has just completed. */
+function tutorialCheck(): void {
+  if (gameMode !== 'tutorial' || !state || !tutGame) return;
+  const steps = TUTORIAL[tutLevel].steps;
+  const before = tutStep;
+  while (tutStep < steps.length && steps[tutStep].done(state, tutGame)) tutStep++;
+  if (tutStep === before) return;
+  buzz(25);
+  if (tutStep >= steps.length) levelComplete();
+  else updateCoach();
+  measureInsets();
+}
+
+function levelComplete(): void {
+  running = false;
+  selected = -1;
+  const last = tutLevel >= TUTORIAL.length - 1;
+  if (last) setTutorial('done');
+  $('go-title').textContent = last ? 'Tutorial complete' : `Level ${tutLevel + 1} complete`;
+  $('go-sub').textContent = last
+    ? "Ranked play is unlocked. Today's daily is waiting."
+    : `Next: ${TUTORIAL[tutLevel + 1].title}.`;
+  $('btn-next').textContent = last ? "Go to today's daily" : 'Next level';
+  for (const id of ['btn-share-go', 'btn-practice-go', 'btn-again', 'btn-watch']) show(id, false);
+  show('btn-next', true);
+  show('btn-menu', !last);
+  show('gameover', true);
+  buzz([20, 60, 20, 60, 120]);
+}
+
+function startTutorial(level: number): void {
+  tutLevel = level;
+  startGame('tutorial');
+}
+
 function tick(): void {
   if (!state) return;
   runTick(state, bots);
@@ -214,6 +294,13 @@ function tick(): void {
     }
   }
 
+  if (gameMode === 'tutorial') {
+    tutorialCheck();
+    if (state.winner >= 0) running = false;
+    updateHud();
+    return;
+  }
+
   if (state.winner >= 0) {
     running = false;
     if (state.winner === HUMAN) {
@@ -234,6 +321,8 @@ function endGame(won: boolean, sub: string): void {
   if (gameMode === 'ranked' && rec) text += ` Daily #${rec.day} recorded.`;
   if (gameMode === 'practice') text += ' (practice, unranked)';
   $('go-sub').textContent = text;
+  show('btn-next', false);
+  show('btn-menu', true);
   show('btn-share-go', gameMode === 'ranked' && !!rec);
   show('btn-practice-go', isDaily);
   show('btn-again', !isDaily);
@@ -281,6 +370,7 @@ function toggleFlag(idx: number): void {
   me.flags[idx] ^= 1;
   buzz(12);
   updateHud();
+  tutorialCheck();
 }
 
 function tryMove(from: number, to: number): boolean {
@@ -435,7 +525,20 @@ $('btn-home').addEventListener('click', () => {
   renderer.centerOn(state, g);
   if (ownsTile(g)) selected = g;
 });
-$('btn-daily').addEventListener('click', () => startGame('ranked'));
+$('btn-daily').addEventListener('click', () => (tutorialCleared() ? startGame('ranked') : startTutorial(0)));
+$('btn-skip-gate').addEventListener('click', () => {
+  setTutorial('skipped');
+  renderMenu();
+});
+$('btn-skip-tut').addEventListener('click', () => {
+  setTutorial('skipped');
+  toMenu();
+});
+$('btn-tutorial').addEventListener('click', () => startTutorial(0));
+$('btn-next').addEventListener('click', () => {
+  if (tutLevel >= TUTORIAL.length - 1) toMenu();
+  else startTutorial(tutLevel + 1);
+});
 $('btn-practice').addEventListener('click', () => startGame('practice'));
 $('btn-practice-go').addEventListener('click', () => startGame('practice'));
 $('btn-share').addEventListener('click', share);
@@ -474,13 +577,17 @@ function renderMenu(): void {
   const d = dailyConfig();
   const rec = records[d.date];
   const streak = computeStreak(records, d.date);
+  const gated = !tutorialCleared();
   $('daily-title').textContent = `Daily #${d.day}`;
   $('daily-meta').textContent = `${d.difficulty === 'hard' ? 'Hard' : 'Normal'} bots · new map in ${formatCountdown(msUntilReset())}`;
   $('daily-status').textContent = rec
     ? `${resultLine(rec)}${rec.mineHits ? ` · ${rec.mineHits} mine${rec.mineHits === 1 ? '' : 's'} hit` : ''}`
     : 'One ranked attempt. It starts with your first move, and there is no pausing.';
-  show('btn-daily', !rec);
-  show('daily-after', !!rec);
+  if (gated) $('daily-status').textContent = 'Finish the 2-minute tutorial to unlock ranked play.';
+  $('btn-daily').textContent = gated ? 'Start tutorial' : 'Play ranked';
+  show('btn-daily', !rec || gated);
+  show('btn-skip-gate', gated);
+  show('daily-after', !!rec && !gated);
   $('daily-streak').textContent = streak > 0 ? `🔥 ${streak}-day streak` : '';
 }
 
@@ -503,7 +610,13 @@ function updateHud(): void {
   const st = playerStats(state);
   const turn = `Turn ${Math.floor(state.tick / 2)}`;
   $('turn').textContent =
-    gameMode === 'ranked' && daily ? `Daily #${daily.day} · ${turn}` : gameMode === 'practice' ? `Practice · ${turn}` : turn;
+    gameMode === 'ranked' && daily
+      ? `Daily #${daily.day} · ${turn}`
+      : gameMode === 'practice'
+        ? `Practice · ${turn}`
+        : gameMode === 'tutorial'
+          ? `Tutorial · ${turn}`
+          : turn;
   const me = state.players[HUMAN];
   let flags = 0;
   for (let i = 0; i < state.size; i++) flags += me.flags[i];
@@ -575,14 +688,18 @@ function frame(now: number): void {
   fx.update(dt);
   if (state) {
     const me = state.players[HUMAN];
-    renderer.draw(state, { pid: HUMAN, selected, half, revealAll: !me.alive || state.winner >= 0, fx });
+    const step = gameMode === 'tutorial' && tutGame ? TUTORIAL[tutLevel].steps[tutStep] : undefined;
+    const highlight = step?.highlight?.(state, tutGame!);
+    renderer.draw(state, { pid: HUMAN, selected, half, revealAll: !me.alive || state.winner >= 0, fx, highlight });
   }
   requestAnimationFrame(frame);
 }
 
 renderMenu();
+// First launch goes straight into the tutorial.
+if (!tutorialCleared()) startTutorial(0);
 requestAnimationFrame(frame);
 
 if (import.meta.env.DEV) {
-  Object.assign(window, { __mf: { renderer, getState: () => state, tick, records, onHidden } });
+  Object.assign(window, { __mf: { renderer, getState: () => state, tick, records, onHidden, startTutorial } });
 }

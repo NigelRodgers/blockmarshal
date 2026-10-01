@@ -10,7 +10,7 @@ import {
   TOWER_RADIUS,
 } from './constants';
 import { buildNeighbors } from './grid';
-import { generateMap } from './mapgen';
+import { generateMap, type GeneratedMap } from './mapgen';
 import { Memory, Terrain, type GameState, type InputEvent, type Move, type Player } from './types';
 
 export interface PlayerConfig {
@@ -43,6 +43,24 @@ export function createGame(cfg: GameConfig): GameState {
     cities: cfg.cities ?? Math.round(size / 50),
     towers: cfg.towers ?? cfg.players.length,
   });
+  return buildState({ w, h, seed, players: cfg.players, mineRate }, map);
+}
+
+export interface StartOptions {
+  /** Starting troops on each player's general (default 1). */
+  generalArmy?: number[];
+  /** Extra tiles player 0 starts with (1 troop each). */
+  owned?: number[];
+}
+
+/** Turn a finished map (generated or hand-drawn) into a ready-to-play state. */
+export function buildState(
+  cfg: { w: number; h: number; seed: number; players: PlayerConfig[]; mineRate: number },
+  map: GeneratedMap,
+  opts: StartOptions = {},
+): GameState {
+  const { w, h, seed, mineRate } = cfg;
+  const size = w * h;
   const { n4, n8 } = buildNeighbors(w, h);
 
   const adj = new Uint8Array(size);
@@ -95,20 +113,30 @@ export function createGame(cfg: GameConfig): GameState {
 
   for (const p of players) {
     state.owner[p.general] = p.id;
-    state.army[p.general] = 1;
+    state.army[p.general] = opts.generalArmy?.[p.id] ?? 1;
     gainTile(state, p.id, p.general);
+  }
+  for (const i of opts.owned ?? []) {
+    state.owner[i] = 0;
+    state.army[i] = 1;
+    gainTile(state, 0, i);
   }
   updateMemory(state);
   return state;
 }
 
-/** Minesweeper-style reveal: learn this tile's number, cascading through zeros. */
+/**
+ * Minesweeper-style reveal: learn this tile's number, cascading through zeros.
+ * The start tile always cascades, even if an earlier (depth-capped) cascade
+ * already revealed it, so taking a known zero still opens the area around it.
+ */
 export function reveal(state: GameState, pid: number, start: number): void {
   const p = state.players[pid];
   const queue: [number, number][] = [[start, 0]];
   for (let q = 0; q < queue.length; q++) {
     const [i, depth] = queue[q];
-    if (p.revealed[i] || state.terrain[i] === Terrain.Mountain || state.mine[i]) continue;
+    if (state.terrain[i] === Terrain.Mountain || state.mine[i]) continue;
+    if (p.revealed[i] && q > 0) continue;
     p.revealed[i] = 1;
     p.flags[i] = 0;
     if (state.adj[i] === 0 && depth < REVEAL_CASCADE) {
@@ -240,8 +268,9 @@ export function step(state: GameState): void {
   }
 
   updateMemory(state);
+  // A one-player board (tutorial sandbox) never ends by elimination.
   const alive = state.players.filter((p) => p.alive);
-  if (alive.length === 1) state.winner = alive[0].id;
+  if (alive.length === 1 && state.players.length > 1) state.winner = alive[0].id;
 }
 
 function executeNext(state: GameState, p: Player): void {

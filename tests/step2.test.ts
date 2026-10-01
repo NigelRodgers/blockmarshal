@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MINE_DAMAGE, MINE_STUN_TICKS, TOWER_GARRISON, TOWER_RADIUS } from '../src/engine/constants';
-import { clearQueue, createGame, queueMove, step, stunTicksLeft, undoMove, visionFor } from '../src/engine/game';
+import { clearQueue, createGame, queueMove, reveal, step, stunTicksLeft, undoMove, visionFor } from '../src/engine/game';
+import { createFromLayout } from '../src/engine/layout';
 import { chebyshev, manhattan } from '../src/engine/grid';
 import { mulberry32 } from '../src/engine/rng';
 import { Terrain, type GameState } from '../src/engine/types';
@@ -163,5 +164,20 @@ describe('daily config', () => {
     const s = createGame(d.game);
     expect([s.w, s.h, s.players.length]).toEqual([15, 21, 3]);
     expect(s.players.filter((p) => !p.isBot).length).toBe(1);
+  });
+});
+
+describe('reveal cascade', () => {
+  it('re-opens around a zero that an earlier capped cascade only revealed', () => {
+    const { state: s } = createFromLayout(['.......', '.......', '.......', '.......', '.......', '...G...'], {
+      players: [{ name: 'A', isBot: false }],
+    });
+    const me = s.players[0];
+    const top = 3; // (3,0): beyond the opening cascade's depth limit
+    const edge = 2 * s.w + 3; // (3,2): revealed by the opening cascade at its depth limit
+    expect(me.revealed[edge]).toBe(1);
+    expect(me.revealed[top]).toBe(0);
+    reveal(s, 0, edge);
+    expect(me.revealed[top]).toBe(1);
   });
 });

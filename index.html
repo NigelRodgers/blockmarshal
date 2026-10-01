@@ -24,6 +24,13 @@
         </div>
       </div>
       <ol id="board-ranks"></ol>
+      <div id="coach" class="hidden">
+        <div class="coach-head">
+          <b id="coach-title">Tutorial</b>
+          <button id="btn-skip-tut">Skip tutorial</button>
+        </div>
+        <p id="coach-text"></p>
+      </div>
     </header>
 
     <footer id="hud-bottom" class="hidden">
@@ -46,6 +53,7 @@
           </div>
           <p id="daily-status"></p>
           <button id="btn-daily" class="primary">Play ranked</button>
+          <button id="btn-skip-gate">Skip tutorial</button>
           <div id="daily-after" class="row">
             <button id="btn-share">Share result</button>
             <button id="btn-practice">Practice</button>
@@ -72,6 +80,7 @@
         </div>
 
         <button id="btn-play">Play custom game</button>
+        <button id="btn-tutorial">Replay tutorial</button>
 
         <details>
           <summary>How to play</summary>
@@ -110,6 +119,7 @@
       <div class="panel small">
         <h2 id="go-title">Victory</h2>
         <p id="go-sub" class="sub"></p>
+        <button id="btn-next" class="primary">Next level</button>
         <button id="btn-share-go" class="primary">Share result</button>
         <button id="btn-practice-go">Practice this map</button>
         <button id="btn-again" class="primary">Play again</button>

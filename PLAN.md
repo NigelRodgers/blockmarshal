@@ -40,6 +40,14 @@ Agreed in the design grilling session, 2026-10-01. Changes to locked decisions s
 
 Interactive 3-level tutorial, ~2 min, skippable: (1) Expand, (2) Deduce (logic-only path, flag, forced blast + stun), (3) Conquer (passive bot, watchtower en route). First launch routes into it; ranked daily unlocks after completion or skip.
 
+Implementation notes (step 5):
+- Levels are hand-drawn layouts (`src/engine/layout.ts`); steps and coaching text in `src/tutorial.ts`.
+- Level 2's minefield was found by search and is guarded by a test: the flag target is provable from the opening and the star is reachable by deduction alone.
+- Level 3 starts with the tower and Blue's general already scouted (drawn in fog) so the coaching makes sense.
+- Tutorial boards fit whole on screen (22px minimum tile) instead of the 30px default.
+- Leaving the tutorial without finishing shows a gate on the Daily card ("Start tutorial" / "Skip tutorial"). "Replay tutorial" lives under custom games.
+- Engine fix found while building level 2: capturing a zero tile that a depth-capped cascade had already revealed now continues the cascade.
+
 ## Platform
 
 - Web/PWA first, offline service worker. Hosted on Cloudflare Pages at `blockmarshal.pages.dev`.
@@ -73,7 +81,7 @@ Free at launch, no ads ever. Fake-door "Commander" stub (custom games, extra mod
 2. [x] Engine: stun, watchtower, input log, seeded daily config. Tests.
 3. [x] Renderer: frontier badges, zoom 30, watchtower art.
 4. [x] Daily mode: ranked flow, strikes, share card, streak, practice.
-5. [ ] Tutorial (3 levels) and gating.
+5. [x] Tutorial (3 levels) and gating.
 6. [ ] Commander stub, PostHog events, privacy note.
 7. [ ] Service worker, Cloudflare Pages deploy. Set `EPOCH` in `src/daily.ts` to launch day so the first public puzzle is #1.
 
