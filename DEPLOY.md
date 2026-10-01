@@ -1,42 +1,38 @@
-# Deploying Blockmarshal (Cloudflare Pages, Git integration)
+# Deploying Blockmarshal
 
-Every push to `main` builds and deploys automatically once this is set up. Pushes to other branches get their own preview URLs.
+Live at **https://blockmarshal.pages.dev** (Cloudflare Pages project `blockmarshal`, account [owner email: Worker secret]).
 
-## One-time setup (Cloudflare dashboard)
+## How deploys work
 
-1. **Workers & Pages → Create → Pages → Connect to Git.** If the dashboard defaults to Workers, look for the Pages option.
-2. Authorise the Cloudflare GitHub app for **only** `NigelRodgers/blockmarshal`, then select that repo.
-3. Build settings:
+Deploys are **direct uploads from this PC** with wrangler. Pushing to GitHub does **not** deploy. (Pages projects created by direct upload can't be switched to Git integration later; moving to auto-deploy would mean a new project.)
 
-   | Setting | Value |
-   | --- | --- |
-   | Project name | `blockmarshal` (gives `blockmarshal.pages.dev`; if taken, the name you pick becomes the subdomain) |
-   | Production branch | `main` |
-   | Framework preset | None |
-   | Build command | `npm run build` |
-   | Build output directory | `dist` |
-   | Root directory | (leave empty) |
+```bash
+npm run deploy
+```
 
-   Node 22 is picked up from `.node-version`.
+That builds (`tsc` + `vite build`) and uploads `dist/` to the production branch `main`. Each upload also gets its own preview URL (`https://<hash>.blockmarshal.pages.dev`).
 
-4. **Environment variables** (Production, and Preview if you want analytics there too):
+wrangler is a dev dependency and is already logged in on this machine (`npx wrangler whoami`). The project was created with `--force` because newer wrangler tries to route Pages commands to Cloudflare Workers; later commands don't need it.
 
-   | Variable | Value |
-   | --- | --- |
-   | `VITE_POSTHOG_KEY` | PostHog project API key (`phc_...`). Public, write-only. |
-   | `VITE_POSTHOG_HOST` | `https://us.i.posthog.com` or `https://eu.i.posthog.com`, matching your PostHog region |
-   | `VITE_DAILY_EPOCH` | `2026-10-10` (launch day, UTC; also the code default). That day's puzzle is #1, earlier days show as "Daily preview". **Never change after launch.** |
+## Build settings (read at build time from `.env.local`)
 
-5. **Save and Deploy.**
+| Variable | Value |
+| --- | --- |
+| `VITE_POSTHOG_KEY` | PostHog project API key (`phc_...`). Public, write-only. Without it analytics are off. |
+| `VITE_POSTHOG_HOST` | `https://us.i.posthog.com` or `https://eu.i.posthog.com`, matching your PostHog region |
+| `VITE_DAILY_EPOCH` | `2026-10-10` (launch day, UTC; also the code default). **Never change after launch.** |
 
-## After the first deploy
+Copy `.env.example` to `.env.local` (gitignored), fill it in, then `npm run deploy`.
 
-- [ ] Open the URL on a phone: tutorial starts on first visit.
-- [ ] PostHog → Activity / Live events shows `app_open` within ~10 s. This confirms PostHog accepts the `text/plain` batch body.
+## Post-deploy checklist
+
+- [x] Site loads, tutorial starts on first visit, no console errors (2026-10-02).
+- [x] `_headers` applied: CSP, nosniff, `sw.js` served `no-cache` (2026-10-02).
+- [x] Service worker activates and caches the build (2026-10-02).
+- [ ] PostHog → Activity / Live events shows `app_open` within ~10 s of opening the site. Confirms PostHog accepts the `text/plain` batch body. Needs the key.
 - [ ] Menu shows the privacy line (only visible when a key is configured).
-- [ ] Add to home screen / install, then open it in airplane mode: the game still loads.
-- [ ] Share a daily result: the link in the text points at the production URL.
-- [ ] Response headers on `/` include the `Content-Security-Policy` from `public/_headers`.
+- [ ] On a phone: add to home screen, then open it in airplane mode; the game still loads.
+- [ ] Share a daily result: the link in the text is `https://blockmarshal.pages.dev/`.
 
 ## What ships
 

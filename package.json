@@ -7,11 +7,13 @@
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
-    "test": "vitest run"
+    "test": "vitest run",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name blockmarshal --branch main"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "wrangler": "^4.146.0"
   }
 }

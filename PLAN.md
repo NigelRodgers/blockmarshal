@@ -52,7 +52,7 @@ Implementation notes (step 5):
 
 ## Platform
 
-- Web/PWA first, offline service worker. Hosted on Cloudflare Pages at `blockmarshal.pages.dev`.
+- Web/PWA first, offline service worker. Hosted on Cloudflare Pages at `blockmarshal.pages.dev`, deployed by wrangler direct upload from the dev PC (changed from Git integration at deploy time).
 - Android via Capacitor once retention is proven. iOS deferred.
 - Buy a domain (.io or .gg; .com/.app are taken) only on a "keep going" verdict.
 
@@ -92,7 +92,7 @@ Free at launch, no ads ever. Fake-door "Commander" stub (custom games, extra mod
 4. [x] Daily mode: ranked flow, strikes, share card, streak, practice.
 5. [x] Tutorial (3 levels) and gating.
 6. [x] Commander stub, PostHog events, privacy note.
-7. [~] Service worker, Cloudflare Pages deploy. Code side done: build-generated service worker (offline verified), PNG/maskable icons, `_headers` with CSP, `.node-version`, `VITE_DAILY_EPOCH` build setting. Remaining: connect the repo in Cloudflare and set env vars, then run the post-deploy checklist in [DEPLOY.md](DEPLOY.md).
+7. [x] Service worker, Cloudflare Pages deploy. Live at https://blockmarshal.pages.dev via `npm run deploy` (wrangler direct upload, not Git integration; see [DEPLOY.md](DEPLOY.md)). Remaining checklist items need the PostHog key and a phone.
 
 ## Roadmap after v1
 
