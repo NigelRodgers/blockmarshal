@@ -1,5 +1,6 @@
 import './style.css';
 import type { Bot, Difficulty } from './ai/bot';
+import { analyticsConfigured, analyticsOptedOut, setAnalyticsOptOut, track } from './analytics';
 import { dailyConfig, type DailyConfig } from './daily';
 import {
   computeStreak,
@@ -147,6 +148,7 @@ function startGame(kind: GameMode): void {
   } else {
     daily = dailyConfig();
     if (kind === 'ranked' && records[daily.date]) return renderMenu();
+    if (kind === 'practice') track('practice_start', { day: daily.day });
     state = createGame(daily.game);
     bots = createBots(state, daily.difficulty);
     tickMs = daily.tickMs;
@@ -198,6 +200,7 @@ function lockRanked(force = false): void {
   };
   records[daily.date] = ranked;
   checkpointRanked();
+  track('daily_start', { day: daily.day, difficulty: daily.difficulty });
 }
 
 /** Copy live progress onto the ranked record (cheap: no input log). */
@@ -218,6 +221,16 @@ function finishRanked(status: DailyStatus): void {
   ranked.mineHits = mineHits;
   ranked.log = state.log.slice();
   saveRecords(records);
+  track('daily_end', {
+    day: ranked.day,
+    difficulty: ranked.difficulty,
+    status,
+    won: status === 'won',
+    turn: ranked.turn,
+    minesLost: ranked.minesLost,
+    mineHits: ranked.mineHits,
+    strikes: ranked.strikes,
+  });
 }
 
 // ---------- Tutorial ----------
@@ -233,7 +246,10 @@ function tutorialCheck(): void {
   if (gameMode !== 'tutorial' || !state || !tutGame) return;
   const steps = TUTORIAL[tutLevel].steps;
   const before = tutStep;
-  while (tutStep < steps.length && steps[tutStep].done(state, tutGame)) tutStep++;
+  while (tutStep < steps.length && steps[tutStep].done(state, tutGame)) {
+    tutStep++;
+    track('tutorial_step', { level: tutLevel + 1, step: tutStep });
+  }
   if (tutStep === before) return;
   buzz(25);
   if (tutStep >= steps.length) levelComplete();
@@ -245,7 +261,10 @@ function levelComplete(): void {
   running = false;
   selected = -1;
   const last = tutLevel >= TUTORIAL.length - 1;
-  if (last) setTutorial('done');
+  if (last) {
+    track('tutorial_done', { replay: tutorialCleared() });
+    setTutorial('done');
+  }
   $('go-title').textContent = last ? 'Tutorial complete' : `Level ${tutLevel + 1} complete`;
   $('go-sub').textContent = last
     ? "Ranked play is unlocked. Today's daily is waiting."
@@ -498,13 +517,16 @@ async function share(): Promise<void> {
   const text = shareText(rec, computeStreak(records, d.date), location.origin + location.pathname);
   try {
     if (navigator.share) {
+      track('share_click', { day: rec.day, method: 'native' });
       await navigator.share({ text });
       return;
     }
+    track('share_click', { day: rec.day, method: 'clipboard' });
     await navigator.clipboard.writeText(text);
     toast('Result copied');
   } catch (err) {
     if ((err as Error)?.name === 'AbortError') return;
+    track('share_click', { day: rec.day, method: 'prompt' });
     window.prompt('Copy your result', text);
   }
 }
@@ -527,12 +549,50 @@ $('btn-home').addEventListener('click', () => {
 });
 $('btn-daily').addEventListener('click', () => (tutorialCleared() ? startGame('ranked') : startTutorial(0)));
 $('btn-skip-gate').addEventListener('click', () => {
+  track('tutorial_skipped', { source: 'menu', level: 0, step: 0 });
   setTutorial('skipped');
   renderMenu();
 });
 $('btn-skip-tut').addEventListener('click', () => {
+  track('tutorial_skipped', { source: 'coach', level: tutLevel + 1, step: tutStep, replay: tutorialCleared() });
   setTutorial('skipped');
   toMenu();
+});
+
+// Commander: fake door. Measures interest before anything is built or sold.
+$('btn-commander').addEventListener('click', () => {
+  track('commander_stub_click', { source: 'menu' });
+  show('commander', true);
+});
+$('btn-commander-close').addEventListener('click', () => show('commander', false));
+
+// Install as app, when the browser offers it.
+let installEvent: (Event & { prompt(): Promise<void>; userChoice: Promise<{ outcome: string }> }) | null = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installEvent = e as typeof installEvent;
+  show('btn-install', true);
+});
+$('btn-install').addEventListener('click', async () => {
+  if (!installEvent) return;
+  await installEvent.prompt();
+  const { outcome } = await installEvent.userChoice;
+  track('install_prompt', { outcome });
+  installEvent = null;
+  show('btn-install', false);
+});
+
+function renderPrivacy(): void {
+  const off = analyticsOptedOut();
+  show('privacy', analyticsConfigured());
+  $('privacy-text').textContent = off
+    ? 'Anonymous gameplay stats are off.'
+    : 'Anonymous gameplay stats (no account, no personal data) help improve the game.';
+  $('btn-privacy').textContent = off ? 'Turn on' : 'Turn off';
+}
+$('btn-privacy').addEventListener('click', () => {
+  setAnalyticsOptOut(!analyticsOptedOut());
+  renderPrivacy();
 });
 $('btn-tutorial').addEventListener('click', () => startTutorial(0));
 $('btn-next').addEventListener('click', () => {
@@ -696,6 +756,8 @@ function frame(now: number): void {
 }
 
 renderMenu();
+renderPrivacy();
+track('app_open', { tutorial: tutorialCleared() ? 'cleared' : 'new' });
 // First launch goes straight into the tutorial.
 if (!tutorialCleared()) startTutorial(0);
 requestAnimationFrame(frame);

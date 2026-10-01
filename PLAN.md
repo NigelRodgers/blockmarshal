@@ -71,6 +71,13 @@ Verdict after 4 weeks live and >= 300 unique players:
 
 Tutorial completion < 50% means fix onboarding before judging anything else.
 
+Implementation notes (step 6):
+- `src/analytics.ts` posts to PostHog's `/batch/` endpoint directly (no SDK, no cookies). Anonymous random ID in localStorage, batched every 10 s and flushed with `sendBeacon` when the page hides. Off when no key is set, when the browser sends Do Not Track, or when the player taps "Turn off" in the menu's privacy line.
+- Extra event `app_open` (for daily actives / retention base). `daily_start` fires when the attempt locks (first move), not when the screen opens.
+- Configure with `VITE_POSTHOG_KEY` / `VITE_POSTHOG_HOST` (see `.env.example`). **Before launch:** send a test event and confirm it appears in PostHog Live Events (body is sent as `text/plain` to skip the CORS preflight; verified locally against a stub, not yet against PostHog itself).
+- Commander stub: menu card "Coming soon" opens an honest "not available yet, your tap counts as a vote" dialog. Basic custom games stay free; the stub advertises mine density and seed control, extra modes, themes and full stats.
+- "Install as app" button appears when the browser offers installation (`install_prompt {outcome}`).
+
 ## Monetization
 
 Free at launch, no ads ever. Fake-door "Commander" stub (custom games, extra modes, themes, stats). If the verdict is "build", research Zimbabwe-compatible payouts (Play merchant, Stripe, or a merchant of record like Paddle/Lemon Squeezy) before billing work.
@@ -82,7 +89,7 @@ Free at launch, no ads ever. Fake-door "Commander" stub (custom games, extra mod
 3. [x] Renderer: frontier badges, zoom 30, watchtower art.
 4. [x] Daily mode: ranked flow, strikes, share card, streak, practice.
 5. [x] Tutorial (3 levels) and gating.
-6. [ ] Commander stub, PostHog events, privacy note.
+6. [x] Commander stub, PostHog events, privacy note.
 7. [ ] Service worker, Cloudflare Pages deploy. Set `EPOCH` in `src/daily.ts` to launch day so the first public puzzle is #1.
 
 ## Roadmap after v1
