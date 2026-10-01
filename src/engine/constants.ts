@@ -1,6 +1,15 @@
 /** Troops destroyed when an army walks onto a live mine. */
 export const MINE_DAMAGE = 15;
 
+/** Ticks the triggering player cannot move after setting off a mine. */
+export const MINE_STUN_TICKS = 6;
+
+/** Neutral watchtower garrison. Towers produce no troops. */
+export const TOWER_GARRISON = 25;
+
+/** Watchtower vision and number-reveal radius (Chebyshev, so 3 = 7x7). */
+export const TOWER_RADIUS = 3;
+
 /** Generals and owned cities produce +1 every N ticks (2 ticks = 1 turn). */
 export const GENERAL_GROWTH_TICKS = 2;
 

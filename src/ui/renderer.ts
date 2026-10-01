@@ -169,12 +169,17 @@ export class Renderer {
         this.flat(x, y, s, g, state.players[o].color);
         if (t === Terrain.General) this.crown(x, y, s);
         else if (t === Terrain.City) this.castle(x, y, s, 'rgba(255,255,255,0.28)');
+        else if (t === Terrain.Tower) this.eye(x, y, s, 'rgba(255,255,255,0.3)');
         else if (state.crater[i]) this.crater(x, y, s, 0.5);
         this.army(x, y, s, state.army[i]);
         if (known && state.adj[i] > 0) this.badge(x, y, s, state.adj[i]);
       } else if (t === Terrain.City) {
         this.flat(x, y, s, g, C.neutralCity);
         this.castle(x, y, s, 'rgba(255,255,255,0.25)');
+        this.army(x, y, s, state.army[i]);
+      } else if (t === Terrain.Tower) {
+        this.flat(x, y, s, g, C.neutralCity);
+        this.eye(x, y, s, 'rgba(255,255,255,0.3)');
         this.army(x, y, s, state.army[i]);
       } else if (state.crater[i]) {
         this.flat(x, y, s, g, C.open);
@@ -194,6 +199,9 @@ export class Renderer {
         this.flat(x, y, s, g, C.openFog);
         if (m === Memory.General) this.crown(x, y, s);
         else this.castle(x, y, s, 'rgba(255,255,255,0.18)');
+      } else if (m === Memory.Tower) {
+        this.flat(x, y, s, g, C.openFog);
+        this.eye(x, y, s, 'rgba(255,255,255,0.22)');
       } else if (m === Memory.Crater) {
         this.flat(x, y, s, g, C.openFog);
         this.crater(x, y, s, 0.7);
@@ -284,6 +292,24 @@ export class Renderer {
     }
     ctx.lineTo(l + w, bottom);
     ctx.closePath();
+    ctx.fill();
+  }
+
+  private eye(x: number, y: number, s: number, color: string): void {
+    const { ctx } = this;
+    const cx = x + s / 2;
+    const cy = y + s / 2;
+    const rx = s * 0.36;
+    const ry = s * 0.22;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(cx - rx, cy);
+    ctx.quadraticCurveTo(cx, cy - ry * 2, cx + rx, cy);
+    ctx.quadraticCurveTo(cx, cy + ry * 2, cx - rx, cy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, ry * 0.75, 0, Math.PI * 2);
     ctx.fill();
   }
 

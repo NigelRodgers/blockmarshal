@@ -1,4 +1,5 @@
 import { chebyshev, manhattan } from './grid';
+import { TOWER_GARRISON } from './constants';
 import { mulberry32, randInt, shuffle, type Rng } from './rng';
 import { Terrain } from './types';
 
@@ -10,6 +11,7 @@ export interface MapOptions {
   mineRate: number;
   mountainRate: number;
   cities: number;
+  towers: number;
 }
 
 export interface GeneratedMap {
@@ -63,6 +65,25 @@ function tryGenerate(o: MapOptions, rng: Rng, attempt: number): GeneratedMap | n
   if (reachable < size * 0.6) return null;
 
   const nearGeneral = (i: number, d: number) => generals.some((g) => chebyshev(w, g, i) <= d);
+
+  // Watchtowers go where generals are about equally far away, so each one is contested.
+  const towerCandidates: { i: number; score: number }[] = [];
+  for (let i = 0; i < size; i++) {
+    if (terrain[i] !== Terrain.Plain) continue;
+    const d = generals.map((g) => manhattan(w, g, i));
+    if (Math.min(...d) < 5) continue;
+    towerCandidates.push({ i, score: Math.max(...d) - Math.min(...d) + rng() });
+  }
+  towerCandidates.sort((a, b) => a.score - b.score);
+  const towers: number[] = [];
+  for (const { i } of towerCandidates) {
+    if (towers.length >= o.towers) break;
+    if (towers.some((t) => manhattan(w, t, i) < 5)) continue;
+    towers.push(i);
+    terrain[i] = Terrain.Tower;
+    army[i] = TOWER_GARRISON;
+  }
+  if (towers.length < o.towers) return null;
 
   const cityCandidates: number[] = [];
   for (let i = 0; i < size; i++) if (terrain[i] === Terrain.Plain && !nearGeneral(i, 3)) cityCandidates.push(i);

@@ -15,12 +15,14 @@ interface Profile {
   defend: boolean;
   noise: number;
   expandRisk: number;
+  /** Worth of a neutral watchtower; 0 means the bot ignores towers. */
+  towerValue: number;
 }
 
 const PROFILES: Record<Difficulty, Profile> = {
-  easy: { thinkEvery: 3, deduce: false, riskWeight: 3, aggression: 0.6, defend: false, noise: 0.6, expandRisk: 0.5 },
-  normal: { thinkEvery: 1, deduce: true, riskWeight: 10, aggression: 1, defend: true, noise: 0.25, expandRisk: 0.3 },
-  hard: { thinkEvery: 1, deduce: true, riskWeight: 16, aggression: 1.5, defend: true, noise: 0.08, expandRisk: 0.2 },
+  easy: { thinkEvery: 3, deduce: false, riskWeight: 3, aggression: 0.6, defend: false, noise: 0.6, expandRisk: 0.5, towerValue: 0 },
+  normal: { thinkEvery: 1, deduce: true, riskWeight: 10, aggression: 1, defend: true, noise: 0.25, expandRisk: 0.3, towerValue: 70 },
+  hard: { thinkEvery: 1, deduce: true, riskWeight: 16, aggression: 1.5, defend: true, noise: 0.08, expandRisk: 0.2, towerValue: 70 },
 };
 
 interface Ctx {
@@ -116,8 +118,9 @@ export class Bot {
       if (s.owner[j] === this.pid) {
         carry += s.army[j];
       } else {
-        const remembered = me.memory[j] === Memory.City || me.memory[j] === Memory.General;
-        const defenders = vis[j] ? s.army[j] : remembered ? 45 : 0;
+        const m = me.memory[j];
+        const remembered = m === Memory.City || m === Memory.General ? 45 : m === Memory.Tower ? 25 : 0;
+        const defenders = vis[j] ? s.army[j] : remembered;
         carry -= defenders + k.prob[j] * MINE_DAMAGE;
         if (carry <= 0) return carry;
       }
@@ -134,6 +137,7 @@ export class Bot {
       if (o >= 0 && s.terrain[t] === Terrain.City) return 120;
       if (o >= 0) return 25;
       if (s.terrain[t] === Terrain.City) return 70;
+      if (s.terrain[t] === Terrain.Tower) return this.p.towerValue;
     } else if (me.memory[t] === Memory.General) {
       return 300;
     }

@@ -1,11 +1,11 @@
 import './style.css';
-import { Bot, type Difficulty } from './ai/bot';
+import type { Bot, Difficulty } from './ai/bot';
 import { PLAYER_NAMES } from './engine/constants';
-import { createGame, playerStats, queueMove, step, visionFor } from './engine/game';
-import { mulberry32 } from './engine/rng';
+import { clearQueue as engineClear, createGame, playerStats, queueMove, undoMove, visionFor } from './engine/game';
 import { Memory, Terrain, type GameState } from './engine/types';
 import { Effects } from './ui/effects';
 import { Input } from './ui/input';
+import { createBots, runTick } from './session';
 import { formatArmy, Renderer } from './ui/renderer';
 
 const HUMAN = 0;
@@ -81,8 +81,7 @@ function startGame(): void {
     seed,
     players: Array.from({ length: n }, (_, i) => ({ name: PLAYER_NAMES[i], isBot: i !== HUMAN })),
   });
-  const rng = mulberry32(seed ^ 0x9e3779b9);
-  bots = state.players.filter((p) => p.isBot).map((p) => new Bot(p.id, settings.difficulty, rng));
+  bots = createBots(state, settings.difficulty);
   selected = state.players[HUMAN].general;
   half = false;
   mode = 'move';
@@ -106,8 +105,7 @@ function startGame(): void {
 
 function tick(): void {
   if (!state) return;
-  for (const b of bots) b.think(state);
-  step(state);
+  runTick(state, bots);
 
   const vis = visionFor(state, HUMAN);
   for (const ev of state.events) {
@@ -115,7 +113,7 @@ function tick(): void {
       if (vis[ev.idx] || spectating) fx.explode((ev.idx % state.w) + 0.5, Math.floor(ev.idx / state.w) + 0.5);
       if (ev.player === HUMAN) {
         buzz([30, 40, 90]);
-        toast(`Boom! Mine took ${ev.lost} troops`);
+        toast(`Boom! Lost ${ev.lost} troops, stunned 3 turns`);
       }
     } else if (ev.kind === 'eliminated') {
       const by = state.players[ev.by].name;
@@ -127,6 +125,8 @@ function tick(): void {
       }
     } else if (ev.kind === 'captureCity' && ev.player === HUMAN) {
       toast('City captured');
+    } else if (ev.kind === 'captureTower' && ev.player === HUMAN) {
+      toast('Watchtower captured: area revealed');
     }
   }
 
@@ -233,12 +233,12 @@ window.addEventListener('keydown', (e) => {
 });
 
 function undo(): void {
-  const m = state?.players[HUMAN].queue.pop();
+  const m = state && undoMove(state, HUMAN);
   if (m) selected = m.from;
 }
 
 function clearQueue(): void {
-  if (state) state.players[HUMAN].queue.length = 0;
+  if (state) engineClear(state, HUMAN);
 }
 
 function toggleMode(): void {

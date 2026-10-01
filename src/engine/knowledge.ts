@@ -23,7 +23,7 @@ export function analyze(state: GameState, pid: number, deduce = true): Knowledge
   for (let i = 0; i < size; i++) {
     const m = p.memory[i];
     if (m === Memory.Crater) mine[i] = 1;
-    else if (p.revealed[i] || m === Memory.Mountain || m === Memory.City || m === Memory.General) safe[i] = 1;
+    else if (p.revealed[i] || (m !== Memory.None && m !== Memory.Crater)) safe[i] = 1;
     else if (state.owner[i] === pid) safe[i] = 1;
   }
 

@@ -25,6 +25,7 @@ Agreed in the design grilling session, 2026-10-01. Changes to locked decisions s
   - On loss: vision ends, learned numbers stay.
   - Count = 1 per player, placed roughly equidistant between generals, >= 5 tiles from any general.
   - Bots value it like a city (~70) on Normal/Hard; Easy ignores it.
+  - Enemy-held towers are valued as ordinary enemy land (25), not like a city. Valuing them like a city made bots re-snipe towers endlessly (Hard 90th-percentile game length 490 -> 1202 turns in sims). Changed during step 2.
   - Distinct eye/radar icon; faint 7x7 outline when selected.
 - **Number badges**: only on frontier owned tiles (bordering unrevealed or neutral). Larger top-left pill (~40% tile height), army text shifted right/down.
 - Default zoom 30 px per tile on phones.
@@ -63,7 +64,7 @@ Free at launch, no ads ever. Fake-door "Commander" stub (custom games, extra mod
 ## Build order
 
 1. [x] Rename to Blockmarshal, git init, private repo `NigelRodgers/blockmarshal`.
-2. [ ] Engine: stun, watchtower, input log, seeded daily config. Tests.
+2. [x] Engine: stun, watchtower, input log, seeded daily config. Tests.
 3. [ ] Renderer: frontier badges, zoom 30, watchtower art.
 4. [ ] Daily mode: ranked flow, strikes, share card, streak, practice.
 5. [ ] Tutorial (3 levels) and gating.
