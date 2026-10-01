@@ -14,6 +14,11 @@ Agreed in the design grilling session, 2026-10-01. Changes to locked decisions s
   - Score = win turn; tiebreak = troops lost to mines. Loss shows "survived N turns".
   - Streak = consecutive days played. Unlimited unranked practice of today's map afterwards.
 - **Share card** (Wordle-style, clipboard). No global leaderboard in v1.
+- Implementation notes (step 4):
+  - Records live in localStorage (`blockmarshal.daily.v1`); input logs kept for the last 14 days only.
+  - Ranked progress (turn, mines) is checkpointed every 10 turns so a closed tab still records how far it got.
+  - If the player never moves and is eliminated, the attempt is still recorded (no free retry by idling).
+  - In ranked, the in-game menu only offers "Back to game" or "Forfeit" (confirm dialog); the clock keeps running.
 - Record a full input log (seed + tick-stamped queue/undo/clear events) from day one, for replays and later server-verified leaderboards.
 
 ## Rule changes vs prototype
@@ -67,10 +72,10 @@ Free at launch, no ads ever. Fake-door "Commander" stub (custom games, extra mod
 1. [x] Rename to Blockmarshal, git init, private repo `NigelRodgers/blockmarshal`.
 2. [x] Engine: stun, watchtower, input log, seeded daily config. Tests.
 3. [x] Renderer: frontier badges, zoom 30, watchtower art.
-4. [ ] Daily mode: ranked flow, strikes, share card, streak, practice.
+4. [x] Daily mode: ranked flow, strikes, share card, streak, practice.
 5. [ ] Tutorial (3 levels) and gating.
 6. [ ] Commander stub, PostHog events, privacy note.
-7. [ ] Service worker, Cloudflare Pages deploy.
+7. [ ] Service worker, Cloudflare Pages deploy. Set `EPOCH` in `src/daily.ts` to launch day so the first public puzzle is #1.
 
 ## Roadmap after v1
 

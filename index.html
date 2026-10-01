@@ -39,6 +39,21 @@
         <h1>BLOCK<span>MARSHAL</span></h1>
         <p class="tag">Conquer the map. Read the numbers. Don't step on a mine.</p>
 
+        <section id="daily-card" class="daily">
+          <div class="daily-head">
+            <b id="daily-title">Daily #1</b>
+            <span id="daily-meta"></span>
+          </div>
+          <p id="daily-status"></p>
+          <button id="btn-daily" class="primary">Play ranked</button>
+          <div id="daily-after" class="row">
+            <button id="btn-share">Share result</button>
+            <button id="btn-practice">Practice</button>
+          </div>
+          <p id="daily-streak"></p>
+        </section>
+
+        <h3>Custom game</h3>
         <label>Opponents</label>
         <div class="seg" data-key="opponents">
           <button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button>
@@ -56,7 +71,7 @@
           <button data-v="chill">Chill</button><button data-v="normal">Normal</button><button data-v="blitz">Blitz</button>
         </div>
 
-        <button id="btn-play" class="primary">Play</button>
+        <button id="btn-play">Play custom game</button>
 
         <details>
           <summary>How to play</summary>
@@ -74,17 +89,29 @@
 
     <div id="pause" class="overlay hidden">
       <div class="panel small">
-        <h2>Paused</h2>
+        <h2 id="pause-title">Paused</h2>
+        <p id="pause-sub" class="sub"></p>
         <button id="btn-resume" class="primary">Resume</button>
         <button id="btn-restart">Restart</button>
+        <button id="btn-forfeit" class="danger">Forfeit</button>
         <button id="btn-quit">Main menu</button>
+      </div>
+    </div>
+
+    <div id="strike" class="overlay hidden">
+      <div class="panel small">
+        <h2>Strike <span id="strike-n">1</span> of 3</h2>
+        <p class="sub">Leaving the app during a ranked game pauses it and counts a strike. A third strike forfeits today's attempt.</p>
+        <button id="btn-strike-resume" class="primary">Resume</button>
       </div>
     </div>
 
     <div id="gameover" class="overlay hidden">
       <div class="panel small">
         <h2 id="go-title">Victory</h2>
-        <p id="go-sub"></p>
+        <p id="go-sub" class="sub"></p>
+        <button id="btn-share-go" class="primary">Share result</button>
+        <button id="btn-practice-go">Practice this map</button>
         <button id="btn-again" class="primary">Play again</button>
         <button id="btn-watch">Watch</button>
         <button id="btn-menu">Main menu</button>
