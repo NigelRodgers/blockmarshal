@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#12151b" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <title>Blockmarshal</title>
+  </head>
+  <body>
+    <canvas id="board"></canvas>
+
+    <header id="hud-top" class="hidden">
+      <div class="bar">
+        <button id="btn-pause" class="icon-btn" aria-label="Pause">&#10074;&#10074;</button>
+        <div id="turn">Turn 0</div>
+        <div id="mines" title="Live mines minus your flags">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="5" /><path d="M10 2v16M2 10h16M4.3 4.3l11.4 11.4M15.7 4.3L4.3 15.7" /></svg>
+          <span id="mines-left">0</span>
+        </div>
+      </div>
+      <ol id="board-ranks"></ol>
+    </header>
+
+    <footer id="hud-bottom" class="hidden">
+      <button id="btn-mode" class="ctl"><span class="ico" id="mode-ico"></span><span id="mode-label">Move</span></button>
+      <button id="btn-half" class="ctl"><span class="ico">&frac12;</span><span>Split</span></button>
+      <button id="btn-undo" class="ctl"><span class="ico">&#8630;</span><span>Undo</span></button>
+      <button id="btn-clear" class="ctl"><span class="ico">&#10005;</span><span>Clear</span></button>
+      <button id="btn-home" class="ctl"><span class="ico">&#9873;</span><span>Home</span></button>
+    </footer>
+
+    <div id="menu" class="overlay">
+      <div class="panel">
+        <h1>BLOCK<span>MARSHAL</span></h1>
+        <p class="tag">Conquer the map. Read the numbers. Don't step on a mine.</p>
+
+        <label>Opponents</label>
+        <div class="seg" data-key="opponents">
+          <button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button>
+        </div>
+        <label>Difficulty</label>
+        <div class="seg" data-key="difficulty">
+          <button data-v="easy">Easy</button><button data-v="normal">Normal</button><button data-v="hard">Hard</button>
+        </div>
+        <label>Map</label>
+        <div class="seg" data-key="size">
+          <button data-v="S">Small</button><button data-v="M">Medium</button><button data-v="L">Large</button>
+        </div>
+        <label>Speed</label>
+        <div class="seg" data-key="speed">
+          <button data-v="chill">Chill</button><button data-v="normal">Normal</button><button data-v="blitz">Blitz</button>
+        </div>
+
+        <button id="btn-play" class="primary">Play</button>
+
+        <details>
+          <summary>How to play</summary>
+          <ul>
+            <li>Your <b>general</b> (crown) and captured <b>cities</b> make +1 troop every turn. All your land makes +1 every 25 turns.</li>
+            <li><b>Tap</b> your tile, then tap a neighbour to move all but one troop. Or <b>drag</b> a path from your tile. Tap the selected tile again to move only half.</li>
+            <li>Numbers work like minesweeper: how many of the 8 surrounding tiles hide a <b>mine</b>. Every tile you take reveals its number, and zeros open up the area.</li>
+            <li>Walking onto a mine kills up to 15 troops, halves every army next to it and cancels your queued moves.</li>
+            <li><b>Long-press</b> (or right-click) to flag a suspected mine. Flags are just notes for you.</li>
+            <li>Capture an enemy general to take their whole empire. Last general standing wins.</li>
+          </ul>
+        </details>
+      </div>
+    </div>
+
+    <div id="pause" class="overlay hidden">
+      <div class="panel small">
+        <h2>Paused</h2>
+        <button id="btn-resume" class="primary">Resume</button>
+        <button id="btn-restart">Restart</button>
+        <button id="btn-quit">Main menu</button>
+      </div>
+    </div>
+
+    <div id="gameover" class="overlay hidden">
+      <div class="panel small">
+        <h2 id="go-title">Victory</h2>
+        <p id="go-sub"></p>
+        <button id="btn-again" class="primary">Play again</button>
+        <button id="btn-watch">Watch</button>
+        <button id="btn-menu">Main menu</button>
+      </div>
+    </div>
+
+    <div id="toast"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
