@@ -1,3 +1,4 @@
+import { TOWER_RADIUS } from '../engine/constants';
 import { visionFor } from '../engine/game';
 import { Memory, Terrain, type GameState } from '../engine/types';
 import type { Effects } from './effects';
@@ -25,6 +26,7 @@ const C = {
   mountain: '#2f343c',
   mountainPeak: '#8d96a3',
   neutralCity: '#7c818a',
+  neutralTower: '#4f7a82',
 };
 
 export function formatArmy(n: number): string {
@@ -138,6 +140,7 @@ export class Renderer {
 
     if (view.selected >= 0 && state.owner[view.selected] === view.pid) {
       const [sx, sy] = this.toScreen(view.selected % state.w, Math.floor(view.selected / state.w));
+      if (state.terrain[view.selected] === Terrain.Tower) this.towerArea(state, view.selected);
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = Math.max(2, s * 0.09);
       ctx.strokeRect(sx + ctx.lineWidth / 2, sy + ctx.lineWidth / 2, s - ctx.lineWidth, s - ctx.lineWidth);
@@ -152,6 +155,21 @@ export class Renderer {
 
     view.fx.draw(ctx, this.toScreen, s);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  /** Dashed outline of a selected watchtower's 7x7 area. */
+  private towerArea(state: GameState, idx: number): void {
+    const { ctx } = this;
+    const cx = idx % state.w;
+    const cy = Math.floor(idx / state.w);
+    const [ax, ay] = this.toScreen(Math.max(0, cx - TOWER_RADIUS), Math.max(0, cy - TOWER_RADIUS));
+    const [bx, by] = this.toScreen(Math.min(state.w, cx + TOWER_RADIUS + 1), Math.min(state.h, cy + TOWER_RADIUS + 1));
+    ctx.save();
+    ctx.setLineDash([6, 5]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(ax + 1, ay + 1, bx - ax - 2, by - ay - 2);
+    ctx.restore();
   }
 
   private drawTile(state: GameState, view: ViewState, i: number, x: number, y: number, s: number): void {
@@ -169,17 +187,18 @@ export class Renderer {
         this.flat(x, y, s, g, state.players[o].color);
         if (t === Terrain.General) this.crown(x, y, s);
         else if (t === Terrain.City) this.castle(x, y, s, 'rgba(255,255,255,0.28)');
-        else if (t === Terrain.Tower) this.eye(x, y, s, 'rgba(255,255,255,0.3)');
+        else if (t === Terrain.Tower) this.eye(x, y, s, 0.6);
         else if (state.crater[i]) this.crater(x, y, s, 0.5);
-        this.army(x, y, s, state.army[i]);
-        if (known && state.adj[i] > 0) this.badge(x, y, s, state.adj[i]);
+        const badge = known && state.adj[i] > 0 && s >= 18 && this.isFrontier(state, view.pid, i);
+        this.army(x, y, s, state.army[i], badge);
+        if (badge) this.badge(x, y, s, state.adj[i]);
       } else if (t === Terrain.City) {
         this.flat(x, y, s, g, C.neutralCity);
         this.castle(x, y, s, 'rgba(255,255,255,0.25)');
         this.army(x, y, s, state.army[i]);
       } else if (t === Terrain.Tower) {
-        this.flat(x, y, s, g, C.neutralCity);
-        this.eye(x, y, s, 'rgba(255,255,255,0.3)');
+        this.flat(x, y, s, g, C.neutralTower);
+        this.eye(x, y, s, 0.4);
         this.army(x, y, s, state.army[i]);
       } else if (state.crater[i]) {
         this.flat(x, y, s, g, C.open);
@@ -201,7 +220,7 @@ export class Renderer {
         else this.castle(x, y, s, 'rgba(255,255,255,0.18)');
       } else if (m === Memory.Tower) {
         this.flat(x, y, s, g, C.openFog);
-        this.eye(x, y, s, 'rgba(255,255,255,0.22)');
+        this.eye(x, y, s, 0.25);
       } else if (m === Memory.Crater) {
         this.flat(x, y, s, g, C.openFog);
         this.crater(x, y, s, 0.7);
@@ -295,21 +314,23 @@ export class Renderer {
     ctx.fill();
   }
 
-  private eye(x: number, y: number, s: number, color: string): void {
+  /** Watchtower: an almond eye with a dark pupil. */
+  private eye(x: number, y: number, s: number, alpha: number): void {
     const { ctx } = this;
     const cx = x + s / 2;
     const cy = y + s / 2;
-    const rx = s * 0.36;
-    const ry = s * 0.22;
-    ctx.fillStyle = color;
+    const rx = s * 0.42;
+    const ry = s * 0.3;
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
     ctx.beginPath();
     ctx.moveTo(cx - rx, cy);
-    ctx.quadraticCurveTo(cx, cy - ry * 2, cx + rx, cy);
-    ctx.quadraticCurveTo(cx, cy + ry * 2, cx - rx, cy);
+    ctx.quadraticCurveTo(cx, cy - ry * 1.9, cx + rx, cy);
+    ctx.quadraticCurveTo(cx, cy + ry * 1.9, cx - rx, cy);
     ctx.closePath();
     ctx.fill();
+    ctx.fillStyle = `rgba(0,0,0,${alpha * 0.6})`;
     ctx.beginPath();
-    ctx.arc(cx, cy, ry * 0.75, 0, Math.PI * 2);
+    ctx.arc(cx, cy, ry * 0.62, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -388,36 +409,51 @@ export class Renderer {
     ctx.globalAlpha = 1;
   }
 
-  private badge(x: number, y: number, s: number, n: number): void {
-    if (s < 18) return;
-    const { ctx } = this;
-    const r = s * 0.15;
-    const cx = x + s - r - s * 0.06;
-    const cy = y + r + s * 0.06;
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = NUMBER_COLORS[n];
-    ctx.font = `800 ${r * 1.5}px system-ui, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(String(n), cx, cy + r * 0.08);
+  /** True when an owned tile's number still says something: it touches a tile the viewer can't classify yet. */
+  private isFrontier(state: GameState, pid: number, i: number): boolean {
+    const me = state.players[pid];
+    return state.n8[i].some((j) => state.owner[j] !== pid && !me.revealed[j] && me.memory[j] === Memory.None);
   }
 
-  private army(x: number, y: number, s: number, n: number): void {
+  /** Mine number on an owned tile: a pill in the top-left corner. */
+  private badge(x: number, y: number, s: number, n: number): void {
+    const { ctx } = this;
+    const h = s * 0.4;
+    const w = h * 0.86;
+    const l = x + s * 0.07;
+    const t = y + s * 0.07;
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.beginPath();
+    ctx.roundRect(l, t, w, h, h * 0.3);
+    ctx.fill();
+    ctx.fillStyle = NUMBER_COLORS[n];
+    ctx.font = `800 ${h * 0.82}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(n), l + w / 2, t + h / 2 + h * 0.05);
+  }
+
+  /** Troop count; nudged toward the bottom-right when a number badge takes the corner. */
+  private army(x: number, y: number, s: number, n: number, besideBadge = false): void {
     if (n <= 0) return;
     const { ctx } = this;
     const label = formatArmy(n);
-    const size = s * (label.length >= 4 ? 0.3 : label.length === 3 ? 0.36 : 0.42);
+    let size = s * (label.length >= 4 ? 0.3 : label.length === 3 ? 0.36 : 0.42);
+    let cx = x + s / 2;
+    let cy = y + s / 2 + s * 0.03;
+    if (besideBadge) {
+      size *= label.length >= 3 ? 0.85 : 0.95;
+      cx = x + s * 0.6;
+      cy = y + s * 0.66;
+    }
     ctx.font = `700 ${size}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineWidth = Math.max(2, size * 0.18);
     ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-    ctx.strokeText(label, x + s / 2, y + s / 2 + s * 0.03);
+    ctx.strokeText(label, cx, cy);
     ctx.fillStyle = '#fff';
-    ctx.fillText(label, x + s / 2, y + s / 2 + s * 0.03);
+    ctx.fillText(label, cx, cy);
   }
 
   private drawQueue(state: GameState, view: ViewState, s: number): void {

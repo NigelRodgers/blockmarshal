@@ -27,7 +27,8 @@ Agreed in the design grilling session, 2026-10-01. Changes to locked decisions s
   - Bots value it like a city (~70) on Normal/Hard; Easy ignores it.
   - Enemy-held towers are valued as ordinary enemy land (25), not like a city. Valuing them like a city made bots re-snipe towers endlessly (Hard 90th-percentile game length 490 -> 1202 turns in sims). Changed during step 2.
   - Distinct eye/radar icon; faint 7x7 outline when selected.
-- **Number badges**: only on frontier owned tiles (bordering unrevealed or neutral). Larger top-left pill (~40% tile height), army text shifted right/down.
+- **Number badges**: only on frontier owned tiles. Implemented as: the tile touches a non-owned tile whose mine status you can't tell yet (not revealed, not a known mountain/city/tower/crater). Larger top-left pill (~40% tile height), army text shifted right/down.
+- **Stun HUD**: orange pill next to the turn counter with a draining ring and turns left.
 - Default zoom 30 px per tile on phones.
 
 ## Onboarding
@@ -65,7 +66,7 @@ Free at launch, no ads ever. Fake-door "Commander" stub (custom games, extra mod
 
 1. [x] Rename to Blockmarshal, git init, private repo `NigelRodgers/blockmarshal`.
 2. [x] Engine: stun, watchtower, input log, seeded daily config. Tests.
-3. [ ] Renderer: frontier badges, zoom 30, watchtower art.
+3. [x] Renderer: frontier badges, zoom 30, watchtower art.
 4. [ ] Daily mode: ranked flow, strikes, share card, streak, practice.
 5. [ ] Tutorial (3 levels) and gating.
 6. [ ] Commander stub, PostHog events, privacy note.

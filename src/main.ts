@@ -1,7 +1,7 @@
 import './style.css';
 import type { Bot, Difficulty } from './ai/bot';
-import { PLAYER_NAMES } from './engine/constants';
-import { clearQueue as engineClear, createGame, playerStats, queueMove, undoMove, visionFor } from './engine/game';
+import { MINE_STUN_TICKS, PLAYER_NAMES } from './engine/constants';
+import { clearQueue as engineClear, createGame, playerStats, queueMove, stunTicksLeft, undoMove, visionFor } from './engine/game';
 import { Memory, Terrain, type GameState } from './engine/types';
 import { Effects } from './ui/effects';
 import { Input } from './ui/input';
@@ -20,6 +20,7 @@ interface Settings {
 const SIZES = { S: { w: 12, h: 16 }, M: { w: 15, h: 21 }, L: { w: 18, h: 26 } };
 const TICK_MS = { chill: 700, normal: 500, blitz: 320 };
 const SETTINGS_KEY = 'blockmarshal.settings';
+const DEFAULT_TILE_PX = 30;
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -96,8 +97,9 @@ function startGame(): void {
   show('hud-bottom', true);
   measureInsets();
   renderer.fit(w, h);
-  if (renderer.cam.scale < 26) {
-    renderer.cam.scale = 26;
+  // Phones: don't shrink tiles below a readable size; pinch out to see more.
+  if (renderer.cam.scale < DEFAULT_TILE_PX) {
+    renderer.cam.scale = DEFAULT_TILE_PX;
     renderer.centerOn(state, selected);
   }
   updateHud();
@@ -313,6 +315,12 @@ function updateHud(): void {
   let flags = 0;
   for (let i = 0; i < state.size; i++) flags += me.flags[i];
   $('mines-left').textContent = String(state.mineCount - flags);
+  const stun = stunTicksLeft(state, HUMAN);
+  show('stun', stun > 0);
+  if (stun > 0) {
+    $('stun').style.setProperty('--p', String(stun / MINE_STUN_TICKS));
+    $('stun-n').textContent = String(Math.ceil(stun / 2));
+  }
   $('board-ranks').innerHTML = state.players
     .map((p) => ({ p, s: st[p.id] }))
     .sort((a, b) => b.s.army - a.s.army)

@@ -83,6 +83,28 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+#stun {
+  --p: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 6px;
+  border-radius: 999px;
+  background: #3a1d12;
+  color: #ffb74d;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+#stun .ring {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: conic-gradient(#ff9800 calc(var(--p) * 360deg), rgba(255, 152, 0, 0.2) 0);
+  -webkit-mask: radial-gradient(circle, transparent 5px, #000 6px);
+  mask: radial-gradient(circle, transparent 5px, #000 6px);
+}
+
 #mines {
   margin-left: auto;
   display: flex;
