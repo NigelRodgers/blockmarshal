@@ -755,6 +755,15 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 
+// Offline play: production builds ship a service worker (see vite.config.ts).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
+      /* offline support is a bonus; the game works without it */
+    });
+  });
+}
+
 renderMenu();
 renderPrivacy();
 track('app_open', { tutorial: tutorialCleared() ? 'cleared' : 'new' });

@@ -90,7 +90,7 @@ Free at launch, no ads ever. Fake-door "Commander" stub (custom games, extra mod
 4. [x] Daily mode: ranked flow, strikes, share card, streak, practice.
 5. [x] Tutorial (3 levels) and gating.
 6. [x] Commander stub, PostHog events, privacy note.
-7. [ ] Service worker, Cloudflare Pages deploy. Set `EPOCH` in `src/daily.ts` to launch day so the first public puzzle is #1.
+7. [~] Service worker, Cloudflare Pages deploy. Code side done: build-generated service worker (offline verified), PNG/maskable icons, `_headers` with CSP, `.node-version`, `VITE_DAILY_EPOCH` build setting. Remaining: connect the repo in Cloudflare and set env vars, then run the post-deploy checklist in [DEPLOY.md](DEPLOY.md).
 
 ## Roadmap after v1
 

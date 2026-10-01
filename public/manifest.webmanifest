@@ -1,11 +1,19 @@
 {
   "name": "Blockmarshal",
   "short_name": "Blockmarshal",
-  "description": "Real-time territory war on a minefield.",
+  "description": "Real-time territory war on a minefield. One ranked daily challenge.",
+  "id": "./",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#12151b",
   "theme_color": "#12151b",
-  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+  "categories": ["games", "puzzle", "strategy"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
 }

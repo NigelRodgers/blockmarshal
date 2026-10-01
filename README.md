@@ -31,6 +31,8 @@ npm test         # engine + bot-vs-bot simulation
 npm run build    # static bundle in dist/, relative paths
 ```
 
+Deploying: see [DEPLOY.md](DEPLOY.md) (Cloudflare Pages via Git integration).
+
 Analytics (optional): copy `.env.example` to `.env.local` and set `VITE_POSTHOG_KEY`. Without a key nothing is sent; in dev, events are logged to the console.
 
 ## Layout
