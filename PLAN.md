@@ -2,6 +2,8 @@
 
 Agreed in the design grilling session, 2026-10-01. Changes to locked decisions should be recorded here.
 
+**Launch date: 2026-10-10 (UTC). That day's puzzle is #1.** Days before it show as "Daily preview".
+
 ## Product
 
 - generals.io x minesweeper vs bots, mobile-first. Architecture stays multiplayer-ready (pure deterministic engine).

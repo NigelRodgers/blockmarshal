@@ -5,7 +5,7 @@ import { createFromLayout } from '../src/engine/layout';
 import { chebyshev, manhattan } from '../src/engine/grid';
 import { mulberry32 } from '../src/engine/rng';
 import { Terrain, type GameState } from '../src/engine/types';
-import { dailyConfig } from '../src/daily';
+import { dailyConfig, dailyLabel } from '../src/daily';
 import { createBots, replay, runTick } from '../src/session';
 
 const twoPlayers = [
@@ -144,9 +144,9 @@ describe('input log and replay', () => {
 
 describe('daily config', () => {
   it('is the same all UTC day and changes at UTC midnight', () => {
-    const a = dailyConfig(new Date('2026-10-01T00:00:00Z'));
-    const b = dailyConfig(new Date('2026-10-01T23:59:59Z'));
-    const c = dailyConfig(new Date('2026-10-02T00:00:00Z'));
+    const a = dailyConfig(new Date('2026-10-10T00:00:00Z'));
+    const b = dailyConfig(new Date('2026-10-10T23:59:59Z'));
+    const c = dailyConfig(new Date('2026-10-11T00:00:00Z'));
     expect(a.game.seed).toBe(b.game.seed);
     expect(a.day).toBe(1);
     expect(c.day).toBe(2);
@@ -179,5 +179,14 @@ describe('reveal cascade', () => {
     expect(me.revealed[top]).toBe(0);
     reveal(s, 0, edge);
     expect(me.revealed[top]).toBe(1);
+  });
+});
+
+describe('pre-launch days', () => {
+  it('are labelled as a preview instead of #0 or negative numbers', () => {
+    const d = dailyConfig(new Date('2026-10-02T12:00:00Z'));
+    expect(d.day).toBeLessThan(1);
+    expect(dailyLabel(d.day)).toBe('Daily preview');
+    expect(dailyLabel(1)).toBe('Daily #1');
   });
 });

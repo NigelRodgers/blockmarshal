@@ -70,6 +70,11 @@ describe('share text', () => {
     );
   });
 
+  it('calls pre-launch results a preview', () => {
+    const firstLine = shareText(rec('2026-10-05', { day: -4 }), 1, 'u').split('\n')[0];
+    expect(firstLine).toBe('Blockmarshal preview · Normal');
+  });
+
   it('handles a clean loss with no streak line', () => {
     const text = shareText(rec('2026-10-05', { status: 'lost', turn: 90 }), 1, 'u');
     expect(text).toBe(['Blockmarshal #1 · Normal', '💀 Fell on turn 90', '🧹 Never hit a mine', 'u'].join('\n'));

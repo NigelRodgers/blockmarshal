@@ -100,7 +100,8 @@ export function shareText(r: DailyRecord, streak: number, url: string): string {
     r.mineHits === 0
       ? '🧹 Never hit a mine'
       : `${'💥'.repeat(Math.min(r.mineHits, 8))} ${r.mineHits} mine${r.mineHits === 1 ? '' : 's'}, ${r.minesLost} troops lost`;
-  const lines = [`Blockmarshal #${r.day} · ${DIFFICULTY_LABEL[r.difficulty]}`, `${icon} ${resultLine(r)}`, mines];
+  const title = r.day >= 1 ? `Blockmarshal #${r.day}` : 'Blockmarshal preview';
+  const lines = [`${title} · ${DIFFICULTY_LABEL[r.difficulty]}`, `${icon} ${resultLine(r)}`, mines];
   if (streak > 1) lines.push(`🔥 ${streak}-day streak`);
   lines.push(url);
   return lines.join('\n');

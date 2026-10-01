@@ -25,7 +25,7 @@ Every push to `main` builds and deploys automatically once this is set up. Pushe
    | --- | --- |
    | `VITE_POSTHOG_KEY` | PostHog project API key (`phc_...`). Public, write-only. |
    | `VITE_POSTHOG_HOST` | `https://us.i.posthog.com` or `https://eu.i.posthog.com`, matching your PostHog region |
-   | `VITE_DAILY_EPOCH` | Launch date, `YYYY-MM-DD` (UTC). That day's puzzle is #1. **Set once, never change after launch.** |
+   | `VITE_DAILY_EPOCH` | `2026-10-10` (launch day, UTC; also the code default). That day's puzzle is #1, earlier days show as "Daily preview". **Never change after launch.** |
 
 5. **Save and Deploy.**
 

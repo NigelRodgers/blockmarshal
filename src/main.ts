@@ -1,7 +1,7 @@
 import './style.css';
 import type { Bot, Difficulty } from './ai/bot';
 import { analyticsConfigured, analyticsOptedOut, setAnalyticsOptOut, track } from './analytics';
-import { dailyConfig, type DailyConfig } from './daily';
+import { dailyConfig, dailyLabel, type DailyConfig } from './daily';
 import {
   computeStreak,
   formatCountdown,
@@ -337,7 +337,7 @@ function endGame(won: boolean, sub: string): void {
   const rec = daily && records[daily.date];
   $('go-title').textContent = won ? 'Victory' : gameMode === 'ranked' && ranked?.status === 'forfeit' ? 'Forfeited' : 'Defeat';
   let text = sub;
-  if (gameMode === 'ranked' && rec) text += ` Daily #${rec.day} recorded.`;
+  if (gameMode === 'ranked' && rec) text += ` ${dailyLabel(rec.day)} recorded.`;
   if (gameMode === 'practice') text += ' (practice, unranked)';
   $('go-sub').textContent = text;
   show('btn-next', false);
@@ -638,7 +638,7 @@ function renderMenu(): void {
   const rec = records[d.date];
   const streak = computeStreak(records, d.date);
   const gated = !tutorialCleared();
-  $('daily-title').textContent = `Daily #${d.day}`;
+  $('daily-title').textContent = dailyLabel(d.day);
   $('daily-meta').textContent = `${d.difficulty === 'hard' ? 'Hard' : 'Normal'} bots · new map in ${formatCountdown(msUntilReset())}`;
   $('daily-status').textContent = rec
     ? `${resultLine(rec)}${rec.mineHits ? ` · ${rec.mineHits} mine${rec.mineHits === 1 ? '' : 's'} hit` : ''}`
@@ -671,7 +671,7 @@ function updateHud(): void {
   const turn = `Turn ${Math.floor(state.tick / 2)}`;
   $('turn').textContent =
     gameMode === 'ranked' && daily
-      ? `Daily #${daily.day} · ${turn}`
+      ? `${dailyLabel(daily.day)} · ${turn}`
       : gameMode === 'practice'
         ? `Practice · ${turn}`
         : gameMode === 'tutorial'

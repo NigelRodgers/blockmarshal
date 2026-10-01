@@ -7,8 +7,13 @@ import type { GameConfig } from './engine/game';
  * time to the public launch date so the first public puzzle is #1. Changing it after
  * launch renumbers every puzzle, so set it once.
  */
-const EPOCH_DATE = (import.meta.env?.VITE_DAILY_EPOCH as string | undefined) || '2026-10-01';
+const EPOCH_DATE = (import.meta.env?.VITE_DAILY_EPOCH as string | undefined) || '2026-10-10';
 const EPOCH = Date.parse(`${EPOCH_DATE}T00:00:00Z`);
+
+/** "Daily #12", or "Daily preview" for days before launch (number zero or below). */
+export function dailyLabel(day: number): string {
+  return day >= 1 ? `Daily #${day}` : 'Daily preview';
+}
 
 export interface DailyConfig {
   /** Puzzle number shown on share cards, starting at 1. */
