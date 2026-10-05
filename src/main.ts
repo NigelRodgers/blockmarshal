@@ -2,7 +2,7 @@ import './style.css';
 import { analyticsConfigured, analyticsOptedOut, setAnalyticsOptOut, track } from './analytics';
 import { MINE_STUN_TICKS } from './engine/constants';
 import { Terrain, type Move } from './engine/types';
-import { Net } from './net/client';
+import { findMatch, Net } from './net/client';
 import type { PlayerView, ServerMessage } from './net/protocol';
 import { Effects } from './ui/effects';
 import { Input } from './ui/input';
@@ -49,28 +49,36 @@ function playerName(): string {
   return $<HTMLInputElement>('name').value.trim();
 }
 
-async function play(): Promise<void> {
+async function play(attempt = 0): Promise<void> {
   try {
     localStorage.setItem(NAME_KEY, playerName());
   } catch {
     /* name just won't be remembered */
   }
   show('offline', false);
-  try {
-    await net.connect();
-  } catch {
-    show('offline', true);
-    return;
-  }
   view = null;
   setScreen('lobby');
   $('lobby-time').textContent = '…';
+  $('lobby-slots').innerHTML = '';
+  try {
+    await net.connect(await findMatch());
+  } catch {
+    setScreen('start');
+    $('offline-sub').textContent = 'Check your connection and try again.';
+    show('offline', true);
+    return;
+  }
+  joinAttempt = attempt;
   net.send({ t: 'join', name: playerName() });
-  track('lobby_join');
+  if (attempt === 0) track('lobby_join');
 }
+
+/** A lobby can fill between the matchmaker's answer and our arrival; try another a few times. */
+let joinAttempt = 0;
 
 function toStart(): void {
   net.send({ t: 'leave' });
+  net.close();
   view = null;
   setScreen('start');
 }
@@ -94,7 +102,8 @@ function onServer(msg: ServerMessage): void {
   } else if (msg.t === 'view') {
     onView(msg.view);
   } else if (msg.t === 'error') {
-    toast(msg.message);
+    if (msg.code === 'full' && joinAttempt < 3) play(joinAttempt + 1);
+    else toast(msg.message);
   }
 }
 
@@ -290,7 +299,7 @@ window.addEventListener('keydown', (e) => {
   updateControls();
 });
 
-$('btn-play').addEventListener('click', play);
+$('btn-play').addEventListener('click', () => play());
 $('name').addEventListener('keydown', (e) => {
   if ((e as KeyboardEvent).key === 'Enter') play();
 });
@@ -298,10 +307,10 @@ $('btn-lobby-leave').addEventListener('click', toStart);
 $('btn-leave').addEventListener('click', () => {
   if (!canAct() || window.confirm('Leave this game? Your general stays on the board, undefended.')) toStart();
 });
-$('btn-again').addEventListener('click', play);
+$('btn-again').addEventListener('click', () => play());
 $('btn-menu').addEventListener('click', toStart);
 $('btn-watch').addEventListener('click', () => show('gameover', false));
-$('btn-retry').addEventListener('click', play);
+$('btn-retry').addEventListener('click', () => play());
 $('btn-mode').addEventListener('click', () => {
   mode = mode === 'move' ? 'flag' : 'move';
   updateControls();

@@ -25,15 +25,15 @@ Real-time territory war (generals.io) on a minesweeper board. Mobile-first web g
 
 ## Develop
 
-Two processes: the game server and the Vite dev server (which proxies `/ws` to it).
+Two processes: the Worker (via `wrangler dev`) and Vite (which proxies `/api` and `/ws` to it). Hosted on Cloudflare Workers + Durable Objects; see [DEPLOY.md](DEPLOY.md).
 
 ```bash
 npm install
-npm run server   # game server on :5200 (WebSocket at /ws), restarts on change
-npm run dev      # client on :5199, also reachable from phones on the same Wi-Fi
-npm test         # engine, bots, matchmaking, fog-of-war views
-npm run build    # typechecks client + server, static client bundle in dist/
-npm start        # production-style: one process serving dist/ and /ws on $PORT
+npm run build    # once: the local Worker serves dist/
+npm run server   # Worker + Durable Objects on :8787
+npm run dev      # client on :5199 with hot reload, also reachable from phones on the same Wi-Fi
+npm test         # engine, bots, lobby/matchmaking, fog-of-war views
+npm run deploy   # build + wrangler deploy
 ```
 
 ## Layout
@@ -41,7 +41,8 @@ npm start        # production-style: one process serving dist/ and /ws on $PORT
 - `src/engine/`: pure, deterministic, DOM-free game state (seeded map gen, tick resolution, mine dots, knowledge).
 - `src/ai/bot.ts`: bots use only their own vision and the mine dots on their own tiles (easy bots ignore the dots).
 - `src/net/`: wire protocol, the per-player fog-of-war view builder (server side) and the browser WebSocket client.
-- `server/`: matchmaker (lobbies, countdown, bot fill), matches (one tick loop each) and the HTTP/WebSocket entry point.
+- `server/`: runtime-independent match logic (`match.ts`: lobby, countdown, bot fill, tick loop) and the matchmaker's lobby index.
+- `worker/`: Cloudflare Worker entry plus the `MatchDO` / `MatchmakerDO` Durable Objects that host the above.
 - `src/ui/`: canvas renderer, touch/mouse input, effects. `src/main.ts` wires up start screen, lobby, HUD and render loop.
 
 See [PLAN.md](PLAN.md) for the current direction, next steps and mechanic ideas.

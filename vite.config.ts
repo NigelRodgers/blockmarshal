@@ -13,8 +13,8 @@ function serviceWorker(): Plugin {
     generateBundle(_options, bundle) {
       const files = Object.keys(bundle).filter((f) => !f.endsWith('.map'));
       const precache = [
+        // './' is the page; Workers assets redirect /index.html to it.
         './',
-        'index.html',
         'manifest.webmanifest',
         'icon.svg',
         'icon-192.png',
@@ -37,9 +37,12 @@ export default defineConfig({
   base: './',
   server: {
     port: 5199,
-    // Reachable from phones on the same Wi-Fi; /ws goes to the game server (npm run server).
+    // Reachable from phones on the same Wi-Fi. /api and /ws go to the local Worker (npm run server).
     host: true,
-    proxy: { '/ws': { target: 'ws://localhost:5200', ws: true } },
+    proxy: {
+      '/api': 'http://localhost:8787',
+      '/ws': { target: 'ws://localhost:8787', ws: true },
+    },
   },
   plugins: [serviceWorker()],
 });

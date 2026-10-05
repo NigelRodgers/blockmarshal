@@ -1,42 +1,49 @@
 # Deploying Blockmarshal
 
-> **Hold deploys (2026-10-05).** `main` is now the multiplayer version, which needs the Node game server (`server/`). Cloudflare Pages only serves static files, so `npm run deploy` would publish a client that can't reach a server. The live site keeps the last single-player build until a server host is chosen (see PLAN.md).
+Runs on **Cloudflare Workers** with **Durable Objects** (account [owner email: Worker secret], Workers Free plan):
 
-Live at **https://blockmarshal.pages.dev** (Cloudflare Pages project `blockmarshal`, account [owner email: Worker secret]).
+- One Worker (`worker/index.ts`) serves the built client from `dist/` and two routes:
+  - `POST /api/join` asks the matchmaker for a match ID.
+  - `GET /ws/<matchId>` opens the player's WebSocket into that match.
+- `MatchmakerDO` (one global instance) routes players to the fullest open lobby. No sockets.
+- `MatchDO` (one per match) holds the sockets and runs lobby countdown + game loop using the shared `server/match.ts`.
 
-## How deploys work
+Config: [`wrangler.jsonc`](wrangler.jsonc). Free plan requires SQLite-backed Durable Objects (`new_sqlite_classes`), even though matches keep their state in memory.
 
-Deploys are **direct uploads from this PC** with wrangler. Pushing to GitHub does **not** deploy. (Pages projects created by direct upload can't be switched to Git integration later; moving to auto-deploy would mean a new project.)
+## Deploy
 
 ```bash
-npm run deploy
+npm run deploy   # typecheck client + worker, vite build, wrangler deploy
 ```
 
-That builds (`tsc` + `vite build`) and uploads `dist/` to the production branch `main`. Each upload also gets its own preview URL (`https://<hash>.blockmarshal.pages.dev`).
+First deploy creates the Worker at `https://blockmarshal.<your-subdomain>.workers.dev`. Pushing to GitHub does not deploy.
 
-wrangler is a dev dependency and is already logged in on this machine (`npx wrangler whoami`). The project was created with `--force` because newer wrangler tries to route Pages commands to Cloudflare Workers; later commands don't need it.
+Build-time settings come from `.env.local` (copy `.env.example`): `VITE_POSTHOG_KEY` / `VITE_POSTHOG_HOST` for analytics. Without a key, analytics are off.
 
-## Build settings (read at build time from `.env.local`)
+## Local development
 
-| Variable | Value |
-| --- | --- |
-| `VITE_POSTHOG_KEY` | PostHog project API key (`phc_...`). Public, write-only. Without it analytics are off. |
-| `VITE_POSTHOG_HOST` | `https://us.i.posthog.com` or `https://eu.i.posthog.com`, matching your PostHog region |
-| `VITE_DAILY_EPOCH` | `2026-10-10` (launch day, UTC; also the code default). **Never change after launch.** |
+```bash
+npm run server   # wrangler dev on :8787 — Worker + both Durable Objects, serves dist/
+npm run dev      # Vite on :5199 with hot reload; proxies /api and /ws to :8787
+```
 
-Copy `.env.example` to `.env.local` (gitignored), fill it in, then `npm run deploy`.
+Open http://localhost:5199 (or `http://<this PC's LAN IP>:5199` from a phone on the same Wi-Fi). `npm run server` serves whatever is in `dist/`, so run `npm run build` once first. After changing `wrangler.jsonc`, run `npm run types` to refresh `worker/worker-configuration.d.ts`.
+
+## Costs (Workers Free plan, as of 2026-10)
+
+- Durable Objects: 100,000 requests/day and 13,000 GB-s/day of duration.
+- A match keeps its object busy for the whole game (500 ms ticks). At 128 MB that's ~75 GB-s per 10-minute match, so roughly **170 ten-minute matches/day** free.
+- Incoming WebSocket messages bill at 20:1; outgoing messages are free.
+- Beyond that: Workers Paid, $5/month, includes 400,000 GB-s/month (~5,000 matches).
+
+## The old Pages site
+
+`https://blockmarshal.pages.dev` still serves the earlier single-player build (Pages project `blockmarshal`, direct upload). It isn't updated anymore; delete it in the Cloudflare dashboard or redirect it once the Worker is live.
 
 ## Post-deploy checklist
 
-- [x] Site loads, tutorial starts on first visit, no console errors (2026-10-02).
-- [x] `_headers` applied: CSP, nosniff, `sw.js` served `no-cache` (2026-10-02).
-- [x] Service worker activates and caches the build (2026-10-02).
-- [ ] PostHog → Activity / Live events shows `app_open` within ~10 s of opening the site. Confirms PostHog accepts the `text/plain` batch body. Needs the key.
-- [ ] Menu shows the privacy line (only visible when a key is configured).
-- [ ] On a phone: add to home screen, then open it in airplane mode; the game still loads.
-- [ ] Share a daily result: the link in the text is `https://blockmarshal.pages.dev/`.
-
-## What ships
-
-- `public/_headers`: caching (immutable hashed assets, no-cache for `index.html` and `sw.js`) and security headers. The CSP allows network calls only to this site and `*.posthog.com`; update it if analytics moves elsewhere.
-- `sw.js`: generated at build time by `vite.config.ts` with the exact files of that build. A new deploy replaces the old offline copy the next time the app is opened online.
+- [ ] Open the Worker URL: start screen loads, no console errors.
+- [ ] Two devices join within a minute: same lobby, game starts at 0:00 with bots.
+- [ ] Headers from `public/_headers` are applied (CSP, `sw.js` no-cache).
+- [ ] With a PostHog key: `app_open` and `lobby_join` arrive in Live events.
+- [ ] Cloudflare dashboard → Workers → blockmarshal → Durable Objects: usage looks sane after a few matches.

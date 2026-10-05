@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "blockmarshal",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  // The built client (vite build). The Worker only runs for the API and game sockets.
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/ws/*"]
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "MATCH", "class_name": "MatchDO" },
+      { "name": "MATCHMAKER", "class_name": "MatchmakerDO" }
+    ]
+  },
+  // The Workers Free plan only offers SQLite-backed Durable Objects.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MatchDO", "MatchmakerDO"] }],
+  "observability": { "enabled": true }
+}

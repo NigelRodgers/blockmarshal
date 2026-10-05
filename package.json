@@ -8,20 +8,15 @@
     "build": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json && vite build",
     "preview": "vite preview --host",
     "test": "vitest run",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name blockmarshal --branch main",
-    "server": "tsx watch server/index.ts",
-    "start": "tsx server/index.ts"
+    "deploy": "npm run build && wrangler deploy",
+    "server": "wrangler dev --port 8787",
+    "types": "wrangler types worker/worker-configuration.d.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
-    "@types/ws": "^8.18.2",
-    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
     "vitest": "^5.0.3",
     "wrangler": "^4.146.0"
-  },
-  "dependencies": {
-    "ws": "^8.22.0"
   }
 }

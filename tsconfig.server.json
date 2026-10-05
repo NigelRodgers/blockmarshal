@@ -1,19 +1,19 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "types": [
-      "node"
-    ],
+    "types": [],
     "lib": [
       "ES2022"
     ]
   },
   "include": [
+    "worker",
     "server",
     "src/engine",
     "src/ai",
     "src/net/protocol.ts",
     "src/net/view.ts",
     "src/session.ts"
-  ]
+  ],
+  "exclude": []
 }

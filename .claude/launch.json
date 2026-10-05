@@ -16,11 +16,14 @@
       "name": "blockmarshal-server",
       "runtimeExecutable": "node",
       "runtimeArgs": [
-        "C:/dev/blockmarshal/node_modules/tsx/dist/cli.mjs",
-        "watch",
-        "C:/dev/blockmarshal/server/index.ts"
+        "C:/dev/blockmarshal/node_modules/wrangler/bin/wrangler.js",
+        "dev",
+        "--port",
+        "8787",
+        "--config",
+        "C:/dev/blockmarshal/wrangler.jsonc"
       ],
-      "port": 5200
+      "port": 8787
     }
   ]
 }

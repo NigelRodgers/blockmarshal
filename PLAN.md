@@ -6,14 +6,14 @@ Supersedes the bots-only daily challenge below. Kept for history; the daily, tut
 
 - **One game type:** 6 seats, one fixed 15x25 board (fits portrait phones at ~26px tiles).
 - **Lobby:** joining puts you in the fullest open lobby. It starts when 6 humans are in, or after a 60-second countdown with bots filling empty seats. Any number of matches run at once.
-- **Server-authoritative:** `server/` (Node + `ws`) runs the engine; each player gets only their fog-filtered view (`src/net/view.ts`). Mines and fogged armies never reach the client while you're alive.
+- **Server-authoritative:** `server/match.ts`, hosted in a Durable Object per match, runs the engine; each player gets only their fog-filtered view (`src/net/view.ts`). Mines and fogged armies never reach the client while you're alive.
 - **Mines without minesweeper:** tiles look like plain generals.io squares. No numbers, no zero cascade. Tiles you've held (or seen from a watchtower) show **red dots** on the side facing each neighbouring mine (8 positions: corners for diagonals, edge centres for straight). Exploded mines lose their dots.
 - **Flags are client-only:** never sent to the server, so opponents can't see them.
 - Kept: mine damage + 6-tick stun, watchtowers (now one per two players), cities, generals.
 - Analytics events now: `app_open`, `lobby_join`, `game_start {humans, bots}`, `game_end {won, turn, alive}`, `install_prompt`.
 
 ### Open next steps
-1. **Hosting for the game server.** Cloudflare Pages is static only; the live site still runs the old single-player build. Options: Fly.io / Render / a small VPS running `npm start` (serves the client too), or Cloudflare Durable Objects (rewrite of the server layer).
+1. ~~Hosting for the game server.~~ Chosen 2026-10-05: Cloudflare Workers + Durable Objects (one `MatchDO` per match, one global `MatchmakerDO`); the free plan covers roughly 170 ten-minute matches a day. See DEPLOY.md.
 2. **Matchmaking that groups humans** (so one human rarely faces five bots): e.g. hold solo lobbies a little longer when other lobbies are filling, merge lobbies before the countdown ends, or show a live "players online" count.
 3. Reconnect to a running match after a dropped connection.
 

@@ -26,6 +26,13 @@ export interface MatchOptions {
 }
 
 const MAX_QUEUE = 200;
+const MAX_NAME = 16;
+
+/** Trim, drop control characters, cap length; fall back to a generic name. */
+export function cleanName(raw: unknown): string {
+  const s = typeof raw === 'string' ? raw.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, MAX_NAME) : '';
+  return s || 'Player';
+}
 
 /**
  * One game: a lobby that fills for up to LOBBY_SECONDS (or until six humans

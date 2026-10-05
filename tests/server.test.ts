@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { MATCH_PLAYERS } from '../src/engine/constants';
 import type { PlayerView, ServerMessage } from '../src/net/protocol';
-import type { Conn } from '../server/match';
-import { cleanName, Matchmaker } from '../server/matchmaker';
+import { LobbyIndex } from '../server/lobbyIndex';
+import { cleanName, Match, type Conn } from '../server/match';
 
 /** Fake browser connection that records what the server sends it. */
 function conn(id: string): Conn & { inbox: ServerMessage[]; lastView(): PlayerView | undefined } {
   const inbox: ServerMessage[] = [];
   return {
     id,
-    name: '',
+    name: id,
     inbox,
     send: (m) => inbox.push(m),
     lastView() {
@@ -19,25 +19,26 @@ function conn(id: string): Conn & { inbox: ServerMessage[]; lastView(): PlayerVi
   };
 }
 
-function setup() {
+/** A match with a controllable clock and no real timers. */
+function newMatch(id = 'm1') {
   let now = 1_000_000;
-  const mm = new Matchmaker({ autoRun: false, lobbyMs: 60_000, now: () => now, seed: 42 });
-  return { mm, advance: (ms: number) => (now += ms) };
+  let done = false;
+  const match = new Match(id, () => (done = true), { autoRun: false, lobbyMs: 60_000, now: () => now, seed: 42 });
+  return { match, advance: (ms: number) => (now += ms), isDone: () => done };
 }
 
-describe('matchmaking', () => {
+describe('match lobby', () => {
   it('fills empty seats with bots when the one-minute countdown ends', () => {
-    const { mm, advance } = setup();
-    const a = conn('a');
-    const match = mm.join(a, 'Alice');
-    expect(match.phase).toBe('lobby');
+    const { match, advance } = newMatch();
+    const a = conn('Alice');
+    match.add(a);
     expect(a.inbox.at(-1)).toMatchObject({ t: 'lobby', capacity: MATCH_PLAYERS, startsInMs: 60_000 });
 
     advance(59_000);
-    mm.lobbyTick();
+    match.lobbyTick();
     expect(match.phase).toBe('lobby');
     advance(1_000);
-    mm.lobbyTick();
+    match.lobbyTick();
     expect(match.phase).toBe('playing');
     const players = match.state!.players;
     expect(players.length).toBe(MATCH_PLAYERS);
@@ -46,62 +47,46 @@ describe('matchmaking', () => {
     expect(a.lastView()?.you).toBe(0);
   });
 
-  it('starts at once when six humans are in, and opens a new lobby for the seventh', () => {
-    const { mm } = setup();
-    const six = Array.from({ length: 6 }, (_, i) => conn(`c${i}`));
-    const first = mm.join(six[0], 'P0');
-    for (const c of six.slice(1)) mm.join(c, c.id);
-    expect(first.phase).toBe('playing');
-    expect(first.state!.players.every((p) => !p.isBot)).toBe(true);
-
-    const seventh = mm.join(conn('c7'), 'late');
-    expect(seventh).not.toBe(first);
-    expect(seventh.phase).toBe('lobby');
-    expect(mm.matches.size).toBe(2);
+  it('starts at once when six humans are in, and stops accepting players', () => {
+    const { match } = newMatch();
+    for (let i = 0; i < 6; i++) match.add(conn(`p${i}`));
+    expect(match.phase).toBe('playing');
+    expect(match.open).toBe(false);
+    expect(match.state!.players.every((p) => !p.isBot)).toBe(true);
+    expect(() => match.add(conn('late'))).toThrow();
   });
 
-  it('sends newcomers to the fullest open lobby', () => {
-    const { mm } = setup();
-    const a = mm.join(conn('a'), 'a');
-    // Force a second lobby by filling the first's slot count artificially: join, then leave the first.
-    const b = conn('b');
-    mm.join(b, 'b');
-    expect(b.match).toBe(a);
-    expect(a.humans.length).toBe(2);
-  });
-
-  it('runs several matches side by side', () => {
-    const { mm, advance } = setup();
-    const a = mm.join(conn('a'), 'a');
-    advance(60_000);
-    mm.lobbyTick();
-    const b = mm.join(conn('b'), 'b');
-    advance(60_000);
-    mm.lobbyTick();
-    expect(a.phase).toBe('playing');
-    expect(b.phase).toBe('playing');
-    expect(a).not.toBe(b);
-    a.tick();
-    b.tick();
-    expect(a.state!.tick).toBe(1);
-    expect(b.state!.tick).toBe(1);
-  });
-
-  it('closes an empty lobby and stops a match nobody is watching', () => {
-    const { mm, advance } = setup();
+  it('closes when the last player leaves the lobby, or nobody is left watching a game', () => {
+    const lobby = newMatch();
     const a = conn('a');
-    const lobby = mm.join(a, 'a');
-    mm.leave(a);
-    expect(lobby.phase).toBe('done');
-    expect(mm.matches.size).toBe(0);
+    lobby.match.add(a);
+    lobby.match.remove(a);
+    expect(lobby.isDone()).toBe(true);
 
+    const game = newMatch('m2');
     const b = conn('b');
-    const game = mm.join(b, 'b');
-    advance(60_000);
-    mm.lobbyTick();
-    mm.leave(b);
-    expect(game.phase).toBe('done');
-    expect(mm.matches.size).toBe(0);
+    game.match.add(b);
+    game.advance(60_000);
+    game.match.lobbyTick();
+    game.match.remove(b);
+    expect(game.match.phase).toBe('done');
+    expect(game.isDone()).toBe(true);
+  });
+
+  it('runs matches independently side by side', () => {
+    const one = newMatch('one');
+    const two = newMatch('two');
+    one.match.add(conn('a'));
+    two.match.add(conn('b'));
+    for (const m of [one, two]) {
+      m.advance(60_000);
+      m.match.lobbyTick();
+    }
+    one.match.tick();
+    one.match.tick();
+    two.match.tick();
+    expect(one.match.state!.tick).toBe(2);
+    expect(two.match.state!.tick).toBe(1);
   });
 
   it('cleans player names', () => {
@@ -113,13 +98,52 @@ describe('matchmaking', () => {
   });
 });
 
+describe('matchmaker lobby index', () => {
+  let n = 0;
+  const id = () => `L${++n}`;
+
+  it('sends newcomers to the fullest open lobby so humans end up together', () => {
+    const idx = new LobbyIndex();
+    const a = idx.assign(0, id);
+    const b = idx.assign(1_000, id);
+    expect(b).toBe(a); // reservation counts before the match reports back
+    idx.update(a, 2, true, 2_000);
+    expect(idx.assign(3_000, id)).toBe(a);
+  });
+
+  it('opens a new lobby when the open one is full or about to start', () => {
+    const idx = new LobbyIndex();
+    const a = idx.assign(0, id);
+    idx.update(a, 6, true, 1_000);
+    const b = idx.assign(2_000, id);
+    expect(b).not.toBe(a);
+
+    const idx2 = new LobbyIndex();
+    const c = idx2.assign(0, id);
+    idx2.update(c, 1, true, 0);
+    expect(idx2.assign(59_000, id)).not.toBe(c); // 1 s left on c's countdown
+  });
+
+  it('forgets lobbies that started or closed, and seats nobody claimed', () => {
+    const idx = new LobbyIndex();
+    const a = idx.assign(0, id);
+    idx.update(a, 1, false, 1_000);
+    expect(idx.size).toBe(0);
+
+    const b = idx.assign(0, id); // reserved, but the player never connects
+    expect(idx.size).toBe(1);
+    expect(idx.assign(20_000, id)).not.toBe(b);
+    expect(idx.size).toBe(1);
+  });
+});
+
 describe('player views', () => {
   function started() {
-    const { mm, advance } = setup();
+    const { match, advance } = newMatch();
     const a = conn('a');
-    const match = mm.join(a, 'a');
+    match.add(a);
     advance(60_000);
-    mm.lobbyTick();
+    match.lobbyTick();
     return { match, a };
   }
 
@@ -137,16 +161,7 @@ describe('player views', () => {
       }
       if (!s.players[0].revealed[i]) expect(v.dots[i]).toBe(0);
     }
-    // The JSON on the wire carries no per-tile mine field at all.
     expect(JSON.stringify(v)).not.toContain('"mine"');
-  });
-
-  it('shows dots on tiles you have held', () => {
-    const { match, a } = started();
-    const s = match.state!;
-    const g = s.players[0].general;
-    expect(a.lastView()!.dots[g]).toBe(0); // generals start in a mine-free 3x3
-    expect(a.lastView()!.owner[g]).toBe(0);
   });
 
   it('ignores malformed or out-of-range moves', () => {

@@ -36,7 +36,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE).then((c) => c.put('./', copy));
           return res;
         })
-        .catch(() => caches.match('./').then((r) => r || caches.match('index.html'))),
+        .catch(() => caches.match('./')),
     );
     return;
   }

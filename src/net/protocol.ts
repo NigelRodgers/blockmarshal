@@ -59,4 +59,4 @@ export type ServerMessage =
   | { t: 'lobby'; matchId: string; slots: LobbySlot[]; capacity: number; startsInMs: number }
   | { t: 'start'; matchId: string; you: number }
   | { t: 'view'; view: PlayerView }
-  | { t: 'error'; message: string };
+  | { t: 'error'; code?: 'full'; message: string };
