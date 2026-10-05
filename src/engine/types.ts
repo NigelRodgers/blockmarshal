@@ -24,9 +24,8 @@ export interface Player {
   alive: boolean;
   general: number;
   queue: Move[];
-  /** Tiles whose adjacent-mine number this player knows (and therefore knows are safe). */
+  /** Tiles this player has held (or seen from a watchtower): they show mine dots for this player. */
   revealed: Uint8Array;
-  flags: Uint8Array;
   memory: Uint8Array;
   eliminatedAt: number;
   killedBy: number;
@@ -52,8 +51,6 @@ export interface GameState {
   army: Int32Array;
   mine: Uint8Array;
   crater: Uint8Array;
-  /** Minesweeper number: mines among the 8 neighbours (fixed at map creation). */
-  adj: Uint8Array;
   n4: number[][];
   n8: number[][];
   players: Player[];

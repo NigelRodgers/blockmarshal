@@ -18,10 +18,15 @@ export const LAND_GROWTH_TICKS = 50;
 
 export const DEFAULT_MINE_RATE = 0.18;
 
-/** How many steps a zero-cascade may spread from the captured tile. Keeps the opening local. */
-export const REVEAL_CASCADE = 3;
-
 export const DEFAULT_MOUNTAIN_RATE = 0.14;
 
-export const PLAYER_COLORS = ['#f57c00', '#1e88e5', '#43a047', '#8e24aa'];
-export const PLAYER_NAMES = ['You', 'Blue', 'Green', 'Violet'];
+/** Six slots per match. Avoid reds: mine dots are red. */
+export const PLAYER_COLORS = ['#f57c00', '#1e88e5', '#43a047', '#8e24aa', '#00acc1', '#8d6e63'];
+export const BOT_NAMES = ['Ada', 'Bishop', 'Cato', 'Dara', 'Ezra', 'Fen', 'Gale', 'Hux', 'Ivo', 'Juno'];
+
+/** One fixed board that fits portrait phones (~26px tiles on a 390px-wide screen). */
+export const MAP_W = 15;
+export const MAP_H = 25;
+export const MATCH_PLAYERS = 6;
+export const LOBBY_SECONDS = 60;
+export const TICK_MS = 500;

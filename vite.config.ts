@@ -12,7 +12,17 @@ function serviceWorker(): Plugin {
     apply: 'build',
     generateBundle(_options, bundle) {
       const files = Object.keys(bundle).filter((f) => !f.endsWith('.map'));
-      const precache = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', ...files];
+      const precache = [
+        './',
+        'index.html',
+        'manifest.webmanifest',
+        'icon.svg',
+        'icon-192.png',
+        'icon-512.png',
+        'icon-maskable-512.png',
+        'apple-touch-icon.png',
+        ...files,
+      ];
       const version = createHash('sha256').update(files.sort().join('|')).digest('hex').slice(0, 12);
       const source = readFileSync('sw/sw.js', 'utf8')
         .replace("'__VERSION__'", JSON.stringify(version))
@@ -25,6 +35,11 @@ function serviceWorker(): Plugin {
 // Relative base so the build works from file:// inside a Capacitor/WebView shell.
 export default defineConfig({
   base: './',
-  server: { port: 5199 },
+  server: {
+    port: 5199,
+    // Reachable from phones on the same Wi-Fi; /ws goes to the game server (npm run server).
+    host: true,
+    proxy: { '/ws': { target: 'ws://localhost:5200', ws: true } },
+  },
   plugins: [serviceWorker()],
 });

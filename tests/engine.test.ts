@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Bot } from '../src/ai/bot';
-import { MINE_DAMAGE } from '../src/engine/constants';
-import { createGame, queueMove, step } from '../src/engine/game';
+import { MAP_H, MAP_W, MATCH_PLAYERS, MINE_DAMAGE } from '../src/engine/constants';
+import { createGame, mineDots, queueMove, step } from '../src/engine/game';
+import { createFromLayout } from '../src/engine/layout';
 import { chebyshev } from '../src/engine/grid';
 import { analyze } from '../src/engine/knowledge';
 import { mulberry32 } from '../src/engine/rng';
@@ -33,11 +34,22 @@ describe('map generation', () => {
     expect([...a.terrain]).toEqual([...b.terrain]);
   });
 
-  it('opens the starting area like a minesweeper first click', () => {
-    const s = createGame({ w: 15, h: 21, seed: 3, players: twoPlayers });
+});
+
+describe('mine dots', () => {
+  it('point at exactly the live mines around a tile, in reading order', () => {
+    const { state: s } = createFromLayout(['*.*', '.G.', '..*'], { players: [{ name: 'A', isBot: false }] });
+    // bits: 0 top-left, 2 top-right, 7 bottom-right
+    expect(mineDots(s, 4)).toBe((1 << 0) | (1 << 2) | (1 << 7));
+    s.mine[0] = 0; // exploded mines are gone
+    expect(mineDots(s, 4)).toBe((1 << 2) | (1 << 7));
+  });
+
+  it('only reveal the tile you take: no cascade', () => {
+    const s = createGame({ w: 15, h: 25, seed: 3, players: twoPlayers });
     const rev = s.players[0].revealed;
+    expect(rev.reduce((n, v) => n + v, 0)).toBe(1);
     expect(rev[s.players[0].general]).toBe(1);
-    for (const j of s.n8[s.players[0].general]) expect(rev[j]).toBe(1);
   });
 });
 
@@ -64,12 +76,17 @@ describe('mines', () => {
   });
 });
 
-describe('deduction', () => {
-  it('never marks an actual mine as safe', () => {
+describe('knowledge', () => {
+  it('knows the mines around revealed tiles exactly, and never calls a mine safe', () => {
     for (let seed = 1; seed <= 20; seed++) {
-      const s = createGame({ w: 15, h: 21, seed, players: twoPlayers });
+      const s = createGame({ w: 15, h: 25, seed, players: twoPlayers });
+      for (const j of [0, 1, 2, 3, 4]) s.players[0].revealed[j] = s.mine[j] ? 0 : 1;
       const k = analyze(s, 0);
-      for (let i = 0; i < s.size; i++) if (k.safe[i]) expect(s.mine[i]).toBe(0);
+      for (let i = 0; i < s.size; i++) {
+        if (k.safe[i]) expect(s.mine[i]).toBe(0);
+        if (k.mine[i] && !s.crater[i]) expect(s.mine[i]).toBe(1);
+      }
+      for (const j of s.n8[1]) expect(k.safe[j] || k.mine[j]).toBeTruthy();
     }
   });
 });
@@ -77,16 +94,12 @@ describe('deduction', () => {
 describe('bots', () => {
   it('finish games against each other without crashing', () => {
     let finished = 0;
-    for (let seed = 1; seed <= 6; seed++) {
+    for (let seed = 1; seed <= 3; seed++) {
       const s = createGame({
-        w: 15,
-        h: 21,
+        w: MAP_W,
+        h: MAP_H,
         seed,
-        players: [
-          { name: 'A', isBot: true },
-          { name: 'B', isBot: true },
-          { name: 'C', isBot: true },
-        ],
+        players: Array.from({ length: MATCH_PLAYERS }, (_, i) => ({ name: `${i}`, isBot: true })),
       });
       const rng = mulberry32(seed);
       const bots = s.players.map((p) => new Bot(p.id, 'hard', rng));
@@ -99,5 +112,5 @@ describe('bots', () => {
       expect(Math.min(...s.army)).toBeGreaterThanOrEqual(0);
     }
     expect(finished).toBeGreaterThan(0);
-  });
+  }, 30_000);
 });

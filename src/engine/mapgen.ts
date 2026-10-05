@@ -40,7 +40,8 @@ function tryGenerate(o: MapOptions, rng: Rng, attempt: number): GeneratedMap | n
   for (let i = 0; i < size; i++) if (rng() < o.mountainRate) terrain[i] = Terrain.Mountain;
 
   // Spread generals out; relax the spacing requirement the longer we fail.
-  const minDist = Math.max(4, Math.floor(((w + h) / (o.players > 2 ? 2.6 : 1.8)) * (1 - attempt / 300)));
+  // Spread generals out by area per player; relax the requirement the longer we fail.
+  const minDist = Math.max(4, Math.floor(Math.sqrt((w * h) / o.players) * 1.3 * (1 - attempt / 300)));
   const generals: number[] = [];
   for (let tries = 0; generals.length < o.players && tries < 500; tries++) {
     const c = randInt(rng, size);

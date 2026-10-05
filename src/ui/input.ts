@@ -1,8 +1,7 @@
-import type { GameState } from '../engine/types';
-import type { Renderer } from './renderer';
+import type { Board, Renderer } from './renderer';
 
 export interface InputHandlers {
-  getState(): GameState | null;
+  getBoard(): Board | null;
   onTap(idx: number): void;
   onFlag(idx: number): void;
   /** Return true to start drawing a move path from this tile instead of panning. */
@@ -42,8 +41,8 @@ export class Input {
   }
 
   private tileAt(x: number, y: number): number {
-    const s = this.h.getState();
-    return s ? this.r.screenToTile(s, x, y) : -1;
+    const b = this.h.getBoard();
+    return b ? this.r.screenToTile(b, x, y) : -1;
   }
 
   private down = (e: PointerEvent): void => {
@@ -117,7 +116,7 @@ export class Input {
 
   /** Walk one orthogonal step at a time toward the finger, so fast swipes don't skip tiles. */
   private extendPath(target: number): void {
-    const s = this.h.getState();
+    const s = this.h.getBoard();
     if (!s || target < 0) return;
     for (let guard = 0; guard < 40 && this.pathTile !== target; guard++) {
       const cx = this.pathTile % s.w;
@@ -151,7 +150,7 @@ export class Input {
   };
 
   private clampCam(): void {
-    const s = this.h.getState();
-    if (s) this.r.clampTo(s.w, s.h);
+    const b = this.h.getBoard();
+    if (b) this.r.clampTo(b);
   }
 }

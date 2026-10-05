@@ -6,7 +6,6 @@ import {
   MINE_DAMAGE,
   MINE_STUN_TICKS,
   PLAYER_COLORS,
-  REVEAL_CASCADE,
   TOWER_RADIUS,
 } from './constants';
 import { buildNeighbors } from './grid';
@@ -41,7 +40,7 @@ export function createGame(cfg: GameConfig): GameState {
     mineRate,
     mountainRate: cfg.mountainRate ?? DEFAULT_MOUNTAIN_RATE,
     cities: cfg.cities ?? Math.round(size / 50),
-    towers: cfg.towers ?? cfg.players.length,
+    towers: cfg.towers ?? Math.ceil(cfg.players.length / 2),
   });
   return buildState({ w, h, seed, players: cfg.players, mineRate }, map);
 }
@@ -63,14 +62,8 @@ export function buildState(
   const size = w * h;
   const { n4, n8 } = buildNeighbors(w, h);
 
-  const adj = new Uint8Array(size);
   let mineCount = 0;
-  for (let i = 0; i < size; i++) {
-    mineCount += map.mine[i];
-    let c = 0;
-    for (const j of n8[i]) c += map.mine[j];
-    adj[i] = c;
-  }
+  for (let i = 0; i < size; i++) mineCount += map.mine[i];
 
   const players: Player[] = cfg.players.map((p, id) => ({
     id,
@@ -81,7 +74,6 @@ export function buildState(
     general: map.generals[id],
     queue: [],
     revealed: new Uint8Array(size),
-    flags: new Uint8Array(size),
     memory: new Uint8Array(size),
     eliminatedAt: -1,
     killedBy: -1,
@@ -99,7 +91,6 @@ export function buildState(
     army: map.army,
     mine: map.mine,
     crater: new Uint8Array(size),
-    adj,
     n4,
     n8,
     players,
@@ -125,24 +116,32 @@ export function buildState(
   return state;
 }
 
+/** The player learns where the mines next to this tile are (shown as red dots). */
+export function reveal(state: GameState, pid: number, idx: number): void {
+  if (state.terrain[idx] === Terrain.Mountain || state.mine[idx]) return;
+  state.players[pid].revealed[idx] = 1;
+}
+
 /**
- * Minesweeper-style reveal: learn this tile's number, cascading through zeros.
- * The start tile always cascades, even if an earlier (depth-capped) cascade
- * already revealed it, so taking a known zero still opens the area around it.
+ * Directions of live mines around a tile, one bit per neighbour:
+ * 0 top-left, 1 top, 2 top-right, 3 left, 4 right, 5 bottom-left, 6 bottom, 7 bottom-right.
+ * Exploded mines are gone, so their dots disappear.
  */
-export function reveal(state: GameState, pid: number, start: number): void {
-  const p = state.players[pid];
-  const queue: [number, number][] = [[start, 0]];
-  for (let q = 0; q < queue.length; q++) {
-    const [i, depth] = queue[q];
-    if (state.terrain[i] === Terrain.Mountain || state.mine[i]) continue;
-    if (p.revealed[i] && q > 0) continue;
-    p.revealed[i] = 1;
-    p.flags[i] = 0;
-    if (state.adj[i] === 0 && depth < REVEAL_CASCADE) {
-      for (const j of state.n8[i]) if (!p.revealed[j]) queue.push([j, depth + 1]);
+export function mineDots(state: GameState, idx: number): number {
+  const x = idx % state.w;
+  const y = Math.floor(idx / state.w);
+  let mask = 0;
+  let bit = 0;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx >= 0 && ny >= 0 && nx < state.w && ny < state.h && state.mine[ny * state.w + nx]) mask |= 1 << bit;
+      bit++;
     }
   }
+  return mask;
 }
 
 /** Every tile within Chebyshev radius r of idx. */
@@ -164,7 +163,6 @@ function gainTile(state: GameState, pid: number, idx: number): void {
   for (const j of area(state, idx, TOWER_RADIUS)) {
     if (state.terrain[j] === Terrain.Mountain || state.mine[j]) continue;
     p.revealed[j] = 1;
-    p.flags[j] = 0;
   }
 }
 
@@ -318,7 +316,6 @@ function detonate(state: GameState, idx: number, p: Player, amount: number): num
   state.mine[idx] = 0;
   state.crater[idx] = 1;
   state.mineCount--;
-  for (const pl of state.players) pl.flags[idx] = 0;
   for (const j of state.n8[idx]) {
     if (state.army[j] <= 0) continue;
     const halved = Math.floor(state.army[j] / 2);

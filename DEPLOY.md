@@ -1,5 +1,7 @@
 # Deploying Blockmarshal
 
+> **Hold deploys (2026-10-05).** `main` is now the multiplayer version, which needs the Node game server (`server/`). Cloudflare Pages only serves static files, so `npm run deploy` would publish a client that can't reach a server. The live site keeps the last single-player build until a server host is chosen (see PLAN.md).
+
 Live at **https://blockmarshal.pages.dev** (Cloudflare Pages project `blockmarshal`, account [owner email: Worker secret]).
 
 ## How deploys work

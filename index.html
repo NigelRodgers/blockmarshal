@@ -16,22 +16,11 @@
 
     <header id="hud-top" class="hidden">
       <div class="bar">
-        <button id="btn-pause" class="icon-btn" aria-label="Pause">&#10074;&#10074;</button>
+        <button id="btn-leave" class="icon-btn" aria-label="Leave game">&#10005;</button>
         <div id="turn">Turn 0</div>
         <div id="stun" class="hidden" title="Stunned by a mine: turns until you can move"><span class="ring"></span>Stunned <b id="stun-n">3</b></div>
-        <div id="mines" title="Live mines minus your flags">
-          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="5" /><path d="M10 2v16M2 10h16M4.3 4.3l11.4 11.4M15.7 4.3L4.3 15.7" /></svg>
-          <span id="mines-left">0</span>
-        </div>
       </div>
       <ol id="board-ranks"></ol>
-      <div id="coach" class="hidden">
-        <div class="coach-head">
-          <b id="coach-title">Tutorial</b>
-          <button id="btn-skip-tut">Skip tutorial</button>
-        </div>
-        <p id="coach-text"></p>
-      </div>
     </header>
 
     <footer id="hud-bottom" class="hidden">
@@ -42,66 +31,25 @@
       <button id="btn-home" class="ctl"><span class="ico">&#9873;</span><span>Home</span></button>
     </footer>
 
-    <div id="menu" class="overlay">
+    <div id="start" class="overlay">
       <div class="panel">
         <h1>BLOCK<span>MARSHAL</span></h1>
-        <p class="tag">Conquer the map. Read the numbers. Don't step on a mine.</p>
-
-        <section id="daily-card" class="daily">
-          <div class="daily-head">
-            <b id="daily-title">Daily #1</b>
-            <span id="daily-meta"></span>
-          </div>
-          <p id="daily-status"></p>
-          <button id="btn-daily" class="primary">Play ranked</button>
-          <button id="btn-skip-gate">Skip tutorial</button>
-          <div id="daily-after" class="row">
-            <button id="btn-share">Share result</button>
-            <button id="btn-practice">Practice</button>
-          </div>
-          <p id="daily-streak"></p>
-        </section>
-
-        <h3>Custom game</h3>
-        <label>Opponents</label>
-        <div class="seg" data-key="opponents">
-          <button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button>
-        </div>
-        <label>Difficulty</label>
-        <div class="seg" data-key="difficulty">
-          <button data-v="easy">Easy</button><button data-v="normal">Normal</button><button data-v="hard">Hard</button>
-        </div>
-        <label>Map</label>
-        <div class="seg" data-key="size">
-          <button data-v="S">Small</button><button data-v="M">Medium</button><button data-v="L">Large</button>
-        </div>
-        <label>Speed</label>
-        <div class="seg" data-key="speed">
-          <button data-v="chill">Chill</button><button data-v="normal">Normal</button><button data-v="blitz">Blitz</button>
-        </div>
-
-        <button id="btn-play">Play custom game</button>
-        <button id="btn-tutorial">Replay tutorial</button>
-
-        <section class="commander">
-          <div>
-            <b>Commander</b>
-            <span>Mine density and seed control, extra modes, themes and full stats.</span>
-          </div>
-          <button id="btn-commander">Coming soon</button>
-        </section>
-
+        <p class="tag">Six generals. One minefield. Last crown standing wins.</p>
+        <label for="name">Your name</label>
+        <input id="name" maxlength="16" autocomplete="nickname" placeholder="Player" />
+        <button id="btn-play" class="primary">Play</button>
         <button id="btn-install" class="hidden">Install as app</button>
 
         <details>
           <summary>How to play</summary>
           <ul>
-            <li>Your <b>general</b> (crown) and captured <b>cities</b> make +1 troop every turn. All your land makes +1 every 25 turns.</li>
-            <li><b>Tap</b> your tile, then tap a neighbour to move all but one troop. Or <b>drag</b> a path from your tile. Tap the selected tile again to move only half.</li>
-            <li>Numbers work like minesweeper: how many of the 8 surrounding tiles hide a <b>mine</b>. Every tile you take reveals its number, and zeros open up the area.</li>
-            <li>Walking onto a mine kills up to 15 troops, halves every army next to it and cancels your queued moves.</li>
-            <li><b>Long-press</b> (or right-click) to flag a suspected mine. Flags are just notes for you.</li>
-            <li>Capture an enemy general to take their whole empire. Last general standing wins.</li>
+            <li>Your <b>general</b> (crown) and <b>cities</b> make +1 troop every turn. All your land makes +1 every 25 turns.</li>
+            <li><b>Drag</b> a path from your tile, or tap your tile then a neighbour. Tap the selected tile again to move only half.</li>
+            <li>Mines hide under the ground. Tiles you hold show <b class="red">red dots</b> on the side facing a neighbouring mine.</li>
+            <li>Stepping on a mine kills up to 15 troops, halves armies next to it and stuns you for 3 turns.</li>
+            <li><b>Long-press</b> (or right-click) to flag a tile. Only you can see your flags.</li>
+            <li>The eye is a <b>watchtower</b>: hold it to see further and spot mines around it.</li>
+            <li>Capture an enemy crown to take their empire. Last general standing wins.</li>
           </ul>
         </details>
 
@@ -109,30 +57,13 @@
       </div>
     </div>
 
-    <div id="commander" class="overlay hidden">
+    <div id="lobby" class="overlay hidden">
       <div class="panel small">
-        <h2>Commander is coming</h2>
-        <p class="sub">Not available yet. Your tap has been counted as a vote, and it helps decide what gets built next.</p>
-        <button id="btn-commander-close" class="primary">Back</button>
-      </div>
-    </div>
-
-    <div id="pause" class="overlay hidden">
-      <div class="panel small">
-        <h2 id="pause-title">Paused</h2>
-        <p id="pause-sub" class="sub"></p>
-        <button id="btn-resume" class="primary">Resume</button>
-        <button id="btn-restart">Restart</button>
-        <button id="btn-forfeit" class="danger">Forfeit</button>
-        <button id="btn-quit">Main menu</button>
-      </div>
-    </div>
-
-    <div id="strike" class="overlay hidden">
-      <div class="panel small">
-        <h2>Strike <span id="strike-n">1</span> of 3</h2>
-        <p class="sub">Leaving the app during a ranked game pauses it and counts a strike. A third strike forfeits today's attempt.</p>
-        <button id="btn-strike-resume" class="primary">Resume</button>
+        <h2>Finding players</h2>
+        <div class="countdown"><span id="lobby-time">1:00</span></div>
+        <p class="sub">The game starts when 6 players join or the timer ends. Bots fill any empty seats.</p>
+        <ol id="lobby-slots"></ol>
+        <button id="btn-lobby-leave">Leave</button>
       </div>
     </div>
 
@@ -140,12 +71,17 @@
       <div class="panel small">
         <h2 id="go-title">Victory</h2>
         <p id="go-sub" class="sub"></p>
-        <button id="btn-next" class="primary">Next level</button>
-        <button id="btn-share-go" class="primary">Share result</button>
-        <button id="btn-practice-go">Practice this map</button>
         <button id="btn-again" class="primary">Play again</button>
-        <button id="btn-watch">Watch</button>
+        <button id="btn-watch">Keep watching</button>
         <button id="btn-menu">Main menu</button>
+      </div>
+    </div>
+
+    <div id="offline" class="overlay hidden">
+      <div class="panel small">
+        <h2>Can't reach the game server</h2>
+        <p id="offline-sub" class="sub">Check your connection and try again.</p>
+        <button id="btn-retry" class="primary">Try again</button>
       </div>
     </div>
 

@@ -105,26 +105,6 @@ button {
   mask: radial-gradient(circle, transparent 5px, #000 6px);
 }
 
-#mines {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #0b0d11;
-  color: #ff5252;
-  font: 700 18px ui-monospace, 'Cascadia Mono', Menlo, monospace;
-  padding: 4px 10px;
-  border-radius: 8px;
-}
-
-#mines svg {
-  width: 16px;
-  height: 16px;
-  fill: #ff5252;
-  stroke: #ff5252;
-  stroke-width: 1.6;
-}
-
 #board-ranks {
   list-style: none;
   margin: 8px 0 0;
@@ -542,4 +522,71 @@ h3 {
   color: var(--text);
   font-size: 12px;
   text-decoration: underline;
+}
+
+/* ---------- Multiplayer: start, lobby, ranks ---------- */
+
+#name {
+  font: inherit;
+  font-size: 17px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #0f1217;
+  color: var(--text);
+}
+
+.countdown {
+  font: 800 44px ui-monospace, 'Cascadia Mono', Menlo, monospace;
+  color: var(--accent);
+  margin: 4px 0;
+}
+
+#lobby-slots {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+#lobby-slots li {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  font-weight: 600;
+}
+
+#lobby-slots li.you {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+#lobby-slots li.empty {
+  background: transparent;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 13px;
+}
+
+/* Six players: three per row on phones. */
+#board-ranks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+#board-ranks li.you {
+  outline: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+@media (min-width: 720px) {
+  #board-ranks {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+b.red {
+  color: #ff5252;
 }

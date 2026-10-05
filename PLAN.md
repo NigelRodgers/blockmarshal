@@ -1,5 +1,32 @@
 # Blockmarshal v1 plan
 
+## Direction change, 2026-10-05: live 6-player matches
+
+Supersedes the bots-only daily challenge below. Kept for history; the daily, tutorial, custom games and Commander stub are removed from the app (still in git history).
+
+- **One game type:** 6 seats, one fixed 15x25 board (fits portrait phones at ~26px tiles).
+- **Lobby:** joining puts you in the fullest open lobby. It starts when 6 humans are in, or after a 60-second countdown with bots filling empty seats. Any number of matches run at once.
+- **Server-authoritative:** `server/` (Node + `ws`) runs the engine; each player gets only their fog-filtered view (`src/net/view.ts`). Mines and fogged armies never reach the client while you're alive.
+- **Mines without minesweeper:** tiles look like plain generals.io squares. No numbers, no zero cascade. Tiles you've held (or seen from a watchtower) show **red dots** on the side facing each neighbouring mine (8 positions: corners for diagonals, edge centres for straight). Exploded mines lose their dots.
+- **Flags are client-only:** never sent to the server, so opponents can't see them.
+- Kept: mine damage + 6-tick stun, watchtowers (now one per two players), cities, generals.
+- Analytics events now: `app_open`, `lobby_join`, `game_start {humans, bots}`, `game_end {won, turn, alive}`, `install_prompt`.
+
+### Open next steps
+1. **Hosting for the game server.** Cloudflare Pages is static only; the live site still runs the old single-player build. Options: Fly.io / Render / a small VPS running `npm start` (serves the client too), or Cloudflare Durable Objects (rewrite of the server layer).
+2. **Matchmaking that groups humans** (so one human rarely faces five bots): e.g. hold solo lobbies a little longer when other lobbies are filling, merge lobbies before the countdown ends, or show a live "players online" count.
+3. Reconnect to a running match after a dropped connection.
+
+### Ideas for later mechanics
+From Nigel: turrets, walls that can be blasted, building walls. Additions:
+- **Turret:** captured structure that hits adjacent enemy armies for N troops per turn; can be destroyed.
+- **Walls:** spend troops to raise a wall on your tile (blocks movement like a mountain); mines or a big army can blast it open.
+- **Sappers / defusing:** move onto a tile you flagged to defuse it slowly instead of triggering it.
+- **Armory / mine-laying:** capture to gain mine charges and plant them in your own territory (shown to you only).
+- **Flares:** one-shot reveal of a 5x5 area anywhere, recharging slowly.
+- **Bridges and rivers:** narrow crossings that make chokepoints worth fortifying.
+- **Decoy crown:** a fake general that looks real in enemy fog.
+
 Agreed in the design grilling session, 2026-10-01. Changes to locked decisions should be recorded here.
 
 **Launch date: 2026-10-10 (UTC). That day's puzzle is #1.** Days before it show as "Daily preview".

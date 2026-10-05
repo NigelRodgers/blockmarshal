@@ -1,6 +1,26 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "blockmarshal", "runtimeExecutable": "npx", "runtimeArgs": ["vite", "--port", "5199", "--strictPort"], "port": 5199 }
+    {
+      "name": "blockmarshal",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5199",
+        "--strictPort"
+      ],
+      "port": 5199
+    },
+    {
+      "name": "blockmarshal-server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:/dev/blockmarshal/node_modules/tsx/dist/cli.mjs",
+        "watch",
+        "C:/dev/blockmarshal/server/index.ts"
+      ],
+      "port": 5200
+    }
   ]
 }

@@ -17,17 +17,7 @@ const APP_VERSION = '0.1.0';
 const FLUSH_MS = 10_000;
 const MAX_BATCH = 20;
 
-export type AnalyticsEvent =
-  | 'app_open'
-  | 'tutorial_step'
-  | 'tutorial_done'
-  | 'tutorial_skipped'
-  | 'daily_start'
-  | 'daily_end'
-  | 'share_click'
-  | 'practice_start'
-  | 'commander_stub_click'
-  | 'install_prompt';
+export type AnalyticsEvent = 'app_open' | 'lobby_join' | 'game_start' | 'game_end' | 'install_prompt';
 
 type Props = Record<string, string | number | boolean | null>;
 

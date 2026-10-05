@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { MINE_DAMAGE, MINE_STUN_TICKS, TOWER_GARRISON, TOWER_RADIUS } from '../src/engine/constants';
-import { clearQueue, createGame, queueMove, reveal, step, stunTicksLeft, undoMove, visionFor } from '../src/engine/game';
-import { createFromLayout } from '../src/engine/layout';
+import { clearQueue, createGame, queueMove, step, stunTicksLeft, undoMove, visionFor } from '../src/engine/game';
 import { chebyshev, manhattan } from '../src/engine/grid';
 import { mulberry32 } from '../src/engine/rng';
 import { Terrain, type GameState } from '../src/engine/types';
-import { dailyConfig, dailyLabel } from '../src/daily';
 import { createBots, replay, runTick } from '../src/session';
 
 const twoPlayers = [
@@ -49,12 +47,12 @@ describe('mine stun', () => {
 });
 
 describe('watchtowers', () => {
-  it('places one contested, mine-free tower per player away from generals', () => {
+  it('places contested, mine-free towers (one per two players) away from generals', () => {
     for (let seed = 1; seed <= 30; seed++) {
       for (const n of [2, 3, 4]) {
         const s = createGame({ w: 15, h: 21, seed, players: Array.from({ length: n }, (_, i) => ({ name: `${i}`, isBot: i > 0 })) });
         const towers = [...s.terrain.keys()].filter((i) => s.terrain[i] === Terrain.Tower);
-        expect(towers.length).toBe(n);
+        expect(towers.length).toBe(Math.ceil(n / 2));
         for (const t of towers) {
           expect(s.army[t]).toBe(TOWER_GARRISON);
           expect(s.mine[t]).toBe(0);
@@ -64,7 +62,7 @@ describe('watchtowers', () => {
     }
   });
 
-  it('on capture reveals every non-mine number in its 7x7 and grants vision there', () => {
+  it('on capture reveals mine dots across its 7x7 and grants vision there', () => {
     const s = createGame({ w: 15, h: 21, seed: 5, players: twoPlayers });
     const tower = s.terrain.findIndex((t) => t === Terrain.Tower);
     const from = s.n4[tower].find((j) => s.terrain[j] !== Terrain.Mountain && !s.mine[j])!;
@@ -139,54 +137,5 @@ describe('input log and replay', () => {
       expect([...again.army]).toEqual([...live.army]);
       expect(again.players.map((p) => p.minesLost)).toEqual(live.players.map((p) => p.minesLost));
     }
-  });
-});
-
-describe('daily config', () => {
-  it('is the same all UTC day and changes at UTC midnight', () => {
-    const a = dailyConfig(new Date('2026-10-10T00:00:00Z'));
-    const b = dailyConfig(new Date('2026-10-10T23:59:59Z'));
-    const c = dailyConfig(new Date('2026-10-11T00:00:00Z'));
-    expect(a.game.seed).toBe(b.game.seed);
-    expect(a.day).toBe(1);
-    expect(c.day).toBe(2);
-    expect(c.game.seed).not.toBe(a.game.seed);
-  });
-
-  it('uses Normal bots Mon-Thu and Hard Fri-Sun', () => {
-    // 2026-10-05 is a Monday.
-    const diffs = [5, 6, 7, 8, 9, 10, 11].map((d) => dailyConfig(new Date(Date.UTC(2026, 9, d, 12))).difficulty);
-    expect(diffs).toEqual(['normal', 'normal', 'normal', 'normal', 'hard', 'hard', 'hard']);
-  });
-
-  it('builds a valid medium 3-player map', () => {
-    const d = dailyConfig(new Date('2026-11-15T08:00:00Z'));
-    const s = createGame(d.game);
-    expect([s.w, s.h, s.players.length]).toEqual([15, 21, 3]);
-    expect(s.players.filter((p) => !p.isBot).length).toBe(1);
-  });
-});
-
-describe('reveal cascade', () => {
-  it('re-opens around a zero that an earlier capped cascade only revealed', () => {
-    const { state: s } = createFromLayout(['.......', '.......', '.......', '.......', '.......', '...G...'], {
-      players: [{ name: 'A', isBot: false }],
-    });
-    const me = s.players[0];
-    const top = 3; // (3,0): beyond the opening cascade's depth limit
-    const edge = 2 * s.w + 3; // (3,2): revealed by the opening cascade at its depth limit
-    expect(me.revealed[edge]).toBe(1);
-    expect(me.revealed[top]).toBe(0);
-    reveal(s, 0, edge);
-    expect(me.revealed[top]).toBe(1);
-  });
-});
-
-describe('pre-launch days', () => {
-  it('are labelled as a preview instead of #0 or negative numbers', () => {
-    const d = dailyConfig(new Date('2026-10-02T12:00:00Z'));
-    expect(d.day).toBeLessThan(1);
-    expect(dailyLabel(d.day)).toBe('Daily preview');
-    expect(dailyLabel(1)).toBe('Daily #1');
   });
 });

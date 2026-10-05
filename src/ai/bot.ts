@@ -9,7 +9,8 @@ export type Difficulty = 'easy' | 'normal' | 'hard';
 
 interface Profile {
   thinkEvery: number;
-  deduce: boolean;
+  /** Uses the mine dots on its own tiles. */
+  readsDots: boolean;
   riskWeight: number;
   aggression: number;
   defend: boolean;
@@ -20,9 +21,9 @@ interface Profile {
 }
 
 const PROFILES: Record<Difficulty, Profile> = {
-  easy: { thinkEvery: 3, deduce: false, riskWeight: 3, aggression: 0.6, defend: false, noise: 0.6, expandRisk: 0.5, towerValue: 0 },
-  normal: { thinkEvery: 1, deduce: true, riskWeight: 10, aggression: 1, defend: true, noise: 0.25, expandRisk: 0.3, towerValue: 70 },
-  hard: { thinkEvery: 1, deduce: true, riskWeight: 16, aggression: 1.5, defend: true, noise: 0.08, expandRisk: 0.2, towerValue: 70 },
+  easy: { thinkEvery: 3, readsDots: false, riskWeight: 3, aggression: 0.6, defend: false, noise: 0.6, expandRisk: 0.5, towerValue: 0 },
+  normal: { thinkEvery: 1, readsDots: true, riskWeight: 10, aggression: 1, defend: true, noise: 0.25, expandRisk: 0.3, towerValue: 70 },
+  hard: { thinkEvery: 1, readsDots: true, riskWeight: 16, aggression: 1.5, defend: true, noise: 0.08, expandRisk: 0.2, towerValue: 70 },
 };
 
 interface Ctx {
@@ -47,7 +48,7 @@ export class Bot {
   think(s: GameState): void {
     const me = s.players[this.pid];
     if (!me.alive || me.queue.length || s.tick % this.p.thinkEvery) return;
-    const ctx: Ctx = { s, me, vis: visionFor(s, this.pid), k: analyze(s, this.pid, this.p.deduce) };
+    const ctx: Ctx = { s, me, vis: visionFor(s, this.pid), k: analyze(s, this.pid, this.p.readsDots) };
 
     if (this.p.defend && this.defend(ctx)) return;
 
