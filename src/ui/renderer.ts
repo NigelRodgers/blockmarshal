@@ -174,19 +174,20 @@ export class Renderer {
       this.mountain(x, y, s, g, !seen);
     } else if (own >= 0) {
       this.flat(x, y, s, g, v.players[own].color);
-      this.icon(t, x, y, s, 0.5);
+      this.icon(t, x, y, s, 1);
     } else if (!seen) {
       this.flat(x, y, s, g, C.fogKnown);
-      this.icon(t, x, y, s, 0.25);
+      this.icon(t, x, y, s, 0.45);
     } else {
       const color = t === Terrain.City ? C.neutralCity : t === Terrain.Tower ? C.neutralTower : C.plain;
       this.flat(x, y, s, g, color);
-      this.icon(t, x, y, s, 0.35);
+      this.icon(t, x, y, s, 0.9);
     }
 
     if (v.crater[i]) this.crater(x, y, s, seen ? 0.85 : 0.6);
     if (mines?.has(i)) this.mineIcon(x, y, s);
-    if (seen && v.army[i] > 0) this.army(x, y, s, v.army[i]);
+    const structure = t === Terrain.General || t === Terrain.City || t === Terrain.Tower;
+    if (seen && v.army[i] > 0) this.army(x, y, s, v.army[i], structure);
     if (v.dots[i]) this.dots(x, y, s, v.dots[i]);
     if (o.flags[i] && own !== v.you && !v.crater[i]) this.flag(x, y, s);
   }
@@ -209,10 +210,22 @@ export class Renderer {
     }
   }
 
+  /**
+   * Structure icons sit in a band at the top of the tile, troops below.
+   * General: gold crown + gold border. City: white buildings. Tower: eye.
+   */
   private icon(t: number, x: number, y: number, s: number, alpha: number): void {
-    if (t === Terrain.General) this.crown(x, y, s, alpha);
-    else if (t === Terrain.City) this.castle(x, y, s, alpha);
-    else if (t === Terrain.Tower) this.eye(x, y, s, alpha);
+    const cx = x + s / 2;
+    const top = y + s * 0.08;
+    const h = s * 0.34;
+    if (t === Terrain.General) {
+      this.generalBorder(x, y, s, alpha);
+      this.crown(cx, top, h, alpha);
+    } else if (t === Terrain.City) {
+      this.buildings(cx, top, h, alpha);
+    } else if (t === Terrain.Tower) {
+      this.eye(cx, top + h / 2, h, alpha);
+    }
   }
 
   private flat(x: number, y: number, s: number, g: number, color: string): void {
@@ -234,62 +247,75 @@ export class Renderer {
     ctx.fill();
   }
 
-  private crown(x: number, y: number, s: number, alpha: number): void {
+  private generalBorder(x: number, y: number, s: number, alpha: number): void {
     const { ctx } = this;
-    const cx = x + s / 2;
-    const cy = y + s / 2;
-    const r = s * 0.34;
-    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-    ctx.beginPath();
-    ctx.moveTo(cx - r, cy + r * 0.6);
-    ctx.lineTo(cx - r, cy - r * 0.45);
-    ctx.lineTo(cx - r * 0.5, cy);
-    ctx.lineTo(cx, cy - r * 0.75);
-    ctx.lineTo(cx + r * 0.5, cy);
-    ctx.lineTo(cx + r, cy - r * 0.45);
-    ctx.lineTo(cx + r, cy + r * 0.6);
-    ctx.closePath();
-    ctx.fill();
+    const lw = Math.max(1.5, s * 0.07);
+    ctx.strokeStyle = `rgba(255,213,79,${alpha})`;
+    ctx.lineWidth = lw;
+    ctx.strokeRect(x + lw, y + lw, s - lw * 2, s - lw * 2);
   }
 
-  private castle(x: number, y: number, s: number, alpha: number): void {
+  /** Gold three-point crown, h tall, top edge at `top`. */
+  private crown(cx: number, top: number, h: number, alpha: number): void {
     const { ctx } = this;
-    const l = x + s * 0.2;
-    const w = s * 0.6;
-    const top = y + s * 0.28;
-    const bottom = y + s * 0.8;
-    const m = w / 5;
-    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    const w = h * 1.5;
+    const l = cx - w / 2;
+    const b = top + h;
     ctx.beginPath();
-    ctx.moveTo(l, bottom);
-    ctx.lineTo(l, top);
-    for (let k = 0; k < 5; k++) {
-      const dy = k % 2 === 0 ? 0 : m;
-      ctx.lineTo(l + k * m, top + dy);
-      ctx.lineTo(l + (k + 1) * m, top + dy);
+    ctx.moveTo(l, b);
+    ctx.lineTo(l, top + h * 0.25);
+    ctx.lineTo(l + w * 0.25, top + h * 0.6);
+    ctx.lineTo(cx, top);
+    ctx.lineTo(l + w * 0.75, top + h * 0.6);
+    ctx.lineTo(l + w, top + h * 0.25);
+    ctx.lineTo(l + w, b);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(255,213,79,${alpha})`;
+    ctx.fill();
+    ctx.strokeStyle = `rgba(60,40,0,${alpha * 0.7})`;
+    ctx.lineWidth = Math.max(1, h * 0.08);
+    ctx.stroke();
+  }
+
+  /** City: a tall block and a short block with dark windows. */
+  private buildings(cx: number, top: number, h: number, alpha: number): void {
+    const { ctx } = this;
+    const w = h * 1.4;
+    const l = cx - w / 2;
+    const tallW = w * 0.45;
+    const shortW = w * 0.5;
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.fillRect(l, top, tallW, h);
+    ctx.fillRect(l + w - shortW, top + h * 0.35, shortW, h * 0.65);
+    ctx.fillStyle = `rgba(30,34,40,${alpha * 0.8})`;
+    const win = Math.max(1, h * 0.14);
+    for (const [wx, wy] of [
+      [l + tallW * 0.22, top + h * 0.2],
+      [l + tallW * 0.6, top + h * 0.2],
+      [l + tallW * 0.22, top + h * 0.55],
+      [l + tallW * 0.6, top + h * 0.55],
+      [l + w - shortW + shortW * 0.25, top + h * 0.55],
+      [l + w - shortW + shortW * 0.6, top + h * 0.55],
+    ]) {
+      ctx.fillRect(wx, wy, win, win);
     }
-    ctx.lineTo(l + w, bottom);
-    ctx.closePath();
-    ctx.fill();
   }
 
-  /** Watchtower: an almond eye with a dark pupil. */
-  private eye(x: number, y: number, s: number, alpha: number): void {
+  /** Watchtower: an almond eye with a dark pupil, h tall, centred on (cx, cy). */
+  private eye(cx: number, cy: number, h: number, alpha: number): void {
     const { ctx } = this;
-    const cx = x + s / 2;
-    const cy = y + s / 2;
-    const rx = s * 0.42;
-    const ry = s * 0.3;
+    const rx = h * 0.85;
+    const ry = h * 0.5;
     ctx.fillStyle = `rgba(255,255,255,${alpha})`;
     ctx.beginPath();
     ctx.moveTo(cx - rx, cy);
-    ctx.quadraticCurveTo(cx, cy - ry * 1.9, cx + rx, cy);
-    ctx.quadraticCurveTo(cx, cy + ry * 1.9, cx - rx, cy);
+    ctx.quadraticCurveTo(cx, cy - ry * 2, cx + rx, cy);
+    ctx.quadraticCurveTo(cx, cy + ry * 2, cx - rx, cy);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = `rgba(0,0,0,${alpha * 0.6})`;
+    ctx.fillStyle = `rgba(0,0,0,${alpha * 0.7})`;
     ctx.beginPath();
-    ctx.arc(cx, cy, ry * 0.62, 0, Math.PI * 2);
+    ctx.arc(cx, cy, ry * 0.7, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -342,18 +368,21 @@ export class Renderer {
     ctx.fill();
   }
 
-  private army(x: number, y: number, s: number, n: number): void {
+  /** Troop count; sits lower on structure tiles so the icon above stays visible. */
+  private army(x: number, y: number, s: number, n: number, belowIcon = false): void {
     const { ctx } = this;
     const label = formatArmy(n);
-    const size = s * (label.length >= 4 ? 0.3 : label.length === 3 ? 0.36 : 0.42);
+    let size = s * (label.length >= 4 ? 0.3 : label.length === 3 ? 0.36 : 0.42);
+    if (belowIcon) size *= 0.9;
+    const cy = belowIcon ? y + s * 0.68 : y + s / 2 + s * 0.03;
     ctx.font = `700 ${size}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineWidth = Math.max(2, size * 0.18);
     ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-    ctx.strokeText(label, x + s / 2, y + s / 2 + s * 0.03);
+    ctx.strokeText(label, x + s / 2, cy);
     ctx.fillStyle = '#fff';
-    ctx.fillText(label, x + s / 2, y + s / 2 + s * 0.03);
+    ctx.fillText(label, x + s / 2, cy);
   }
 
   /** Dashed outline of a selected watchtower's 7x7 area. */
