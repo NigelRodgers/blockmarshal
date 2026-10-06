@@ -27,6 +27,8 @@ npm run server   # wrangler dev on :8787 — Worker + both Durable Objects, serv
 npm run dev      # Vite on :5199 with hot reload; proxies /api and /ws to :8787
 ```
 
+Local games start instantly (no lobby countdown) because `.dev.vars` (gitignored) sets `LOBBY_SECONDS=0`; production uses the 60 in `wrangler.jsonc`. Delete or change `.dev.vars` to test the countdown.
+
 Open http://localhost:5199 (or `http://<this PC's LAN IP>:5199` from a phone on the same Wi-Fi). `npm run server` serves whatever is in `dist/`, so run `npm run build` once first. After changing `wrangler.jsonc`, run `npm run types` to refresh `worker/worker-configuration.d.ts`.
 
 ## Costs (Workers Free plan, as of 2026-10)

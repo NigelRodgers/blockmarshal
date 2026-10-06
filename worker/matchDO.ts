@@ -4,6 +4,12 @@ import { cleanName, Match, type Conn } from '../server/match';
 
 const MAX_MESSAGE = 4096;
 
+/** Lobby countdown from the LOBBY_SECONDS var (60 in production, often 0 locally). */
+export function lobbyMs(env: Env): number {
+  const secs = Number(env.LOBBY_SECONDS);
+  return (Number.isFinite(secs) && secs >= 0 ? secs : 60) * 1000;
+}
+
 /**
  * One match: its players' WebSockets, the lobby countdown and the game loop.
  * All game rules live in the shared Match class; this only adapts sockets.
@@ -77,7 +83,7 @@ export class MatchDO extends DurableObject<Env> {
 
   private ensureMatch(): Match {
     if (this.match && this.match.phase !== 'done') return this.match;
-    this.match = new Match(this.matchId, () => this.report());
+    this.match = new Match(this.matchId, () => this.report(), { lobbyMs: lobbyMs(this.env) });
     // The lobby countdown. The game loop itself runs on Match's own interval.
     this.lobbyTimer = setInterval(() => {
       this.match?.lobbyTick();

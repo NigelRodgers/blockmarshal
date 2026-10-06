@@ -18,5 +18,7 @@
   },
   // The Workers Free plan only offers SQLite-backed Durable Objects.
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MatchDO", "MatchmakerDO"] }],
+  // Lobby countdown. Override locally in .dev.vars (e.g. LOBBY_SECONDS=0 to start solo games instantly).
+  "vars": { "LOBBY_SECONDS": "60" },
   "observability": { "enabled": true }
 }

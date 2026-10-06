@@ -47,6 +47,18 @@ describe('match lobby', () => {
     expect(a.lastView()?.you).toBe(0);
   });
 
+  it('starts immediately with bots when the countdown is zero (local testing)', () => {
+    const match = new Match('solo', () => {}, { autoRun: false, lobbyMs: 0, seed: 1 });
+    const a = conn('solo');
+    match.add(a);
+    expect(match.phase).toBe('playing');
+    expect(match.state!.players.filter((p) => p.isBot).length).toBe(MATCH_PLAYERS - 1);
+
+    const idx = new LobbyIndex(MATCH_PLAYERS, 0);
+    let n = 0;
+    expect(idx.assign(0, () => `x${++n}`)).not.toBe(idx.assign(0, () => `x${++n}`)); // every solo player gets their own game
+  });
+
   it('starts at once when six humans are in, and stops accepting players', () => {
     const { match } = newMatch();
     for (let i = 0; i < 6; i++) match.add(conn(`p${i}`));

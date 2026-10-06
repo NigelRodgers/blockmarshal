@@ -69,7 +69,8 @@ export class Match {
     this.humans.push(conn);
     this.connected.add(conn);
     conn.match = this;
-    if (this.humans.length >= MATCH_PLAYERS) this.start();
+    // Full, or the countdown is zero (local testing): start right away.
+    if (this.humans.length >= MATCH_PLAYERS || this.now() >= this.startsAt) this.start();
     else this.broadcastLobby();
   }
 
