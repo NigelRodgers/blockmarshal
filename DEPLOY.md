@@ -20,7 +20,7 @@ npm run deploy   # typecheck client + worker, vite build, wrangler deploy
 
 Deploys go to `https://blockmarshal.rodgersnigel.workers.dev`. Pushing to GitHub does not deploy.
 
-Build-time settings come from `.env.local` (copy `.env.example`): `VITE_POSTHOG_KEY` / `VITE_POSTHOG_HOST` for analytics. Without a key, analytics are off.
+Build-time settings come from `.env.local` (gitignored; copy `.env.example`): `VITE_POSTHOG_KEY` / `VITE_POSTHOG_HOST` for analytics. Production uses the **PostHog EU Cloud** project (`https://eu.i.posthog.com`). Without a key, analytics are off. `.env.local` only exists on this PC, so deploy from here (or recreate it) to keep analytics on.
 
 ## Local development
 
@@ -63,5 +63,5 @@ The single-player build at `blockmarshal.pages.dev` (Pages project `blockmarshal
 - [ ] Two devices join within a minute: same lobby, game starts at 0:00 with bots.
 - [x] Headers from `public/_headers` are applied (CSP, `sw.js` no-cache) (2026-10-07).
 - [x] Solo player: 60 s lobby, then a match with 5 bots, ticking (2026-10-07).
-- [ ] With a PostHog key: `app_open` and `lobby_join` arrive in Live events.
+- [x] PostHog EU accepts the client's `text/plain` batch upload (`200 {"status":"Ok"}`) (2026-10-07).
 - [ ] Cloudflare dashboard → Workers → blockmarshal → Durable Objects: usage looks sane after a few matches.
