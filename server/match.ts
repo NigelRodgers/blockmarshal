@@ -23,6 +23,11 @@ export interface MatchOptions {
   /** Run the tick timer. Tests turn this off and call tick() themselves. */
   autoRun?: boolean;
   seed?: number;
+  /**
+   * If the countdown ends with a single human, hand them off to play locally
+   * (in their browser) instead of running a server match for one person.
+   */
+  soloHandoff?: boolean;
 }
 
 const MAX_QUEUE = 200;
@@ -109,6 +114,11 @@ export class Match {
 
   start(): void {
     if (this.phase !== 'lobby') return;
+    if (this.opts.soloHandoff && this.humans.length === 1) {
+      this.humans[0].send({ t: 'solo' });
+      this.finish();
+      return;
+    }
     this.phase = 'playing';
     const seed = this.opts.seed ?? (Math.random() * 2 ** 32) >>> 0;
     const botNames = shuffle(mulberry32(seed), [...BOT_NAMES]);

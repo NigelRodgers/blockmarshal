@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MATCH_PLAYERS } from '../src/engine/constants';
 import type { PlayerView, ServerMessage } from '../src/net/protocol';
 import { LobbyIndex } from '../server/lobbyIndex';
+import { LocalGame } from '../src/local';
 import { cleanFeedback, MAX_TEXT } from '../server/feedback';
 import { cleanName, Match, type Conn } from '../server/match';
 
@@ -208,5 +209,50 @@ describe('feedback', () => {
     expect(cleanFeedback({ rating: 5, website: 'http://spam' })).toBeNull();
     expect(cleanFeedback({ confusing: '   ' })).toBeNull();
     expect(cleanFeedback({ rating: 9, improve: 'ok' })!.rating).toBeNull();
+  });
+});
+
+describe('solo handoff', () => {
+  it('hands a lone human to their browser instead of running a server match', () => {
+    let now = 0;
+    let done = false;
+    const match = new Match('h', () => (done = true), { autoRun: false, lobbyMs: 60_000, now: () => now, soloHandoff: true });
+    const a = conn('a');
+    match.add(a);
+    now = 60_000;
+    match.lobbyTick();
+    expect(a.inbox.at(-1)).toEqual({ t: 'solo' });
+    expect(match.state).toBeNull();
+    expect(done).toBe(true);
+  });
+
+  it('still runs a server match when two humans are waiting', () => {
+    let now = 0;
+    const match = new Match('h2', () => {}, { autoRun: false, lobbyMs: 60_000, now: () => now, soloHandoff: true });
+    match.add(conn('a'));
+    match.add(conn('b'));
+    now = 60_000;
+    match.lobbyTick();
+    expect(match.phase).toBe('playing');
+    expect(match.state!.players.filter((p) => !p.isBot).length).toBe(2);
+  });
+});
+
+describe('local game', () => {
+  it('starts at once against five bots in the browser and accepts moves', () => {
+    const inbox: ServerMessage[] = [];
+    const game = new LocalGame('  Solo  ', (m) => inbox.push(m));
+    try {
+      expect(inbox[0]).toMatchObject({ t: 'start', you: 0 });
+      const first = inbox.find((m) => m.t === 'view');
+      expect(first?.t).toBe('view');
+      const v = (first as Extract<ServerMessage, { t: 'view' }>).view;
+      expect(v.players.map((p) => p.isBot)).toEqual([false, true, true, true, true, true]);
+      expect(v.players[0].name).toBe('Solo');
+      const g = v.owner.findIndex((o, i) => o === 0 && v.terrain[i] === 3);
+      game.send({ t: 'move', from: g, to: g + 1, half: false });
+    } finally {
+      game.stop(); // stops the tick timer so the test exits cleanly
+    }
   });
 });

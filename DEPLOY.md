@@ -29,7 +29,7 @@ npm run server   # wrangler dev on :8787 — Worker + both Durable Objects, serv
 npm run dev      # Vite on :5199 with hot reload; proxies /api and /ws to :8787
 ```
 
-Local games start instantly (no lobby countdown) because `.dev.vars` (gitignored) sets `LOBBY_SECONDS=0`; production uses the 60 in `wrangler.jsonc`. Delete or change `.dev.vars` to test the countdown.
+Local games start instantly (no lobby countdown, so you're handed straight to a browser-run game) because `.dev.vars` (gitignored) sets `LOBBY_SECONDS=0`; production uses the 60 in `wrangler.jsonc`. Delete or change `.dev.vars` to test the countdown.
 
 Open http://localhost:5199 (or `http://<this PC's LAN IP>:5199` from a phone on the same Wi-Fi). `npm run server` serves whatever is in `dist/`, so run `npm run build` once first. After changing `wrangler.jsonc`, run `npm run types` to refresh `worker/worker-configuration.d.ts`.
 
@@ -50,6 +50,7 @@ Or browse it in the Cloudflare dashboard: Storage & Databases → D1 → blockma
 - Durable Objects: 100,000 requests/day and 13,000 GB-s/day of duration.
 - A match keeps its object busy for the whole game (500 ms ticks). At 128 MB that's ~75 GB-s per 10-minute match, so roughly **170 ten-minute matches/day** free.
 - Incoming WebSocket messages bill at 20:1; outgoing messages are free.
+- **Solo games run in the browser:** when a lobby's countdown ends with one human, the server sends `solo` and the player's browser runs the match (`src/local.ts`, same `Match` class). A solo player costs only the lobby wait (~60 s), not a whole match. Only 2+ human matches run on Durable Objects.
 - Beyond that: Workers Paid, $5/month, includes 400,000 GB-s/month (~5,000 matches).
 
 ## The old Pages site

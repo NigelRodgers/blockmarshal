@@ -59,4 +59,6 @@ export type ServerMessage =
   | { t: 'lobby'; matchId: string; slots: LobbySlot[]; capacity: number; startsInMs: number }
   | { t: 'start'; matchId: string; you: number }
   | { t: 'view'; view: PlayerView }
+  /** You're the only human: play this one against bots in your browser instead. */
+  | { t: 'solo' }
   | { t: 'error'; code?: 'full'; message: string };

@@ -83,7 +83,7 @@ export class MatchDO extends DurableObject<Env> {
 
   private ensureMatch(): Match {
     if (this.match && this.match.phase !== 'done') return this.match;
-    this.match = new Match(this.matchId, () => this.report(), { lobbyMs: lobbyMs(this.env) });
+    this.match = new Match(this.matchId, () => this.report(), { lobbyMs: lobbyMs(this.env), soloHandoff: true });
     // The lobby countdown. The game loop itself runs on Match's own interval.
     this.lobbyTimer = setInterval(() => {
       this.match?.lobbyTick();

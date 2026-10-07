@@ -2,8 +2,9 @@ import './style.css';
 import { analyticsConfigured, analyticsOptedOut, setAnalyticsOptOut, track } from './analytics';
 import { MINE_STUN_TICKS } from './engine/constants';
 import { Terrain, type Move } from './engine/types';
+import { LocalGame } from './local';
 import { findMatch, Net } from './net/client';
-import type { PlayerView, ServerMessage } from './net/protocol';
+import type { ClientMessage, PlayerView, ServerMessage } from './net/protocol';
 import { Effects } from './ui/effects';
 import { Input } from './ui/input';
 import { formatArmy, Renderer } from './ui/renderer';
@@ -29,6 +30,8 @@ let mode: 'move' | 'flag' = 'move';
 let fitted = false;
 let endShown = false;
 let lobbyEndsAt = 0;
+/** Set while playing a browser-only match against bots. */
+let local: LocalGame | null = null;
 
 // ---------- Screens ----------
 
@@ -49,7 +52,28 @@ function playerName(): string {
   return $<HTMLInputElement>('name').value.trim();
 }
 
+/** Player input goes to the local match if there is one, otherwise to the server. */
+function send(msg: ClientMessage): void {
+  if (local) local.send(msg);
+  else net.send(msg);
+}
+
+function stopLocal(): void {
+  local?.stop();
+  local = null;
+}
+
+/** Play against bots in this browser: used for solo handoffs and when offline. */
+function startLocal(): void {
+  stopLocal();
+  net.close();
+  show('offline', false);
+  view = null;
+  local = new LocalGame(playerName(), onServer);
+}
+
 async function play(attempt = 0): Promise<void> {
+  stopLocal();
   try {
     localStorage.setItem(NAME_KEY, playerName());
   } catch {
@@ -77,7 +101,8 @@ async function play(attempt = 0): Promise<void> {
 let joinAttempt = 0;
 
 function toStart(): void {
-  net.send({ t: 'leave' });
+  if (local) stopLocal();
+  else net.send({ t: 'leave' });
   net.close();
   view = null;
   setScreen('start');
@@ -101,6 +126,9 @@ function onServer(msg: ServerMessage): void {
     setScreen('game');
   } else if (msg.t === 'view') {
     onView(msg.view);
+  } else if (msg.t === 'solo') {
+    // Nobody else joined: the server hands this game to the browser.
+    startLocal();
   } else if (msg.t === 'error') {
     if (msg.code === 'full' && joinAttempt < 3) play(joinAttempt + 1);
     else toast(msg.message);
@@ -123,7 +151,7 @@ function onView(v: PlayerView): void {
 
   if (first) {
     const humans = v.players.filter((p) => !p.isBot).length;
-    track('game_start', { humans, bots: v.players.length - humans });
+    track('game_start', { humans, bots: v.players.length - humans, mode: local ? 'local' : 'online' });
     selected = v.owner.findIndex((o, i) => o === v.you && v.terrain[i] === Terrain.General);
   }
   if (!fitted) {
@@ -215,7 +243,7 @@ function adjacent(a: number, b: number): boolean {
 
 function tryMove(from: number, to: number): boolean {
   if (!canAct() || !adjacent(from, to) || view!.terrain[to] === Terrain.Mountain) return false;
-  net.send({ t: 'move', from, to, half });
+  send({ t: 'move', from, to, half });
   pending.push({ from, to, half });
   selected = to;
   half = false;
@@ -232,13 +260,13 @@ function undo(): void {
   if (!canAct()) return;
   const m = pending.pop() ?? view!.queue.pop();
   if (!m) return;
-  net.send({ t: 'undo' });
+  send({ t: 'undo' });
   selected = m.from;
 }
 
 function clearQueue(): void {
   if (!canAct()) return;
-  net.send({ t: 'clear' });
+  send({ t: 'clear' });
   pending = [];
   view!.queue = [];
 }
@@ -311,6 +339,7 @@ $('btn-again').addEventListener('click', () => play());
 $('btn-menu').addEventListener('click', toStart);
 $('btn-watch').addEventListener('click', () => show('gameover', false));
 $('btn-retry').addEventListener('click', () => play());
+$('btn-offline-solo').addEventListener('click', startLocal);
 $('btn-mode').addEventListener('click', () => {
   mode = mode === 'move' ? 'flag' : 'move';
   updateControls();
