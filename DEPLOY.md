@@ -42,7 +42,7 @@ Open http://localhost:5199 (or `http://<this PC's LAN IP>:5199` from a phone on 
 
 ## The old Pages site
 
-`https://blockmarshal.pages.dev` still serves the earlier single-player build (Pages project `blockmarshal`, direct upload). It isn't updated anymore; delete it in the Cloudflare dashboard or redirect it once the Worker is live.
+The single-player build at `blockmarshal.pages.dev` (Pages project `blockmarshal`) was deleted on 2026-10-07.
 
 ## Post-deploy checklist
 
