@@ -33,6 +33,18 @@ Local games start instantly (no lobby countdown) because `.dev.vars` (gitignored
 
 Open http://localhost:5199 (or `http://<this PC's LAN IP>:5199` from a phone on the same Wi-Fi). `npm run server` serves whatever is in `dist/`, so run `npm run build` once first. After changing `wrangler.jsonc`, run `npm run types` to refresh `worker/worker-configuration.d.ts`.
 
+## Player feedback (private)
+
+In-game feedback goes to the D1 database `blockmarshal-feedback` (binding `FEEDBACK_DB`). There is **no public route that reads it**; `POST /api/feedback` is write-only. Nothing identifying is stored: no name, account or IP, only rating, two text answers and a small context blob (screen, turn, result, device type, viewport, version).
+
+```bash
+npm run feedback          # latest 50 responses from production
+npm run db:migrate        # apply new migrations to production D1
+npm run db:migrate:local  # same for the local wrangler dev database
+```
+
+Or browse it in the Cloudflare dashboard: Storage & Databases → D1 → blockmarshal-feedback → feedback.
+
 ## Costs (Workers Free plan, as of 2026-10)
 
 - Durable Objects: 100,000 requests/day and 13,000 GB-s/day of duration.

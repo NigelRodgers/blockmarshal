@@ -18,6 +18,15 @@
   },
   // The Workers Free plan only offers SQLite-backed Durable Objects.
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MatchDO", "MatchmakerDO"] }],
+  // Private store for in-game feedback. Read it from the dashboard or `npm run feedback`; there is no public read route.
+  "d1_databases": [
+    {
+      "binding": "FEEDBACK_DB",
+      "database_name": "blockmarshal-feedback",
+      "database_id": "1c190ab0-3a9d-4927-9ffe-aa4f87bf9086",
+      "migrations_dir": "migrations"
+    }
+  ],
   // Lobby countdown. Override locally in .dev.vars (e.g. LOBBY_SECONDS=0 to start solo games instantly).
   "vars": { "LOBBY_SECONDS": "60" },
   "observability": { "enabled": true }

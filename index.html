@@ -18,6 +18,7 @@
       <div class="bar">
         <button id="btn-leave" class="icon-btn" aria-label="Leave game">&#10005;</button>
         <div id="turn">Turn 0</div>
+        <button id="btn-feedback-hud" class="icon-btn fb-btn" aria-label="Send feedback">&#128172;</button>
         <div id="stun" class="hidden" title="Stunned by a mine: turns until you can move"><span class="ring"></span>Stunned <b id="stun-n">3</b></div>
       </div>
       <ol id="board-ranks"></ol>
@@ -39,6 +40,7 @@
         <input id="name" maxlength="16" autocomplete="nickname" placeholder="Player" />
         <button id="btn-play" class="primary">Play</button>
         <button id="btn-install" class="hidden">Install as app</button>
+        <button id="btn-feedback-start" class="ghost">Send feedback</button>
 
         <details>
           <summary>How to play</summary>
@@ -73,6 +75,7 @@
         <p id="go-sub" class="sub"></p>
         <button id="btn-again" class="primary">Play again</button>
         <button id="btn-watch">Keep watching</button>
+        <button id="btn-feedback-end">Tell us what you thought</button>
         <button id="btn-menu">Main menu</button>
       </div>
     </div>
@@ -83,6 +86,28 @@
         <p id="offline-sub" class="sub">Check your connection and try again.</p>
         <button id="btn-retry" class="primary">Try again</button>
       </div>
+    </div>
+
+    <div id="feedback" class="overlay hidden">
+      <form id="feedback-form" class="panel small" novalidate>
+        <h2>Feedback</h2>
+        <p class="sub">Anonymous: no name, account or IP address is attached.</p>
+        <label>How fun was it?</label>
+        <div class="seg rating" id="fb-rating">
+          <button type="button" data-v="1" aria-label="1 of 5">😖</button>
+          <button type="button" data-v="2" aria-label="2 of 5">🙁</button>
+          <button type="button" data-v="3" aria-label="3 of 5">😐</button>
+          <button type="button" data-v="4" aria-label="4 of 5">🙂</button>
+          <button type="button" data-v="5" aria-label="5 of 5">🤩</button>
+        </div>
+        <label for="fb-confusing">Anything confusing?</label>
+        <textarea id="fb-confusing" maxlength="1000" rows="3" placeholder="e.g. I didn't get what the red dots meant"></textarea>
+        <label for="fb-improve">What would make you play again?</label>
+        <textarea id="fb-improve" maxlength="1000" rows="3"></textarea>
+        <input id="fb-website" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+        <button id="fb-send" type="submit" class="primary">Send</button>
+        <button id="fb-cancel" type="button">Cancel</button>
+      </form>
     </div>
 
     <div id="toast"></div>

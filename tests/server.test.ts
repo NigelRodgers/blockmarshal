@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MATCH_PLAYERS } from '../src/engine/constants';
 import type { PlayerView, ServerMessage } from '../src/net/protocol';
 import { LobbyIndex } from '../server/lobbyIndex';
+import { cleanFeedback, MAX_TEXT } from '../server/feedback';
 import { cleanName, Match, type Conn } from '../server/match';
 
 /** Fake browser connection that records what the server sends it. */
@@ -186,5 +187,26 @@ describe('player views', () => {
     expect(s.players[0].queue.length).toBe(0);
     match.input(a, { t: 'move', from: g, to: s.n4[g][0], half: false });
     expect(s.players[0].queue.length).toBe(1);
+  });
+});
+
+describe('feedback', () => {
+  it('keeps short text, a 1-5 rating and only known context fields', () => {
+    const r = cleanFeedback({
+      rating: 4,
+      confusing: '  red dots?  ',
+      improve: 'x'.repeat(5000),
+      context: { screen: 'end', turn: 88, name: 'Nigel', ip: '1.2.3.4', result: 'won' },
+    })!;
+    expect(r.rating).toBe(4);
+    expect(r.confusing).toBe('red dots?');
+    expect(r.improve!.length).toBe(MAX_TEXT);
+    expect(JSON.parse(r.context)).toEqual({ screen: 'end', turn: 88, result: 'won' });
+  });
+
+  it('drops spam (honeypot) and empty submissions, and bad ratings', () => {
+    expect(cleanFeedback({ rating: 5, website: 'http://spam' })).toBeNull();
+    expect(cleanFeedback({ confusing: '   ' })).toBeNull();
+    expect(cleanFeedback({ rating: 9, improve: 'ok' })!.rating).toBeNull();
   });
 });

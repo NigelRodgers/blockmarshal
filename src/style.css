@@ -590,3 +590,60 @@ h3 {
 b.red {
   color: #ff5252;
 }
+
+/* ---------- Feedback ---------- */
+
+.fb-btn {
+  font-size: 16px;
+  letter-spacing: 0;
+}
+
+#hud-top .bar #stun {
+  margin-left: auto;
+}
+
+.panel > button.ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+#feedback-form {
+  text-align: left;
+}
+
+#feedback-form h2 {
+  text-align: center;
+}
+
+#feedback-form textarea {
+  font: inherit;
+  font-size: 15px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #0f1217;
+  color: var(--text);
+  resize: vertical;
+}
+
+.seg.rating button {
+  font-size: 22px;
+  padding: 6px 0;
+  filter: grayscale(0.7);
+  opacity: 0.7;
+}
+
+.seg.rating button.on {
+  filter: none;
+  opacity: 1;
+}
+
+/* Honeypot: invisible to people, tempting to bots. */
+.hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}

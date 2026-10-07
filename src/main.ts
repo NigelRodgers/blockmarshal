@@ -280,7 +280,7 @@ const DIRS: Record<string, [number, number]> = {
 };
 
 window.addEventListener('keydown', (e) => {
-  if (!view || screen !== 'game' || e.target instanceof HTMLInputElement) return;
+  if (!view || screen !== 'game' || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
   const dir = DIRS[e.key];
   if (dir && selected >= 0) {
     e.preventDefault();
@@ -329,6 +329,76 @@ $('btn-home').addEventListener('click', () => {
   renderer.centerOn(v, g);
   selected = g;
 });
+
+// ---------- Feedback ----------
+
+let fbRating = 0;
+
+function openFeedback(): void {
+  fbRating = 0;
+  $<HTMLFormElement>('feedback-form').reset();
+  document.querySelectorAll('#fb-rating button').forEach((b) => b.classList.remove('on'));
+  show('feedback', true);
+}
+
+/** Where the player was when they wrote it. Nothing that identifies them. */
+function feedbackContext(): Record<string, string | number | boolean> {
+  const ctx: Record<string, string | number | boolean> = {
+    screen: screen === 'game' && endShown ? 'end' : screen,
+    device: window.matchMedia('(pointer: coarse)').matches ? 'touch' : 'mouse',
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+    version: '0.1.0',
+  };
+  if (view) {
+    ctx.turn = Math.floor(view.tick / 2);
+    ctx.humans = view.players.filter((p) => !p.isBot).length;
+    ctx.result = view.winner === view.you ? 'won' : !view.players[view.you].alive ? 'lost' : 'playing';
+  }
+  return ctx;
+}
+
+$('fb-rating').addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest('button');
+  if (!b?.dataset.v) return;
+  fbRating = Number(b.dataset.v);
+  document.querySelectorAll('#fb-rating button').forEach((x) => x.classList.toggle('on', x === b));
+});
+
+$('feedback-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const confusing = $<HTMLTextAreaElement>('fb-confusing').value.trim();
+  const improve = $<HTMLTextAreaElement>('fb-improve').value.trim();
+  if (!fbRating && !confusing && !improve) {
+    toast('Pick a face or write a few words first');
+    return;
+  }
+  const send = $<HTMLButtonElement>('fb-send');
+  send.disabled = true;
+  try {
+    const res = await fetch('./api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rating: fbRating || null,
+        confusing,
+        improve,
+        context: feedbackContext(),
+        website: $<HTMLInputElement>('fb-website').value,
+      }),
+    });
+    if (!res.ok) throw new Error(String(res.status));
+    show('feedback', false);
+    toast('Thanks! Your feedback was sent.');
+    track('feedback_sent', { rating: fbRating || null });
+  } catch {
+    toast("Couldn't send. Check your connection and try again.");
+  } finally {
+    send.disabled = false;
+  }
+});
+
+$('fb-cancel').addEventListener('click', () => show('feedback', false));
+for (const id of ['btn-feedback-start', 'btn-feedback-hud', 'btn-feedback-end']) $(id).addEventListener('click', openFeedback);
 
 // Install as app, when the browser offers it.
 let installEvent: (Event & { prompt(): Promise<void>; userChoice: Promise<{ outcome: string }> }) | null = null;
