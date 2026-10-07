@@ -1,5 +1,7 @@
 # Deploying Blockmarshal
 
+**Live: https://blockmarshal.rodgersnigel.workers.dev** (first deployed 2026-10-07).
+
 Runs on **Cloudflare Workers** with **Durable Objects** (account [owner email: Worker secret], Workers Free plan):
 
 - One Worker (`worker/index.ts`) serves the built client from `dist/` and two routes:
@@ -16,7 +18,7 @@ Config: [`wrangler.jsonc`](wrangler.jsonc). Free plan requires SQLite-backed Dur
 npm run deploy   # typecheck client + worker, vite build, wrangler deploy
 ```
 
-First deploy creates the Worker at `https://blockmarshal.<your-subdomain>.workers.dev`. Pushing to GitHub does not deploy.
+Deploys go to `https://blockmarshal.rodgersnigel.workers.dev`. Pushing to GitHub does not deploy.
 
 Build-time settings come from `.env.local` (copy `.env.example`): `VITE_POSTHOG_KEY` / `VITE_POSTHOG_HOST` for analytics. Without a key, analytics are off.
 
@@ -44,8 +46,9 @@ Open http://localhost:5199 (or `http://<this PC's LAN IP>:5199` from a phone on 
 
 ## Post-deploy checklist
 
-- [ ] Open the Worker URL: start screen loads, no console errors.
+- [x] Open the Worker URL: start screen loads, no console errors (2026-10-07).
 - [ ] Two devices join within a minute: same lobby, game starts at 0:00 with bots.
-- [ ] Headers from `public/_headers` are applied (CSP, `sw.js` no-cache).
+- [x] Headers from `public/_headers` are applied (CSP, `sw.js` no-cache) (2026-10-07).
+- [x] Solo player: 60 s lobby, then a match with 5 bots, ticking (2026-10-07).
 - [ ] With a PostHog key: `app_open` and `lobby_join` arrive in Live events.
 - [ ] Cloudflare dashboard → Workers → blockmarshal → Durable Objects: usage looks sane after a few matches.
