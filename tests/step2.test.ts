@@ -27,7 +27,7 @@ describe('mine stun', () => {
     const { from, mine } = nextToMine(s);
     queueMove(s, 0, from, mine);
     step(s);
-    expect(s.crater[mine]).toBe(1);
+    expect(s.crater[mine]).toBeGreaterThan(0);
     expect(me.minesLost).toBe(MINE_DAMAGE);
     expect(stunTicksLeft(s, 0)).toBe(MINE_STUN_TICKS);
 

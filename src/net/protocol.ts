@@ -6,7 +6,11 @@ export type ClientMessage =
   | { t: 'leave' }
   | { t: 'move'; from: number; to: number; half: boolean }
   | { t: 'undo' }
-  | { t: 'clear' };
+  | { t: 'clear' }
+  /** Flag or unflag a tile (max 5). Flags are private to you. */
+  | { t: 'flag'; idx: number }
+  /** Plant a captured mine on one of your own tiles. */
+  | { t: 'drop'; idx: number };
 
 export interface LobbySlot {
   name: string;
@@ -40,10 +44,16 @@ export interface PlayerView {
   /** Troops if visible right now, else 0. */
   army: number[];
   visible: number[];
-  /** Mine-direction dot mask (see mineDots) on tiles this player has revealed, else 0. */
+  /** Mine-direction dot mask (see mineDots) on tiles this player has revealed, else 0. Excludes your own planted mines. */
   dots: number[];
-  /** Known craters (seen now or remembered). */
+  /** Blast marks, visible to everyone: ticks until the mark fades (0 = none). */
   crater: number[];
+  /** Your flags. */
+  flags: number[];
+  /** Mines you've captured and can plant. */
+  minesInStock: number;
+  /** Mines you planted that are still armed (shown to you as mine icons). */
+  myMines: number[];
   /** Every live mine, only once the player is out of the game or it has ended. */
   mines: number[] | null;
   queue: Move[];

@@ -31,12 +31,17 @@ export interface Player {
   killedBy: number;
   /** Moves are skipped on any tick before this one. */
   stunUntil: number;
-  /** Troops lost to mines (daily-challenge tiebreak). */
+  /** Troops lost to mines. */
   minesLost: number;
+  /** Tiles this player has flagged (at most MAX_FLAGS). Private to the player. */
+  flags: Set<number>;
+  /** Captured mines ready to be planted in this player's own territory. */
+  minesInStock: number;
 }
 
 export type GameEvent =
   | { kind: 'explode'; idx: number; player: number; lost: number }
+  | { kind: 'defuse'; idx: number; player: number }
   | { kind: 'eliminated'; victim: number; by: number }
   | { kind: 'captureCity'; idx: number; player: number }
   | { kind: 'captureTower'; idx: number; player: number };
@@ -50,7 +55,10 @@ export interface GameState {
   owner: Int8Array;
   army: Int32Array;
   mine: Uint8Array;
-  crater: Uint8Array;
+  /** Tick at which a blast mark disappears; 0 = no mark. Blasts are public. */
+  crater: Int32Array;
+  /** Who planted each mine: -1 for the map's own mines. */
+  mineOwner: Int8Array;
   n4: number[][];
   n8: number[][];
   players: Player[];

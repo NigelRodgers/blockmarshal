@@ -5,6 +5,8 @@ import {
   LAND_GROWTH_TICKS,
   MINE_DAMAGE,
   MINE_STUN_TICKS,
+  MAX_FLAGS,
+  CRATER_TICKS,
   PLAYER_COLORS,
   TOWER_RADIUS,
 } from './constants';
@@ -79,6 +81,8 @@ export function buildState(
     killedBy: -1,
     stunUntil: -1,
     minesLost: 0,
+    flags: new Set<number>(),
+    minesInStock: 0,
   }));
 
   const state: GameState = {
@@ -90,7 +94,8 @@ export function buildState(
     owner: new Int8Array(size).fill(-1),
     army: map.army,
     mine: map.mine,
-    crater: new Uint8Array(size),
+    crater: new Int32Array(size),
+    mineOwner: new Int8Array(size).fill(-1),
     n4,
     n8,
     players,
@@ -127,7 +132,7 @@ export function reveal(state: GameState, pid: number, idx: number): void {
  * 0 top-left, 1 top, 2 top-right, 3 left, 4 right, 5 bottom-left, 6 bottom, 7 bottom-right.
  * Exploded mines are gone, so their dots disappear.
  */
-export function mineDots(state: GameState, idx: number): number {
+export function mineDots(state: GameState, idx: number, exceptOwner = -2): number {
   const x = idx % state.w;
   const y = Math.floor(idx / state.w);
   let mask = 0;
@@ -137,7 +142,10 @@ export function mineDots(state: GameState, idx: number): number {
       if (!dx && !dy) continue;
       const nx = x + dx;
       const ny = y + dy;
-      if (nx >= 0 && ny >= 0 && nx < state.w && ny < state.h && state.mine[ny * state.w + nx]) mask |= 1 << bit;
+      const j = ny * state.w + nx;
+      if (nx >= 0 && ny >= 0 && nx < state.w && ny < state.h && state.mine[j] && state.mineOwner[j] !== exceptOwner) {
+        mask |= 1 << bit;
+      }
       bit++;
     }
   }
@@ -229,6 +237,28 @@ export function clearQueue(state: GameState, pid: number): void {
   if (!p.isBot) state.log.push({ tick: state.tick, pid, op: 'clear' });
 }
 
+/** Flag or unflag a tile. Returns false if the player is already at MAX_FLAGS. */
+export function toggleFlag(state: GameState, pid: number, idx: number): boolean {
+  const p = state.players[pid];
+  if (idx < 0 || idx >= state.size || state.terrain[idx] === Terrain.Mountain) return false;
+  if (p.flags.delete(idx)) return true;
+  if (p.flags.size >= MAX_FLAGS) return false;
+  p.flags.add(idx);
+  return true;
+}
+
+/** Plant a captured mine on one of your own plain tiles. */
+export function plantMine(state: GameState, pid: number, idx: number): boolean {
+  const p = state.players[pid];
+  if (p.minesInStock <= 0 || idx < 0 || idx >= state.size) return false;
+  if (state.owner[idx] !== pid || state.terrain[idx] !== Terrain.Plain || state.mine[idx]) return false;
+  state.mine[idx] = 1;
+  state.mineOwner[idx] = pid;
+  state.mineCount++;
+  p.minesInStock--;
+  return true;
+}
+
 /** Apply a logged input during replay, without re-logging it. */
 export function applyInput(state: GameState, ev: InputEvent): void {
   const p = state.players[ev.pid];
@@ -265,10 +295,20 @@ export function step(state: GameState): void {
     for (let i = 0; i < state.size; i++) if (state.owner[i] >= 0) state.army[i]++;
   }
 
+  expireCraters(state);
   updateMemory(state);
   // A one-player board (tutorial sandbox) never ends by elimination.
   const alive = state.players.filter((p) => p.alive);
   if (alive.length === 1 && state.players.length > 1) state.winner = alive[0].id;
+}
+
+/** Blast marks fade back to ordinary tiles after CRATER_TICKS. */
+function expireCraters(state: GameState): void {
+  for (let i = 0; i < state.size; i++) {
+    if (!state.crater[i] || state.tick < state.crater[i]) continue;
+    state.crater[i] = 0;
+    for (const p of state.players) if (p.memory[i] === Memory.Crater) p.memory[i] = Memory.None;
+  }
 }
 
 function executeNext(state: GameState, p: Player): void {
@@ -285,15 +325,33 @@ function executeNext(state: GameState, p: Player): void {
   }
 }
 
+/**
+ * Stepping onto a mine:
+ * - flagged by you and planted by you: pass over it, it stays armed;
+ * - flagged by you otherwise: capture it into your stock, no blast;
+ * - not flagged by you (including your own planted mines): it goes off.
+ */
 function arrive(state: GameState, p: Player, to: number, amount: number): void {
   const { owner, army } = state;
+  if (state.mine[to]) {
+    const flagged = p.flags.has(to);
+    if (flagged && state.mineOwner[to] === p.id) {
+      // Safe passage over your own flagged mine.
+    } else if (flagged) {
+      state.mine[to] = 0;
+      state.mineOwner[to] = -1;
+      state.mineCount--;
+      p.flags.delete(to);
+      p.minesInStock++;
+      state.events.push({ kind: 'defuse', idx: to, player: p.id });
+    } else {
+      amount = detonate(state, to, p, amount);
+      if (amount <= 0) return;
+    }
+  }
   if (owner[to] === p.id) {
     army[to] += amount;
     return;
-  }
-  if (state.mine[to]) {
-    amount = detonate(state, to, p, amount);
-    if (amount <= 0) return;
   }
   if (amount > army[to]) {
     const prev = owner[to];
@@ -314,8 +372,10 @@ function arrive(state: GameState, p: Player, to: number, amount: number): void {
  */
 function detonate(state: GameState, idx: number, p: Player, amount: number): number {
   state.mine[idx] = 0;
-  state.crater[idx] = 1;
+  state.mineOwner[idx] = -1;
+  state.crater[idx] = state.tick + CRATER_TICKS;
   state.mineCount--;
+  for (const pl of state.players) pl.flags.delete(idx);
   for (const j of state.n8[idx]) {
     if (state.army[j] <= 0) continue;
     const halved = Math.floor(state.army[j] / 2);
@@ -338,6 +398,7 @@ function eliminate(state: GameState, victim: number, by: number, generalIdx: num
   v.queue.length = 0;
   state.terrain[generalIdx] = Terrain.City;
   for (let i = 0; i < state.size; i++) {
+    if (state.mineOwner[i] === victim) state.mineOwner[i] = by;
     if (state.owner[i] !== victim) continue;
     state.owner[i] = by;
     state.army[i] = Math.ceil(state.army[i] / 2);

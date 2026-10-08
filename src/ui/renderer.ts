@@ -1,4 +1,4 @@
-import { TOWER_RADIUS } from '../engine/constants';
+import { CRATER_TICKS, TOWER_RADIUS } from '../engine/constants';
 import { Terrain, type Move } from '../engine/types';
 import type { PlayerView } from '../net/protocol';
 import type { Effects } from './effects';
@@ -12,8 +12,6 @@ export interface Board {
 export interface DrawOptions {
   selected: number;
   half: boolean;
-  /** Your flags. Never sent to the server, so opponents can't see them. */
-  flags: Uint8Array;
   /** Moves sent but not yet echoed back by the server. */
   pending: Move[];
   fx: Effects;
@@ -111,10 +109,12 @@ export class Renderer {
     ctx.fillRect(bx - 3, by - 3, v.w * s + 6, v.h * s + 6);
 
     const mines = v.mines ? new Set(v.mines) : null;
+    const flags = new Set(v.flags);
+    const myMines = new Set(v.myMines);
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
         const [sx, sy] = this.toScreen(x, y);
-        this.drawTile(v, o, y * v.w + x, sx, sy, s, mines);
+        this.drawTile(v, y * v.w + x, sx, sy, s, mines, flags, myMines);
       }
     }
 
@@ -139,7 +139,16 @@ export class Renderer {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  private drawTile(v: PlayerView, o: DrawOptions, i: number, x: number, y: number, s: number, mines: Set<number> | null): void {
+  private drawTile(
+    v: PlayerView,
+    i: number,
+    x: number,
+    y: number,
+    s: number,
+    mines: Set<number> | null,
+    flags: Set<number>,
+    myMines: Set<number>,
+  ): void {
     const t = v.terrain[i];
     const own = v.owner[i];
     const seen = v.visible[i] === 1;
@@ -161,12 +170,13 @@ export class Renderer {
       this.icon(t, x, y, s, 0.9);
     }
 
-    if (v.crater[i]) this.crater(x, y, s, seen ? 0.85 : 0.6);
-    if (mines?.has(i)) this.mineIcon(x, y, s);
+    // Blast marks are public and fade out over CRATER_TICKS.
+    if (v.crater[i]) this.crater(x, y, s, 0.2 + 0.7 * Math.min(1, v.crater[i] / CRATER_TICKS));
+    if (mines?.has(i) || myMines.has(i)) this.mineIcon(x, y, s, myMines.has(i));
     const structure = t === Terrain.General || t === Terrain.City || t === Terrain.Tower;
     if (seen && v.army[i] > 0) this.army(x, y, s, v.army[i], structure);
     if (v.dots[i]) this.dots(x, y, s, v.dots[i]);
-    if (o.flags[i] && own !== v.you && !v.crater[i]) this.flag(x, y, s);
+    if (flags.has(i) && !v.crater[i]) this.flag(x, y, s, own >= 0);
   }
 
   /** Red dots on the tile's edge, pointing at each neighbouring mine. */
@@ -308,11 +318,18 @@ export class Renderer {
     ctx.fillRect(x, y, s, s);
   }
 
-  private mineIcon(x: number, y: number, s: number): void {
+  /** A mine. Your own planted mines sit in the bottom-left corner with a white ring, so troops stay readable. */
+  private mineIcon(x: number, y: number, s: number, mine = false): void {
     const { ctx } = this;
-    const cx = x + s / 2;
-    const cy = y + s / 2;
-    const r = s * 0.2;
+    const cx = mine ? x + s * 0.24 : x + s / 2;
+    const cy = mine ? y + s * 0.76 : y + s / 2;
+    const r = mine ? s * 0.12 : s * 0.2;
+    if (mine) {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 1.75, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.strokeStyle = '#111';
     ctx.lineWidth = Math.max(1, s * 0.06);
     ctx.beginPath();
@@ -328,24 +345,27 @@ export class Renderer {
     ctx.fill();
   }
 
-  private flag(x: number, y: number, s: number): void {
+  /** Yellow flag; small and tucked into the top-right corner on tiles that show troops. */
+  private flag(x: number, y: number, s: number, corner = false): void {
     const { ctx } = this;
+    const k = corner ? 0.5 : 1;
+    const ox = corner ? x + s * 0.5 : x;
+    const oy = corner ? y + s * 0.02 : y;
     ctx.strokeStyle = '#222';
-    ctx.lineWidth = Math.max(1, s * 0.05);
+    ctx.lineWidth = Math.max(1, s * 0.05 * k);
     ctx.beginPath();
-    ctx.moveTo(x + s * 0.42, y + s * 0.2);
-    ctx.lineTo(x + s * 0.42, y + s * 0.78);
+    ctx.moveTo(ox + s * 0.42 * k, oy + s * 0.2 * k);
+    ctx.lineTo(ox + s * 0.42 * k, oy + s * 0.78 * k);
     ctx.stroke();
     ctx.fillStyle = '#ffeb3b';
     ctx.beginPath();
-    ctx.moveTo(x + s * 0.44, y + s * 0.2);
-    ctx.lineTo(x + s * 0.76, y + s * 0.35);
-    ctx.lineTo(x + s * 0.44, y + s * 0.5);
+    ctx.moveTo(ox + s * 0.44 * k, oy + s * 0.2 * k);
+    ctx.lineTo(ox + s * 0.76 * k, oy + s * 0.35 * k);
+    ctx.lineTo(ox + s * 0.44 * k, oy + s * 0.5 * k);
     ctx.closePath();
     ctx.fill();
   }
 
-  /** Troop count; sits lower on structure tiles so the icon above stays visible. */
   private army(x: number, y: number, s: number, n: number, belowIcon = false): void {
     const { ctx } = this;
     const label = formatArmy(n);

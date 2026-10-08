@@ -1,6 +1,6 @@
 import './style.css';
 import { analyticsConfigured, analyticsOptedOut, setAnalyticsOptOut, track } from './analytics';
-import { MINE_STUN_TICKS } from './engine/constants';
+import { MAX_FLAGS, MINE_STUN_TICKS } from './engine/constants';
 import { Terrain, type Move } from './engine/types';
 import { LocalGame } from './local';
 import { findMatch, Net } from './net/client';
@@ -23,13 +23,12 @@ const sounds = new Sounds();
 type Screen = 'start' | 'lobby' | 'game';
 let screen: Screen = 'start';
 let view: PlayerView | null = null;
-/** Your flags live only in this browser; they are never sent to the server. */
-let flags = new Uint8Array(0);
 /** Moves sent since the last server view, drawn until the server echoes them back. */
 let pending: Move[] = [];
 let selected = -1;
 let half = false;
-let mode: 'move' | 'flag' = 'move';
+/** What a tap on the board does: move troops, toggle a flag, or plant a mine from stock. */
+let mode: 'move' | 'flag' | 'drop' = 'move';
 let fitted = false;
 let endShown = false;
 let lobbyEndsAt = 0;
@@ -153,7 +152,6 @@ function onView(v: PlayerView): void {
   const first = !view;
   view = v;
   pending = [];
-  if (flags.length !== v.w * v.h) flags = new Uint8Array(v.w * v.h);
 
   if (first) {
     const humans = v.players.filter((p) => !p.isBot).length;
@@ -179,6 +177,9 @@ function onView(v: PlayerView): void {
       // A crown falls: yours, or one you just took.
       if (ev.victim === v.you || ev.by === v.you) void sounds.play('fall');
       if (ev.victim !== v.you) toast(ev.by === v.you ? `You captured ${victim}'s crown!` : `${by} captured ${victim}`);
+    } else if (ev.kind === 'defuse' && ev.player === v.you) {
+      buzz(30);
+      toast(`Mine captured! ${v.minesInStock} in stock: tap Drop to plant one`);
     } else if (ev.kind === 'captureCity' && ev.player === v.you) {
       toast('City captured');
     } else if (ev.kind === 'captureTower' && ev.player === v.you) {
@@ -258,10 +259,36 @@ function tryMove(from: number, to: number): boolean {
   return true;
 }
 
+/** Flags live on the server (they matter for capturing mines) but only you ever see yours. */
 function toggleFlag(idx: number): void {
-  if (!view || idx < 0 || view.owner[idx] === view.you || view.terrain[idx] === Terrain.Mountain) return;
-  flags[idx] ^= 1;
+  if (!canAct() || idx < 0 || view!.terrain[idx] === Terrain.Mountain) return;
+  const v = view!;
+  const has = v.flags.includes(idx);
+  if (!has && v.flags.length >= MAX_FLAGS) {
+    toast(`All ${MAX_FLAGS} flags are out. Remove one first.`);
+    return;
+  }
+  send({ t: 'flag', idx });
+  v.flags = has ? v.flags.filter((f) => f !== idx) : [...v.flags, idx]; // shown now, confirmed next tick
   buzz(12);
+  updateControls();
+}
+
+/** Plant a captured mine on one of your own plain tiles. */
+function dropMine(idx: number): void {
+  if (!canAct() || idx < 0) return;
+  const v = view!;
+  if (v.minesInStock <= 0) return;
+  if (v.owner[idx] !== v.you || v.terrain[idx] !== Terrain.Plain || v.myMines.includes(idx)) {
+    toast('Plant mines on your own open tiles');
+    return;
+  }
+  send({ t: 'drop', idx });
+  v.minesInStock--;
+  v.myMines = [...v.myMines, idx];
+  buzz(20);
+  if (v.minesInStock === 0) mode = 'move';
+  updateControls();
 }
 
 function undo(): void {
@@ -287,6 +314,8 @@ new Input($('board'), renderer, {
       selected = -1;
     } else if (mode === 'flag') {
       toggleFlag(idx);
+    } else if (mode === 'drop') {
+      dropMine(idx);
     } else if (selected >= 0 && adjacent(selected, idx) && tryMove(selected, idx)) {
       // queued
     } else if (idx === selected && ownsTile(idx)) {
@@ -330,7 +359,7 @@ window.addEventListener('keydown', (e) => {
   } else if (e.key === 'e') {
     undo();
   } else if (e.key === 'f') {
-    mode = mode === 'move' ? 'flag' : 'move';
+    mode = mode === 'flag' ? 'move' : 'flag';
   } else if (e.key === 'm') {
     sounds.toggle();
     renderSoundButton();
@@ -352,7 +381,12 @@ $('btn-watch').addEventListener('click', () => show('gameover', false));
 $('btn-retry').addEventListener('click', () => play());
 $('btn-offline-solo').addEventListener('click', startLocal);
 $('btn-mode').addEventListener('click', () => {
-  mode = mode === 'move' ? 'flag' : 'move';
+  mode = mode === 'flag' ? 'move' : 'flag';
+  updateControls();
+});
+$('btn-drop').addEventListener('click', () => {
+  mode = mode === 'drop' ? 'move' : 'drop';
+  if (mode === 'drop') toast('Tap one of your tiles to plant a mine');
   updateControls();
 });
 $('btn-half').addEventListener('click', () => {
@@ -472,9 +506,14 @@ $('btn-privacy').addEventListener('click', () => {
 // ---------- HUD ----------
 
 function updateControls(): void {
+  const used = view?.flags.length ?? 0;
   $('btn-mode').classList.toggle('on', mode === 'flag');
-  $('mode-label').textContent = mode === 'flag' ? 'Flag' : 'Move';
+  $('mode-label').textContent = mode === 'flag' ? `Flag ${used}/${MAX_FLAGS}` : `Move · ⚑${MAX_FLAGS - used}`;
   $('mode-ico').textContent = mode === 'flag' ? '⚑' : '➔';
+  const stock = view?.minesInStock ?? 0;
+  show('btn-drop', stock > 0 || mode === 'drop');
+  $('btn-drop').classList.toggle('on', mode === 'drop');
+  $('drop-label').textContent = `Drop (${stock})`;
   $('btn-half').classList.toggle('on', half);
 }
 
@@ -590,7 +629,7 @@ function frame(now: number): void {
   const dt = Math.min(now - lastFrame, 250);
   lastFrame = now;
   fx.update(dt);
-  if (view && screen === 'game') renderer.draw(view, { selected, half, flags, pending, fx });
+  if (view && screen === 'game') renderer.draw(view, { selected, half, pending, fx });
   requestAnimationFrame(frame);
 }
 
@@ -610,9 +649,10 @@ try {
 }
 renderPrivacy();
 setScreen('start');
+$('build').textContent = `Build ${__BUILD__}`;
 track('app_open');
 requestAnimationFrame(frame);
 
 if (import.meta.env.DEV) {
-  Object.assign(window, { __bm: { renderer, net, sounds, getView: () => view, flags: () => flags } });
+  Object.assign(window, { __bm: { renderer, net, sounds, send, getView: () => view } });
 }

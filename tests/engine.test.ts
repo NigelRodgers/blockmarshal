@@ -67,7 +67,7 @@ describe('mines', () => {
     s.tick = 0;
     step(s);
     expect(s.mine[target]).toBe(0);
-    expect(s.crater[target]).toBe(1);
+    expect(s.crater[target]).toBeGreaterThan(0);
     expect(s.owner[target]).toBe(0);
     expect(s.army[target]).toBe(40 - MINE_DAMAGE);
     expect(s.army[from]).toBe(1);

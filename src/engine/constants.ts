@@ -4,6 +4,12 @@ export const MINE_DAMAGE = 15;
 /** Ticks the triggering player cannot move after setting off a mine. */
 export const MINE_STUN_TICKS = 6;
 
+/** Flags a player may have placed at once. */
+export const MAX_FLAGS = 5;
+
+/** A blast mark stays visible to everyone for this long (10 turns), then the tile is ordinary again. */
+export const CRATER_TICKS = 20;
+
 /** Neutral watchtower garrison. Towers produce no troops. */
 export const TOWER_GARRISON = 25;
 

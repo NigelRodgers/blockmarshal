@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
 
@@ -34,9 +35,21 @@ function serviceWorker(): Plugin {
   };
 }
 
+/** Short git hash + date, shown on the start screen so testers can tell which version they have. */
+function buildId(): string {
+  let hash = 'dev';
+  try {
+    hash = execSync('git rev-parse --short HEAD').toString().trim();
+  } catch {
+    /* not a git checkout */
+  }
+  return `${hash} · ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+}
+
 // Relative base so the build works from file:// inside a Capacitor/WebView shell.
 export default defineConfig({
   base: './',
+  define: { __BUILD__: JSON.stringify(buildId()) },
   server: {
     port: 5199,
     // Reachable from phones on the same Wi-Fi. /api and /ws go to the local Worker (npm run server).

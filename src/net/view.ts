@@ -34,16 +34,19 @@ export function buildView(state: GameState, pid: number): PlayerView {
       terrain[i] = state.terrain[i];
       owner[i] = state.owner[i];
       army[i] = state.army[i];
-      crater[i] = state.crater[i];
     } else {
       const m = me.memory[i];
       terrain[i] = m === Memory.None ? -1 : REMEMBERED[m];
       owner[i] = -1;
       army[i] = 0;
-      crater[i] = m === Memory.Crater ? 1 : 0;
     }
-    dots[i] = me.revealed[i] || over ? mineDots(state, i) : 0;
+    // Blasts are public: everyone sees the mark until it fades.
+    crater[i] = state.crater[i] ? Math.max(0, state.crater[i] - state.tick) : 0;
+    dots[i] = me.revealed[i] || over ? mineDots(state, i, over ? -2 : pid) : 0;
   }
+
+  const myMines: number[] = [];
+  for (let i = 0; i < n; i++) if (state.mine[i] && state.mineOwner[i] === pid) myMines.push(i);
 
   let mines: number[] | null = null;
   if (over) {
@@ -63,6 +66,9 @@ export function buildView(state: GameState, pid: number): PlayerView {
     visible,
     dots,
     crater,
+    flags: [...me.flags],
+    minesInStock: me.minesInStock,
+    myMines,
     mines,
     queue: me.queue.slice(),
     stunTicksLeft: stunTicksLeft(state, pid),
@@ -75,7 +81,10 @@ export function buildView(state: GameState, pid: number): PlayerView {
       army: stats[p.id].army,
       land: stats[p.id].land,
     })),
-    events: state.events.filter((e) => e.kind === 'eliminated' || e.player === pid || vis[e.idx] === 1),
+    // Eliminations and explosions are public; captures and defusals only where you can see them.
+    events: state.events.filter(
+      (e) => e.kind === 'eliminated' || e.kind === 'explode' || e.player === pid || (e.kind !== 'defuse' && vis[e.idx] === 1),
+    ),
     winner: state.winner,
   };
 }

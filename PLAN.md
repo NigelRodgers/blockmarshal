@@ -18,6 +18,8 @@ Supersedes the bots-only daily challenge below. Kept for history; the daily, tut
 
 - **2026-10-08 (later):** feedback emails live (Resend, secret `RESEND_API_KEY`); page-level gestures locked (no page pinch/scroll/rubber-band on phones); sounds: battle horn at match start, heartbeat when a crown falls (yours, or one you take), mute button (🔊, key M). Sound clips came from YouTube "no copyright SFX" uploads: confirm their licence before any portal/commercial release.
 
+- **2026-10-08 (mines update):** flags are server-side and private, max 5, reset every match (fixes flags carrying over). Moving onto a mine you flagged captures it into your stock (no blast). **Drop** plants a stocked mine on your own plain tile: you see a mine icon, enemies only dots. Your own planted mine trips you unless you flagged it (then you pass and it stays armed); enemies trip it unless *they* flagged it (then they capture it). A captured general's planted mines pass to the captor. Every blast is public (event + mark for all players, even in fog) and the mark fades after 10 turns (CRATER_TICKS = 20). Build id shown on the start screen.
+
 ### Open next steps
 1. ~~Hosting for the game server.~~ Chosen 2026-10-05: Cloudflare Workers + Durable Objects (one `MatchDO` per match, one global `MatchmakerDO`); the free plan covers roughly 170 ten-minute matches a day. See DEPLOY.md.
 2. **Matchmaking that groups humans** (so one human rarely faces five bots): e.g. hold solo lobbies a little longer when other lobbies are filling, merge lobbies before the countdown ends, or show a live "players online" count.
