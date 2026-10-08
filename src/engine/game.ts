@@ -8,6 +8,7 @@ import {
   MAX_FLAGS,
   CRATER_TICKS,
   PLAYER_COLORS,
+  RELOCATE_COOLDOWN_TICKS,
   TOWER_RADIUS,
   TOWERS_PER_MATCH,
 } from './constants';
@@ -96,6 +97,7 @@ export function buildState(
     army: map.army,
     mine: map.mine,
     crater: new Int32Array(size),
+    moveReady: new Int32Array(size),
     mineOwner: new Int8Array(size).fill(-1),
     n4,
     n8,
@@ -300,13 +302,15 @@ export function plantMine(state: GameState, pid: number, idx: number): boolean {
  * Move your general or one of your cities to another of your open tiles on the
  * same connected stretch of land. The new spot can't touch another general or
  * city, sides or corners. Troops stay where they are; only the building (and
- * its production) moves.
+ * its production) moves. It then can't move again for RELOCATE_COOLDOWN_TICKS.
  */
 export function relocate(state: GameState, pid: number, from: number, to: number): boolean {
   if (!canRelocate(state, pid, from, to)) return false;
   state.terrain[to] = state.terrain[from];
   state.terrain[from] = Terrain.Plain;
   if (state.terrain[to] === Terrain.General) state.players[pid].general = to;
+  state.moveReady[from] = 0;
+  state.moveReady[to] = state.tick + RELOCATE_COOLDOWN_TICKS;
   return true;
 }
 
@@ -314,6 +318,7 @@ export function canRelocate(state: GameState, pid: number, from: number, to: num
   if (from === to || from < 0 || to < 0 || from >= state.size || to >= state.size) return false;
   const t = state.terrain[from];
   if (state.owner[from] !== pid || (t !== Terrain.General && t !== Terrain.City)) return false;
+  if (state.tick < state.moveReady[from]) return false;
   if (state.owner[to] !== pid || state.terrain[to] !== Terrain.Plain || state.mine[to]) return false;
   if (state.n8[to].some((j) => j !== from && (state.terrain[j] === Terrain.General || state.terrain[j] === Terrain.City))) {
     return false;

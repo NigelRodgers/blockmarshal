@@ -44,9 +44,6 @@ const MINE_PATH_COST = 25;
 const STALL_TICKS = 40;
 const STALL_MIN_ARMY = 20;
 
-/** Ticks between two hides (moving the general or a city), so a bot doesn't shuffle every tick. */
-const HIDE_COOLDOWN = 8;
-
 /** Planted mines a bot keeps around its general for defence. */
 const DEFENCE_MINES = 3;
 
@@ -78,7 +75,6 @@ export class Bot {
   private reckless = false;
   /** Our general/cities an enemy has had in view since they last moved. */
   private readonly exposed = new Set<number>();
-  private nextHide = 0;
 
   constructor(
     readonly pid: number,
@@ -330,13 +326,14 @@ export class Bot {
       s.owner[b] === this.pid && (s.terrain[b] === Terrain.General || s.terrain[b] === Terrain.City);
     for (const b of [...this.exposed]) if (!isBuilding(b)) this.exposed.delete(b);
     for (let b = 0; b < s.size; b++) if (isBuilding(b) && this.seenByEnemy(ctx, b)) this.exposed.add(b);
-    if (s.tick < this.nextHide || !this.exposed.size) return;
+    if (!this.exposed.size) return;
     const enemies = this.enemyTiles(ctx);
     if (!enemies.length) return;
 
     // The general first; a city only when an enemy army nearby could take it.
     const order = [...this.exposed].sort((a, b) => Number(b === me.general) - Number(a === me.general));
     for (const b of order) {
+      if (s.tick < s.moveReady[b]) continue; // moved recently: the 100-turn cooldown holds it
       if (b !== me.general && !enemies.some((e) => manhattan(s.w, e, b) <= 4 && s.army[e] >= s.army[b])) continue;
       const land = island(s, this.pid, b);
       let best = -1;
@@ -354,8 +351,8 @@ export class Bot {
         }
       }
       if (best < 0 || !relocate(s, this.pid, b, best)) continue;
+      // One move per tick; the engine's cooldown then pins that building for 100 turns.
       this.exposed.delete(b);
-      this.nextHide = s.tick + HIDE_COOLDOWN;
       return;
     }
   }

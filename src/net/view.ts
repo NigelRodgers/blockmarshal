@@ -45,6 +45,13 @@ export function buildView(state: GameState, pid: number): PlayerView {
     dots[i] = me.revealed[i] || over ? mineDots(state, i, over ? -2 : pid) : 0;
   }
 
+  const moveCooldowns: { idx: number; turns: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    if (state.owner[i] === pid && state.moveReady[i] > state.tick) {
+      moveCooldowns.push({ idx: i, turns: Math.ceil((state.moveReady[i] - state.tick) / 2) });
+    }
+  }
+
   const myMines: number[] = [];
   for (let i = 0; i < n; i++) if (state.mine[i] && state.mineOwner[i] === pid) myMines.push(i);
 
@@ -70,6 +77,7 @@ export function buildView(state: GameState, pid: number): PlayerView {
     minesInStock: me.stock.length,
     stockAnchors: me.stock.map((from) => stockAnchor(state, pid, from)),
     myMines,
+    moveCooldowns,
     mines,
     queue: me.queue.slice(),
     stunTicksLeft: stunTicksLeft(state, pid),

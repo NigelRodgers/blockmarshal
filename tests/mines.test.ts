@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CRATER_TICKS, MAX_FLAGS, MINE_DAMAGE } from '../src/engine/constants';
+import { CRATER_TICKS, MAX_FLAGS, MINE_DAMAGE, RELOCATE_COOLDOWN_TICKS } from '../src/engine/constants';
 import { Bot } from '../src/ai/bot';
 import { pickUpMine, plantMine, queueMove, relocate, step, toggleFlag } from '../src/engine/game';
 import { mulberry32 } from '../src/engine/rng';
@@ -275,6 +275,24 @@ describe('relocating generals and cities', () => {
     expect(relocate(s, A, 8, 12)).toBe(false); // (5,1) touches the city side-on
     expect(relocate(s, A, 13, 9)).toBe(false); // city to (2,1): touches the general
     expect(relocate(s, A, 13, 18)).toBe(true); // city to (4,2): clear of the general
+  });
+
+  it('then holds the building for 100 turns; mines can move again at once', () => {
+    const s = land();
+    expect(relocate(s, A, 8, 3)).toBe(true);
+    expect(relocate(s, A, 3, 15)).toBe(false); // general on cooldown
+    expect(buildView(s, A).moveCooldowns).toEqual([{ idx: 3, turns: 100 }]);
+    expect(relocate(s, A, 13, 18)).toBe(true); // the city has its own cooldown
+    for (let t = 0; t < RELOCATE_COOLDOWN_TICKS - 1; t++) step(s);
+    expect(relocate(s, A, 3, 15)).toBe(false);
+    step(s);
+    expect(relocate(s, A, 3, 15)).toBe(true);
+
+    give(s, A, 1);
+    expect(plantMine(s, A, 0)).toBe(true);
+    expect(pickUpMine(s, A, 0)).toBe(true);
+    expect(plantMine(s, A, 1)).toBe(true);
+    expect(pickUpMine(s, A, 1)).toBe(true);
   });
 
   it("refuses moving onto mines, enemy land, or someone else's buildings", () => {

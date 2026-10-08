@@ -312,7 +312,11 @@ function openBuildMenu(idx: number): void {
   const v = view!;
   buildTile = idx;
   relocating = false;
-  $('bm-move').textContent = v.terrain[idx] === Terrain.General ? 'Move general' : 'Move city';
+  const what = v.terrain[idx] === Terrain.General ? 'general' : 'city';
+  const wait = v.moveCooldowns.find((c) => c.idx === idx)?.turns ?? 0;
+  const btn = $('bm-move') as HTMLButtonElement;
+  btn.textContent = wait ? `Move ${what} (in ${wait} turns)` : `Move ${what}`;
+  btn.disabled = wait > 0;
   placeMenu($('build-menu'), idx);
   buzz(12);
 }

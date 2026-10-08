@@ -61,6 +61,8 @@ export interface GameState {
   mine: Uint8Array;
   /** Tick at which a blast mark disappears; 0 = no mark. Blasts are public. */
   crater: Int32Array;
+  /** Tick from which the general or city on this tile may move again (0 = any time). */
+  moveReady: Int32Array;
   /** Who planted each mine: -1 for the map's own mines. */
   mineOwner: Int8Array;
   n4: number[][];

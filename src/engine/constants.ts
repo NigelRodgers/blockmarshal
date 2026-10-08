@@ -19,6 +19,9 @@ export const TOWER_GARRISON = 25;
 /** Watchtower vision and number-reveal radius (Chebyshev, so 3 = 7x7). */
 export const TOWER_RADIUS = 3;
 
+/** After a general or city moves, it can't move again for this many ticks (100 turns). Mines have no cooldown. */
+export const RELOCATE_COOLDOWN_TICKS = 200;
+
 /** Generals and owned cities produce +1 every N ticks (2 ticks = 1 turn). */
 export const GENERAL_GROWTH_TICKS = 2;
 

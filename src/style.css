@@ -539,6 +539,11 @@ input {
   font-weight: 600;
 }
 
+/* A general or city still on its move cooldown. */
+.mine-menu button:disabled {
+  color: var(--muted);
+}
+
 .mine-menu #mm-cancel {
   background: transparent;
   color: var(--muted);
