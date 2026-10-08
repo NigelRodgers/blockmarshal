@@ -55,6 +55,7 @@ Before every commit: `npx tsc --noEmit && npx tsc --noEmit -p tsconfig.server.js
 
 ## Working conventions
 
+- Quick test on any device: open the live site (or the Vite URL) with `?quick` to skip the lobby and play bots in the browser at once.
 - The user tests on a phone and usually ends a request with "go live": deploy with `npm run deploy`, then confirm the deployed build id (`grep` the hash in `dist/assets/index-*.js`) and spot-check the live site.
 - Every shipped change: commit (message ends with the Co-Authored-By line), push, add a CHANGELOG entry, update the rules doc if rules/numbers changed, and move items in/out of the Backlog here.
 - Tunable numbers belong in `src/engine/constants.ts` (or the named file in the rules doc's reference table).

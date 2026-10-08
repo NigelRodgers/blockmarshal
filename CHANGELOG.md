@@ -4,7 +4,10 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-09
 
-**`bba785e`: One cooldown for everything you move** (not live yet)
+**`850d8ce`: Quick start** (live)
+- Open https://blockmarshal.rodgersnigel.workers.dev/?quick to skip the lobby and play 5 bots in your browser at once (same as "Play vs bots offline", no server cost). Play again stays in quick mode. Analytics event `quick_start`.
+
+**`bba785e`: One cooldown for everything you move** (live in `850d8ce`)
 - Every planted mine is held for 100 turns before you can pick it up, including a captured mine planted for the first time. Generals and cities that moved: same 100 turns, as before.
 - Replay test limit raised to 30 s (it could time out since the bot changes).
 
