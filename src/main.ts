@@ -431,6 +431,10 @@ function openMineMenu(idx: number): void {
   const v = view!;
   menuTile = idx;
   $('mm-flag').textContent = v.flags.includes(idx) ? 'Remove flag' : 'Flag it (walk over safely)';
+  const wait = v.moveCooldowns.find((c) => c.idx === idx)?.turns ?? 0;
+  const pick = $('mm-pickup') as HTMLButtonElement;
+  pick.textContent = wait ? `Pick up (in ${wait} turns)` : 'Pick up (move it)';
+  pick.disabled = wait > 0;
   placeMenu($('mine-menu'), idx);
   buzz(12);
 }

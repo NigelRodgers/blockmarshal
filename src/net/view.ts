@@ -47,7 +47,9 @@ export function buildView(state: GameState, pid: number): PlayerView {
 
   const moveCooldowns: { idx: number; turns: number }[] = [];
   for (let i = 0; i < n; i++) {
-    if (state.owner[i] === pid && state.moveReady[i] > state.tick) {
+    const t = state.terrain[i];
+    const holds = t === Terrain.General || t === Terrain.City || (state.mine[i] && state.mineOwner[i] === pid);
+    if (state.owner[i] === pid && holds && state.moveReady[i] > state.tick) {
       moveCooldowns.push({ idx: i, turns: Math.ceil((state.moveReady[i] - state.tick) / 2) });
     }
   }
@@ -75,7 +77,7 @@ export function buildView(state: GameState, pid: number): PlayerView {
     crater,
     flags: [...me.flags],
     minesInStock: me.stock.length,
-    stockAnchors: me.stock.map((from) => stockAnchor(state, pid, from)),
+    stockAnchors: me.stock.map((m) => stockAnchor(state, pid, m.from)),
     myMines,
     moveCooldowns,
     mines,

@@ -16,6 +16,14 @@ export type InputEvent =
   | { tick: number; pid: number; op: 'undo' }
   | { tick: number; pid: number; op: 'clear' };
 
+/** A mine in a player's stock. */
+export interface StockedMine {
+  /** The tile it came from: it can only be planted on land connected to this tile. */
+  from: number;
+  /** Picked up from the player's own planting (a move), not captured: replanting starts a cooldown. */
+  moved: boolean;
+}
+
 export interface Player {
   id: number;
   name: string;
@@ -36,11 +44,11 @@ export interface Player {
   /** Tiles this player has flagged (at most MAX_FLAGS). Private to the player. */
   flags: Set<number>;
   /**
-   * Captured or picked-up mines ready to plant, one entry per mine: the tile it
-   * came from. A mine can only be planted on land connected to that tile (see
-   * plantMine); if the tile has been lost, it goes with the general's land.
+   * Captured or picked-up mines ready to plant. A mine can only be planted on
+   * land connected to the tile it came from (see plantMine); if that tile has
+   * been lost, it goes with the general's land.
    */
-  stock: number[];
+  stock: StockedMine[];
 }
 
 export type GameEvent =
@@ -61,7 +69,7 @@ export interface GameState {
   mine: Uint8Array;
   /** Tick at which a blast mark disappears; 0 = no mark. Blasts are public. */
   crater: Int32Array;
-  /** Tick from which the general or city on this tile may move again (0 = any time). */
+  /** Tick from which the general, city or moved mine on this tile may move again (0 = any time). */
   moveReady: Int32Array;
   /** Who planted each mine: -1 for the map's own mines. */
   mineOwner: Int8Array;

@@ -1,5 +1,6 @@
 import { MAX_FLAGS, MINE_DAMAGE } from '../engine/constants';
 import {
+  canPickUpMine,
   canRelocate,
   island,
   pickUpMine,
@@ -379,7 +380,7 @@ export class Bot {
     const g = me.general;
     const enemies = this.enemyTiles(ctx);
     for (let i = 0; i < s.size; i++) {
-      if (!this.ownMine(ctx, i) || s.owner[i] !== this.pid || manhattan(s.w, i, g) <= 3) continue;
+      if (!this.ownMine(ctx, i) || !canPickUpMine(s, this.pid, i) || manhattan(s.w, i, g) <= 3) continue;
       if (enemies.some((e) => manhattan(s.w, e, i) <= IDLE_MINE_DISTANCE)) continue;
       if (pickUpMine(s, this.pid, i)) return;
     }
@@ -444,8 +445,9 @@ export class Bot {
     const { s, me } = ctx;
     for (let n = 0; n < Math.min(path.length - 1, 15); n++) {
       const to = path[n + 1];
-      // Lift our own mine out of the way rather than trip it (it goes back to stock to plant again).
-      if (this.ownMine(ctx, to) && !me.flags.has(to)) pickUpMine(s, this.pid, to);
+      // Our own mine in the way: lift it (back to stock to plant again), or flag it for safe
+      // passage while it's on its move cooldown. If neither works, stop short of it.
+      if (this.ownMine(ctx, to) && !me.flags.has(to) && !pickUpMine(s, this.pid, to) && !toggleFlag(s, this.pid, to)) return;
       queueMove(s, this.pid, path[n], to);
     }
   }

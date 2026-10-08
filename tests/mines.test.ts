@@ -33,7 +33,7 @@ function board() {
 
 /** Stock n mines that came from the player's general's land. */
 function give(s: GameState, pid: number, n: number): void {
-  s.players[pid].stock = Array(n).fill(s.players[pid].general);
+  s.players[pid].stock = Array.from({ length: n }, () => ({ from: s.players[pid].general, moved: false }));
 }
 
 const MINE = 3; // (3,0)
@@ -277,7 +277,7 @@ describe('relocating generals and cities', () => {
     expect(relocate(s, A, 13, 18)).toBe(true); // city to (4,2): clear of the general
   });
 
-  it('then holds the building for 100 turns; mines can move again at once', () => {
+  it('then holds the building for 100 turns', () => {
     const s = land();
     expect(relocate(s, A, 8, 3)).toBe(true);
     expect(relocate(s, A, 3, 15)).toBe(false); // general on cooldown
@@ -287,11 +287,18 @@ describe('relocating generals and cities', () => {
     expect(relocate(s, A, 3, 15)).toBe(false);
     step(s);
     expect(relocate(s, A, 3, 15)).toBe(true);
+  });
 
-    give(s, A, 1);
+  it('holds a moved mine for 100 turns too; a captured mine planted the first time is free', () => {
+    const s = land();
+    give(s, A, 1); // captured: no cooldown
     expect(plantMine(s, A, 0)).toBe(true);
+    expect(buildView(s, A).moveCooldowns).toEqual([]);
     expect(pickUpMine(s, A, 0)).toBe(true);
-    expect(plantMine(s, A, 1)).toBe(true);
+    expect(plantMine(s, A, 1)).toBe(true); // moved: now held
+    expect(buildView(s, A).moveCooldowns).toEqual([{ idx: 1, turns: 100 }]);
+    expect(pickUpMine(s, A, 1)).toBe(false);
+    for (let t = 0; t < RELOCATE_COOLDOWN_TICKS; t++) step(s);
     expect(pickUpMine(s, A, 1)).toBe(true);
   });
 
@@ -327,7 +334,7 @@ describe('islands: buildings and mines stay on one connected stretch of land', (
 
   it('a stocked mine plants only on land connected to where it came from', () => {
     const s = islands();
-    s.players[A].stock = [4];
+    s.players[A].stock = [{ from: 4, moved: false }];
     expect(plantMine(s, A, 0)).toBe(false); // other island
     expect(plantMine(s, A, 12)).toBe(true); // (5,1), same island as (4,0)
     expect(pickUpMine(s, A, 12)).toBe(true);
@@ -337,7 +344,7 @@ describe('islands: buildings and mines stay on one connected stretch of land', (
 
   it("a mine whose home tile was lost goes with the general's land", () => {
     const s = islands();
-    s.players[A].stock = [4];
+    s.players[A].stock = [{ from: 4, moved: false }];
     s.owner[4] = B;
     expect(buildView(s, A).stockAnchors).toEqual([1]);
     expect(plantMine(s, A, 12)).toBe(false);
@@ -378,7 +385,7 @@ describe('bot tactics', () => {
   it('plants a stocked mine near its general, leaving the general reachable', () => {
     const s = bLand();
     const g = s.players[B].general;
-    s.players[B].stock = [g];
+    s.players[B].stock = [{ from: g, moved: false }];
     new Bot(B, 'normal', mulberry32(1)).think(s);
     expect(s.players[B].stock.length).toBe(0);
     const planted = [...s.mineOwner.keys()].filter((i) => s.mineOwner[i] === B && s.mine[i]);

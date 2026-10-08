@@ -284,17 +284,22 @@ export function plantableStock(state: GameState, pid: number, idx: number): numb
   if (!p.stock.length || idx < 0 || idx >= state.size) return -1;
   if (state.owner[idx] !== pid || state.terrain[idx] !== Terrain.Plain || state.mine[idx]) return -1;
   const land = island(state, pid, idx);
-  return p.stock.findIndex((from) => land[stockAnchor(state, pid, from)] === 1);
+  return p.stock.findIndex((m) => land[stockAnchor(state, pid, m.from)] === 1);
 }
 
-/** Plant a stocked mine on one of your own plain tiles, on the same stretch of land it came from. */
+/**
+ * Plant a stocked mine on one of your own plain tiles, on the same stretch of
+ * land it came from. A moved mine (picked up and replanted) is then held for
+ * RELOCATE_COOLDOWN_TICKS before it can be picked up again.
+ */
 export function plantMine(state: GameState, pid: number, idx: number): boolean {
   const k = plantableStock(state, pid, idx);
   if (k < 0) return false;
   state.mine[idx] = 1;
   state.mineOwner[idx] = pid;
   state.mineCount++;
-  state.players[pid].stock.splice(k, 1);
+  const [m] = state.players[pid].stock.splice(k, 1);
+  state.moveReady[idx] = m.moved ? state.tick + RELOCATE_COOLDOWN_TICKS : 0;
   return true;
 }
 
@@ -328,14 +333,19 @@ export function canRelocate(state: GameState, pid: number, from: number, to: num
 
 /** Take one of your planted mines back into stock, to plant again on the same stretch of land. */
 export function pickUpMine(state: GameState, pid: number, idx: number): boolean {
-  if (idx < 0 || idx >= state.size) return false;
-  if (state.owner[idx] !== pid || !state.mine[idx] || state.mineOwner[idx] !== pid) return false;
+  if (!canPickUpMine(state, pid, idx)) return false;
   state.mine[idx] = 0;
   state.mineOwner[idx] = -1;
   state.mineCount--;
   state.players[pid].flags.delete(idx);
-  state.players[pid].stock.push(idx);
+  state.players[pid].stock.push({ from: idx, moved: true });
   return true;
+}
+
+export function canPickUpMine(state: GameState, pid: number, idx: number): boolean {
+  if (idx < 0 || idx >= state.size) return false;
+  if (state.owner[idx] !== pid || !state.mine[idx] || state.mineOwner[idx] !== pid) return false;
+  return state.tick >= state.moveReady[idx];
 }
 
 /** Apply a logged input during replay, without re-logging it. */
@@ -421,7 +431,7 @@ function arrive(state: GameState, p: Player, to: number, amount: number): void {
       state.mineOwner[to] = -1;
       state.mineCount--;
       p.flags.delete(to);
-      p.stock.push(to);
+      p.stock.push({ from: to, moved: false });
       state.events.push({ kind: 'defuse', idx: to, player: p.id });
     } else {
       amount = detonate(state, to, p, amount);
