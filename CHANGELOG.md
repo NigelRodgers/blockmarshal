@@ -2,6 +2,12 @@
 
 Newest first. Build ids match the `Build <hash>` line on the start screen. Live: https://blockmarshal.rodgersnigel.workers.dev
 
+## 2026-10-09
+
+**`bba785e`: One cooldown for everything you move** (not live yet)
+- Every planted mine is held for 100 turns before you can pick it up, including a captured mine planted for the first time. Generals and cities that moved: same 100 turns, as before.
+- Replay test limit raised to 30 s (it could time out since the bot changes).
+
 ## 2026-10-08
 
 **`50101da`: Mine move cooldown** (live in `0a1dc44`)
