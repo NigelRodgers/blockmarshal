@@ -8,6 +8,7 @@ import type { ClientMessage, PlayerView, ServerMessage } from './net/protocol';
 import { Effects } from './ui/effects';
 import { Input } from './ui/input';
 import { formatArmy, Renderer } from './ui/renderer';
+import { Sounds } from './ui/sound';
 
 const NAME_KEY = 'blockmarshal.name';
 const RANKS_KEY = 'blockmarshal.ranksCompact';
@@ -17,6 +18,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 const renderer = new Renderer($<HTMLCanvasElement>('board'));
 const fx = new Effects();
 const net = new Net(onServer, onDisconnect);
+const sounds = new Sounds();
 
 type Screen = 'start' | 'lobby' | 'game';
 let screen: Screen = 'start';
@@ -66,6 +68,7 @@ function stopLocal(): void {
 
 /** Play against bots in this browser: used for solo handoffs and when offline. */
 function startLocal(): void {
+  sounds.unlock();
   stopLocal();
   net.close();
   show('offline', false);
@@ -74,6 +77,7 @@ function startLocal(): void {
 }
 
 async function play(attempt = 0): Promise<void> {
+  sounds.unlock(); // inside the Play tap, so the start horn can play later
   stopLocal();
   try {
     localStorage.setItem(NAME_KEY, playerName());
@@ -125,6 +129,7 @@ function onServer(msg: ServerMessage): void {
     fitted = false;
     endShown = false;
     setScreen('game');
+    void sounds.play('start');
   } else if (msg.t === 'view') {
     onView(msg.view);
   } else if (msg.t === 'solo') {
@@ -171,6 +176,8 @@ function onView(v: PlayerView): void {
     } else if (ev.kind === 'eliminated') {
       const by = v.players[ev.by].name;
       const victim = v.players[ev.victim].name;
+      // A crown falls: yours, or one you just took.
+      if (ev.victim === v.you || ev.by === v.you) void sounds.play('fall');
       if (ev.victim !== v.you) toast(ev.by === v.you ? `You captured ${victim}'s crown!` : `${by} captured ${victim}`);
     } else if (ev.kind === 'captureCity' && ev.player === v.you) {
       toast('City captured');
@@ -324,6 +331,9 @@ window.addEventListener('keydown', (e) => {
     undo();
   } else if (e.key === 'f') {
     mode = mode === 'move' ? 'flag' : 'move';
+  } else if (e.key === 'm') {
+    sounds.toggle();
+    renderSoundButton();
   }
   updateControls();
 });
@@ -536,6 +546,43 @@ window.addEventListener('resize', () => {
   if (view) renderer.fit(view);
 });
 
+// ---------- Sound ----------
+
+function renderSoundButton(): void {
+  const b = $('btn-sound');
+  b.innerHTML = sounds.muted ? '&#128263;' : '&#128266;';
+  b.setAttribute('aria-label', sounds.muted ? 'Unmute sound' : 'Mute sound');
+}
+$('btn-sound').addEventListener('click', () => {
+  sounds.unlock();
+  sounds.toggle();
+  renderSoundButton();
+});
+renderSoundButton();
+
+// ---------- Page lock ----------
+// Stop the browser moving or zooming the whole page: pinch, double-tap zoom,
+// rubber-band scrolling. Only open menus (overlays) may scroll vertically.
+function insideScrollable(t: EventTarget | null): boolean {
+  return t instanceof Element && !!t.closest('.overlay:not(.hidden)');
+}
+document.addEventListener(
+  'touchmove',
+  (e) => {
+    if (e.touches.length > 1 || !insideScrollable(e.target)) e.preventDefault();
+  },
+  { passive: false },
+);
+for (const name of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(name, (e) => e.preventDefault());
+document.addEventListener('dblclick', (e) => e.preventDefault());
+document.addEventListener(
+  'wheel',
+  (e) => {
+    if (e.ctrlKey) e.preventDefault(); // trackpad pinch on desktop
+  },
+  { passive: false },
+);
+
 // ---------- Render loop ----------
 
 let lastFrame = performance.now();
@@ -567,5 +614,5 @@ track('app_open');
 requestAnimationFrame(frame);
 
 if (import.meta.env.DEV) {
-  Object.assign(window, { __bm: { renderer, net, getView: () => view, flags: () => flags } });
+  Object.assign(window, { __bm: { renderer, net, sounds, getView: () => view, flags: () => flags } });
 }

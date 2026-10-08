@@ -675,3 +675,24 @@ b.red {
   margin-left: 0;
   color: var(--text);
 }
+
+/* ---------- Page lock ----------
+   The page itself must never pan, rubber-band or zoom (iOS ignores user-scalable=no).
+   Menus and the feedback form stay scrollable. */
+
+html,
+body {
+  touch-action: none;
+  position: fixed;
+  inset: 0;
+}
+
+.overlay {
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+textarea,
+input {
+  touch-action: manipulation;
+}
