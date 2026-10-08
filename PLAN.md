@@ -22,6 +22,8 @@ Supersedes the bots-only daily challenge below. Kept for history; the daily, tut
 
 - **2026-10-08 (mines polish):** long-press your own planted mine opens a menu: flag/unflag it (safe passage) or pick it up back into stock to move it. Flags on your own land are only allowed on your own mines (so generals/cities/towers can't show a flag that looks like a mine). Bots treat known mines as costly-but-passable, so a bot walled in by mines (or cut off from a target general) blasts through instead of freezing; bot plans are capped by path length (30 tiles), not path cost.
 
+- **2026-10-08 (HUD + relocation):** floating translucent ☰ menu replaces the top/bottom bars (board gets the full screen; badge shows Flag/Split/Move-building mode). Long-press your general or a held city → Move: relocates to your own open tile not touching another general or city (8-neighbour), instantly, no cooldown, troops stay. Flagged own mines draw grey. Watchtowers switched off (`TOWERS_PER_MATCH = 0`; engine code and tests kept). Bot stall breaker: no land gained for 40 ticks with 20+ troops → ignores mine path costs until it gains ground. Without towers, bot-only games run longer (median ~670 vs ~500 turns). Rules + numbers doc: https://claude.ai/code/artifact/e88a1b81-7a45-4e71-872f-f065ac6019a5
+
 ### Open next steps
 1. ~~Hosting for the game server.~~ Chosen 2026-10-05: Cloudflare Workers + Durable Objects (one `MatchDO` per match, one global `MatchmakerDO`); the free plan covers roughly 170 ten-minute matches a day. See DEPLOY.md.
 2. **Matchmaking that groups humans** (so one human rarely faces five bots): e.g. hold solo lobbies a little longer when other lobbies are filling, merge lobbies before the countdown ends, or show a live "players online" count.

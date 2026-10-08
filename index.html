@@ -14,24 +14,27 @@
   <body>
     <canvas id="board"></canvas>
 
-    <header id="hud-top" class="hidden">
-      <div class="bar">
-        <button id="btn-leave" class="icon-btn" aria-label="Leave game">&#10005;</button>
-        <div id="turn">Turn 0</div>
-        <button id="btn-feedback-hud" class="icon-btn fb-btn" aria-label="Send feedback">&#128172;</button>
-        <button id="btn-sound" class="icon-btn fb-btn" aria-label="Mute sound">&#128266;</button>
-        <div id="stun" class="hidden" title="Stunned by a mine: turns until you can move"><span class="ring"></span>Stunned <b id="stun-n">3</b></div>
+    <!-- Floating HUD: a translucent menu button over the board; everything else lives in its panel. -->
+    <div id="hud" class="hidden">
+      <button id="btn-menu-hud" class="hud-fab" aria-label="Game menu" aria-expanded="false">&#9776;<span id="hud-badge" class="hud-badge"></span></button>
+      <div id="stun" class="hidden" title="Stunned by a mine: turns until you can move"><span class="ring"></span>Stunned <b id="stun-n">3</b></div>
+      <div id="game-menu" class="game-menu hidden">
+        <div class="gm-row">
+          <div id="turn">Turn 0</div>
+          <button id="btn-sound" class="icon-btn" aria-label="Mute sound">&#128266;</button>
+          <button id="btn-feedback-hud" class="icon-btn" aria-label="Send feedback">&#128172;</button>
+          <button id="btn-leave" class="icon-btn" aria-label="Leave game">&#10005;</button>
+        </div>
+        <ol id="board-ranks"></ol>
+        <div class="gm-controls">
+          <button id="btn-mode" class="ctl"><span class="ico" id="mode-ico"></span><span id="mode-label">Move</span><span id="mine-stock" class="stock"></span></button>
+          <button id="btn-half" class="ctl"><span class="ico">&frac12;</span><span>Split</span></button>
+          <button id="btn-undo" class="ctl"><span class="ico">&#8630;</span><span>Undo</span></button>
+          <button id="btn-clear" class="ctl"><span class="ico">&#10005;</span><span>Clear</span></button>
+          <button id="btn-home" class="ctl"><span class="ico">&#9873;</span><span>Home</span></button>
+        </div>
       </div>
-      <ol id="board-ranks" title="Tap to show or hide names"></ol>
-    </header>
-
-    <footer id="hud-bottom" class="hidden">
-      <button id="btn-mode" class="ctl"><span class="ico" id="mode-ico"></span><span id="mode-label">Move</span><span id="mine-stock" class="stock"></span></button>
-      <button id="btn-half" class="ctl"><span class="ico">&frac12;</span><span>Split</span></button>
-      <button id="btn-undo" class="ctl"><span class="ico">&#8630;</span><span>Undo</span></button>
-      <button id="btn-clear" class="ctl"><span class="ico">&#10005;</span><span>Clear</span></button>
-      <button id="btn-home" class="ctl"><span class="ico">&#9873;</span><span>Home</span></button>
-    </footer>
+    </div>
 
     <div id="start" class="overlay">
       <div class="panel">
@@ -53,8 +56,9 @@
             <li><b>Long-press</b> (or right-click) to flag a tile, up to 5. Only you see your flags.</li>
             <li>Move onto a <b>flagged mine</b> to capture it instead of setting it off. Then <b>long-press one of your own tiles</b> (the same flag gesture) to plant it: enemies only see dots, you see the mine. Your own mines trip you too, unless you flag them. <b>Long-press your own mine</b> to flag/unflag it or pick it up and move it.</li>
             <li>Everyone sees every blast. The mark fades after 10 turns.</li>
-            <li>The eye is a <b>watchtower</b>: hold it to see further and spot mines around it.</li>
+            <li><b>Long-press your general or a city you hold</b> to move it to another of your open tiles. It can't touch another general or city, even at a corner.</li>
             <li>Capture an enemy crown to take their empire. Last general standing wins.</li>
+            <li>Tap <b>&#9776;</b> for standings, Split, Undo, Clear, sound, feedback and leaving.</li>
           </ul>
         </details>
 
@@ -119,6 +123,11 @@
       <button id="mm-flag" role="menuitem">Flag it (walk over safely)</button>
       <button id="mm-pickup" role="menuitem">Pick up (move it)</button>
       <button id="mm-cancel" role="menuitem">Cancel</button>
+    </div>
+
+    <div id="build-menu" class="mine-menu hidden" role="menu">
+      <button id="bm-move" role="menuitem">Move general</button>
+      <button id="bm-cancel" role="menuitem">Cancel</button>
     </div>
 
     <div id="toast"></div>

@@ -9,6 +9,7 @@ import {
   CRATER_TICKS,
   PLAYER_COLORS,
   TOWER_RADIUS,
+  TOWERS_PER_MATCH,
 } from './constants';
 import { buildNeighbors } from './grid';
 import { generateMap, type GeneratedMap } from './mapgen';
@@ -42,7 +43,7 @@ export function createGame(cfg: GameConfig): GameState {
     mineRate,
     mountainRate: cfg.mountainRate ?? DEFAULT_MOUNTAIN_RATE,
     cities: cfg.cities ?? Math.round(size / 50),
-    towers: cfg.towers ?? Math.ceil(cfg.players.length / 2),
+    towers: cfg.towers ?? TOWERS_PER_MATCH,
   });
   return buildState({ w, h, seed, players: cfg.players, mineRate }, map);
 }
@@ -259,6 +260,27 @@ export function plantMine(state: GameState, pid: number, idx: number): boolean {
   state.mineCount++;
   p.minesInStock--;
   return true;
+}
+
+/**
+ * Move your general or one of your cities to another of your open tiles.
+ * The new spot can't touch another general or city, sides or corners.
+ * Troops stay where they are; only the building (and its production) moves.
+ */
+export function relocate(state: GameState, pid: number, from: number, to: number): boolean {
+  if (!canRelocate(state, pid, from, to)) return false;
+  state.terrain[to] = state.terrain[from];
+  state.terrain[from] = Terrain.Plain;
+  if (state.terrain[to] === Terrain.General) state.players[pid].general = to;
+  return true;
+}
+
+export function canRelocate(state: GameState, pid: number, from: number, to: number): boolean {
+  if (from === to || from < 0 || to < 0 || from >= state.size || to >= state.size) return false;
+  const t = state.terrain[from];
+  if (state.owner[from] !== pid || (t !== Terrain.General && t !== Terrain.City)) return false;
+  if (state.owner[to] !== pid || state.terrain[to] !== Terrain.Plain || state.mine[to]) return false;
+  return !state.n8[to].some((j) => j !== from && (state.terrain[j] === Terrain.General || state.terrain[j] === Terrain.City));
 }
 
 /** Take one of your planted mines back into stock (to move it elsewhere). */

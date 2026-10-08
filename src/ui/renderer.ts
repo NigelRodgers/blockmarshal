@@ -15,6 +15,8 @@ export interface DrawOptions {
   /** Moves sent but not yet echoed back by the server. */
   pending: Move[];
   fx: Effects;
+  /** Tiles to highlight as valid destinations (moving a general or city). */
+  targets?: number[];
 }
 
 const C = {
@@ -118,6 +120,7 @@ export class Renderer {
       }
     }
 
+    if (o.targets?.length) this.drawTargets(v, o.targets, s);
     this.drawQueue(v, [...v.queue, ...o.pending], s);
 
     if (o.selected >= 0 && v.owner[o.selected] === v.you) {
@@ -172,11 +175,12 @@ export class Renderer {
 
     // Blast marks are public and fade out over CRATER_TICKS.
     if (v.crater[i]) this.crater(x, y, s, 0.2 + 0.7 * Math.min(1, v.crater[i] / CRATER_TICKS));
-    if (mines?.has(i) || myMines.has(i)) this.mineIcon(x, y, s);
+    // Your own mine turns grey once you've flagged it (safe for you to cross).
+    if (mines?.has(i) || myMines.has(i)) this.mineIcon(x, y, s, myMines.has(i) && flags.has(i));
     const structure = t === Terrain.General || t === Terrain.City || t === Terrain.Tower;
     if (seen && v.army[i] > 0) this.army(x, y, s, v.army[i], structure);
     if (v.dots[i]) this.dots(x, y, s, v.dots[i]);
-    if (flags.has(i) && !v.crater[i]) this.flag(x, y, s, own >= 0);
+    if (flags.has(i) && !v.crater[i] && !myMines.has(i)) this.flag(x, y, s, own >= 0);
   }
 
   /** Red dots on the tile's edge, pointing at each neighbouring mine. */
@@ -318,13 +322,13 @@ export class Renderer {
     ctx.fillRect(x, y, s, s);
   }
 
-  /** Classic mine: dark round body with eight bumps, large and centred. */
-  private mineIcon(x: number, y: number, s: number): void {
+  /** Classic mine: dark round body with eight bumps, large and centred. Grey when flagged (safe for you). */
+  private mineIcon(x: number, y: number, s: number, flagged = false): void {
     const { ctx } = this;
     const cx = x + s / 2;
     const cy = y + s / 2;
     const r = s * 0.24;
-    ctx.fillStyle = '#16181c';
+    ctx.fillStyle = flagged ? '#9aa0a8' : '#16181c';
     // Eight bumps around the body.
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2;
@@ -377,6 +381,20 @@ export class Renderer {
     ctx.strokeText(label, x + s / 2, cy);
     ctx.fillStyle = '#fff';
     ctx.fillText(label, x + s / 2, cy);
+  }
+
+  /** Pulsing outline on each tile a general or city may move to. */
+  private drawTargets(b: Board, tiles: number[], s: number): void {
+    const { ctx } = this;
+    const pulse = (Math.sin(performance.now() / 220) + 1) / 2;
+    ctx.save();
+    ctx.strokeStyle = `rgba(255, 213, 79, ${0.5 + pulse * 0.5})`;
+    ctx.lineWidth = Math.max(2, s * 0.08);
+    for (const i of tiles) {
+      const [x, y] = this.toScreen(i % b.w, Math.floor(i / b.w));
+      ctx.strokeRect(x + s * 0.12, y + s * 0.12, s * 0.76, s * 0.76);
+    }
+    ctx.restore();
   }
 
   /** Dashed outline of a selected watchtower's 7x7 area. */

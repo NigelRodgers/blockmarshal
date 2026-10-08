@@ -11,7 +11,6 @@ import { formatArmy, Renderer } from './ui/renderer';
 import { Sounds } from './ui/sound';
 
 const NAME_KEY = 'blockmarshal.name';
-const RANKS_KEY = 'blockmarshal.ranksCompact';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -45,8 +44,8 @@ function setScreen(next: Screen): void {
   screen = next;
   show('start', next === 'start');
   show('lobby', next === 'lobby');
-  show('hud-top', next === 'game');
-  show('hud-bottom', next === 'game');
+  show('hud', next === 'game');
+  if (next !== 'game') closeGameMenu();
   if (next !== 'game') show('gameover', false);
 }
 
@@ -195,6 +194,8 @@ function onView(v: PlayerView): void {
 function showEnd(v: PlayerView): void {
   endShown = true;
   closeMineMenu();
+  closeBuildMenu();
+  closeGameMenu();
   selected = -1;
   const won = v.winner === v.you;
   const turn = Math.floor(v.tick / 2);
@@ -270,8 +271,9 @@ function flagGesture(idx: number): void {
   if (!canAct() || idx < 0 || view!.terrain[idx] === Terrain.Mountain) return;
   const v = view!;
   if (v.owner[idx] === v.you) {
-    // Your own land: your mines get a menu, open tiles get a mine if you have one.
+    // Your own land: your mines and buildings get a menu, open tiles get a mine if you have one.
     if (v.myMines.includes(idx)) return openMineMenu(idx);
+    if (v.terrain[idx] === Terrain.General || v.terrain[idx] === Terrain.City) return openBuildMenu(idx);
     if (v.terrain[idx] === Terrain.Plain && v.minesInStock > 0) return plantMine(idx);
     toast(
       v.terrain[idx] !== Terrain.Plain
@@ -296,6 +298,95 @@ function toggleFlag(idx: number): void {
   updateControls();
 }
 
+// ---------- Moving your general or a city ----------
+
+let buildTile = -1;
+/** True while choosing where to move buildTile. */
+let relocating = false;
+
+function openBuildMenu(idx: number): void {
+  const v = view!;
+  buildTile = idx;
+  relocating = false;
+  $('bm-move').textContent = v.terrain[idx] === Terrain.General ? 'Move general' : 'Move city';
+  placeMenu($('build-menu'), idx);
+  buzz(12);
+}
+
+function closeBuildMenu(): void {
+  buildTile = -1;
+  relocating = false;
+  show('build-menu', false);
+  updateControls();
+}
+
+/** Same rule the server enforces: your own open tile, no mine, not touching another general or city. */
+function canMoveBuildingTo(v: PlayerView, from: number, to: number): boolean {
+  if (to === from || v.owner[to] !== v.you || v.terrain[to] !== Terrain.Plain || v.myMines.includes(to)) return false;
+  const x = to % v.w;
+  const y = Math.floor(to / v.w);
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if ((!dx && !dy) || nx < 0 || ny < 0 || nx >= v.w || ny >= v.h) continue;
+      const j = ny * v.w + nx;
+      if (j !== from && (v.terrain[j] === Terrain.General || v.terrain[j] === Terrain.City)) return false;
+    }
+  }
+  return true;
+}
+
+function relocationTargets(): number[] {
+  const v = view;
+  if (!v || !relocating || buildTile < 0) return [];
+  const out: number[] = [];
+  for (let i = 0; i < v.owner.length; i++) if (canMoveBuildingTo(v, buildTile, i)) out.push(i);
+  return out;
+}
+
+$('bm-move').addEventListener('click', () => {
+  if (buildTile < 0 || !view) return;
+  show('build-menu', false);
+  relocating = true;
+  if (!relocationTargets().length) {
+    toast('No room: it needs one of your open tiles not touching another general or city');
+    closeBuildMenu();
+    return;
+  }
+  toast('Tap a highlighted tile to move it there');
+  updateControls();
+});
+$('bm-cancel').addEventListener('click', closeBuildMenu);
+
+function finishRelocate(idx: number): void {
+  const v = view;
+  const from = buildTile;
+  if (!v || from < 0) return closeBuildMenu();
+  if (idx === from) return closeBuildMenu();
+  if (!canMoveBuildingTo(v, from, idx)) {
+    toast("Can't go there: pick a highlighted tile (or tap the building to cancel)");
+    return;
+  }
+  send({ t: 'relocate', from, to: idx });
+  // Shown now, confirmed next tick.
+  v.terrain[idx] = v.terrain[from];
+  v.terrain[from] = Terrain.Plain;
+  if (selected === from) selected = idx;
+  buzz(20);
+  closeBuildMenu();
+}
+
+/** Position a small floating menu just below a tile, kept on screen. */
+function placeMenu(menu: HTMLElement, idx: number): void {
+  const v = view!;
+  const [x, y] = renderer.toScreen((idx % v.w) + 0.5, Math.floor(idx / v.w) + 0.5);
+  menu.classList.remove('hidden');
+  const r = menu.getBoundingClientRect();
+  menu.style.left = `${Math.max(8, Math.min(window.innerWidth - r.width - 8, x - r.width / 2))}px`;
+  menu.style.top = `${Math.max(8, Math.min(window.innerHeight - r.height - 8, y + renderer.cam.scale * 0.6))}px`;
+}
+
 // ---------- Menu for your own planted mines ----------
 
 let menuTile = -1;
@@ -304,12 +395,7 @@ function openMineMenu(idx: number): void {
   const v = view!;
   menuTile = idx;
   $('mm-flag').textContent = v.flags.includes(idx) ? 'Remove flag' : 'Flag it (walk over safely)';
-  const [x, y] = renderer.toScreen((idx % v.w) + 0.5, Math.floor(idx / v.w) + 0.5);
-  const menu = $('mine-menu');
-  show('mine-menu', true);
-  const r = menu.getBoundingClientRect();
-  menu.style.left = `${Math.max(8, Math.min(window.innerWidth - r.width - 8, x - r.width / 2))}px`;
-  menu.style.top = `${Math.max(8, Math.min(window.innerHeight - r.height - 8, y + renderer.cam.scale * 0.6))}px`;
+  placeMenu($('mine-menu'), idx);
   buzz(12);
 }
 
@@ -365,7 +451,10 @@ new Input($('board'), renderer, {
   getBoard: () => view,
   onTap(idx) {
     if (!view) return;
+    if (gameMenuOpen) closeGameMenu();
     if (menuTile >= 0) return closeMineMenu();
+    if (buildTile >= 0 && !relocating) return closeBuildMenu();
+    if (relocating) return finishRelocate(idx);
     if (idx < 0) {
       selected = -1;
     } else if (mode === 'flag') {
@@ -414,6 +503,10 @@ window.addEventListener('keydown', (e) => {
     undo();
   } else if (e.key === 'f') {
     mode = mode === 'flag' ? 'move' : 'flag';
+  } else if (e.key === 'Escape') {
+    closeGameMenu();
+    closeMineMenu();
+    closeBuildMenu();
   } else if (e.key === 'm') {
     sounds.toggle();
     renderSoundButton();
@@ -564,6 +657,7 @@ function updateControls(): void {
   // Stocked mines show on the Flag button: the same gesture plants them.
   $('mine-stock').textContent = stock ? `💣${stock}` : '';
   $('btn-half').classList.toggle('on', half);
+  $('hud-badge').textContent = relocating ? '⇄' : mode === 'flag' ? '⚑' : half ? '½' : '';
 }
 
 function updateHud(): void {
@@ -587,28 +681,10 @@ function updateHud(): void {
   updateControls();
 }
 
-// Standings: tap to collapse to colour + numbers (more room for the board), tap again for names.
-function setRanksCompact(compact: boolean): void {
-  $('hud-top').classList.toggle('compact', compact);
-  try {
-    localStorage.setItem(RANKS_KEY, compact ? '1' : '0');
-  } catch {
-    /* just won't be remembered */
-  }
-  measureInsets();
-  if (view) renderer.fit(view);
-}
-
-$('board-ranks').addEventListener('click', () => setRanksCompact(!$('hud-top').classList.contains('compact')));
-try {
-  $('hud-top').classList.toggle('compact', localStorage.getItem(RANKS_KEY) === '1');
-} catch {
-  /* default: names shown */
-}
-
+/** The HUD floats over the board, so the board gets the whole screen. */
 function measureInsets(): void {
-  renderer.insetTop = $('hud-top').getBoundingClientRect().height;
-  renderer.insetBottom = $('hud-bottom').getBoundingClientRect().height;
+  renderer.insetTop = 0;
+  renderer.insetBottom = 0;
 }
 
 let toastTimer = 0;
@@ -633,6 +709,29 @@ window.addEventListener('resize', () => {
   measureInsets();
   if (view) renderer.fit(view);
 });
+
+// ---------- Floating game menu ----------
+
+let gameMenuOpen = false;
+
+function openGameMenu(): void {
+  gameMenuOpen = true;
+  show('game-menu', true);
+  $('btn-menu-hud').setAttribute('aria-expanded', 'true');
+  updateHud();
+}
+
+function closeGameMenu(): void {
+  gameMenuOpen = false;
+  show('game-menu', false);
+  $('btn-menu-hud').setAttribute('aria-expanded', 'false');
+}
+
+$('btn-menu-hud').addEventListener('click', () => (gameMenuOpen ? closeGameMenu() : openGameMenu()));
+// Actions that finish what you came to the menu for close it, so the board is clear again.
+for (const id of ['btn-undo', 'btn-clear', 'btn-home', 'btn-feedback-hud', 'btn-leave']) {
+  $(id).addEventListener('click', closeGameMenu);
+}
 
 // ---------- Sound ----------
 
@@ -678,7 +777,7 @@ function frame(now: number): void {
   const dt = Math.min(now - lastFrame, 250);
   lastFrame = now;
   fx.update(dt);
-  if (view && screen === 'game') renderer.draw(view, { selected, half, pending, fx });
+  if (view && screen === 'game') renderer.draw(view, { selected, half, pending, fx, targets: relocationTargets() });
   requestAnimationFrame(frame);
 }
 

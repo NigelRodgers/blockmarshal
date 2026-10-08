@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CRATER_TICKS, MAX_FLAGS, MINE_DAMAGE } from '../src/engine/constants';
 import { Bot } from '../src/ai/bot';
-import { pickUpMine, plantMine, queueMove, step, toggleFlag } from '../src/engine/game';
+import { pickUpMine, plantMine, queueMove, relocate, step, toggleFlag } from '../src/engine/game';
 import { mulberry32 } from '../src/engine/rng';
 import { createFromLayout } from '../src/engine/layout';
 import { buildView } from '../src/net/view';
@@ -236,5 +236,46 @@ describe('bots and mines', () => {
     const land = s.owner.reduce((n, o) => n + (o === B ? 1 : 0), 0);
     expect(s.crater.some((c) => c > 0) || land > 1).toBe(true);
     expect(land).toBeGreaterThan(1);
+  });
+});
+
+describe('relocating generals and cities', () => {
+  function land() {
+    const lv = createFromLayout(['ooooooo', 'oGooooC', 'ooooooo', '......E'], {
+      players: [
+        { name: 'A', isBot: false },
+        { name: 'B', isBot: false },
+      ],
+    });
+    const s = lv.state;
+    s.owner[13] = A; // the city at (6,1) is A's
+    return s;
+  }
+
+  it('moves your general to another of your open tiles; troops stay put', () => {
+    const s = land();
+    s.army[8] = 30;
+    expect(relocate(s, A, 8, 3)).toBe(true); // (1,1) -> (3,0)
+    expect(s.terrain[3]).toBe(3);
+    expect(s.terrain[8]).toBe(0);
+    expect(s.players[A].general).toBe(3);
+    expect(s.army[8]).toBe(30);
+  });
+
+  it("refuses spots touching another general or city, sides or corners", () => {
+    const s = land();
+    expect(relocate(s, A, 8, 5)).toBe(false); // (5,0) touches the city at (6,1) diagonally
+    expect(relocate(s, A, 8, 12)).toBe(false); // (5,1) touches the city side-on
+    expect(relocate(s, A, 13, 9)).toBe(false); // city to (2,1): touches the general
+    expect(relocate(s, A, 13, 18)).toBe(true); // city to (4,2): clear of the general
+  });
+
+  it("refuses moving onto mines, enemy land, or someone else's buildings", () => {
+    const s = land();
+    s.players[A].minesInStock = 1;
+    plantMine(s, A, 4);
+    expect(relocate(s, A, 8, 4)).toBe(false); // own mine
+    expect(relocate(s, A, 8, 3 * 7 + 3)).toBe(false); // neutral tile
+    expect(relocate(s, B, 8, 3)).toBe(false); // not B's general
   });
 });

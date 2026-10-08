@@ -10,6 +10,9 @@ export const MAX_FLAGS = 5;
 /** A blast mark stays visible to everyone for this long (10 turns), then the tile is ordinary again. */
 export const CRATER_TICKS = 20;
 
+/** Watchtowers per match. Off for now (0); the feature stays in the engine for later. */
+export const TOWERS_PER_MATCH = 0;
+
 /** Neutral watchtower garrison. Towers produce no troops. */
 export const TOWER_GARRISON = 25;
 

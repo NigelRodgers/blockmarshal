@@ -12,7 +12,9 @@ export type ClientMessage =
   /** Plant a captured mine on one of your own tiles. */
   | { t: 'drop'; idx: number }
   /** Take one of your planted mines back into stock. */
-  | { t: 'pickup'; idx: number };
+  | { t: 'pickup'; idx: number }
+  /** Move your general or a city you hold to another of your open tiles. */
+  | { t: 'relocate'; from: number; to: number };
 
 export interface LobbySlot {
   name: string;

@@ -46,11 +46,11 @@ describe('mine stun', () => {
   });
 });
 
-describe('watchtowers', () => {
+describe('watchtowers (off by default, kept for later)', () => {
   it('places contested, mine-free towers (one per two players) away from generals', () => {
     for (let seed = 1; seed <= 30; seed++) {
       for (const n of [2, 3, 4]) {
-        const s = createGame({ w: 15, h: 21, seed, players: Array.from({ length: n }, (_, i) => ({ name: `${i}`, isBot: i > 0 })) });
+        const s = createGame({ w: 15, h: 21, seed, towers: Math.ceil(n / 2), players: Array.from({ length: n }, (_, i) => ({ name: `${i}`, isBot: i > 0 })) });
         const towers = [...s.terrain.keys()].filter((i) => s.terrain[i] === Terrain.Tower);
         expect(towers.length).toBe(Math.ceil(n / 2));
         for (const t of towers) {
@@ -63,7 +63,7 @@ describe('watchtowers', () => {
   });
 
   it('on capture reveals mine dots across its 7x7 and grants vision there', () => {
-    const s = createGame({ w: 15, h: 21, seed: 5, players: twoPlayers });
+    const s = createGame({ w: 15, h: 21, seed: 5, towers: 1, players: twoPlayers });
     const tower = s.terrain.findIndex((t) => t === Terrain.Tower);
     const from = s.n4[tower].find((j) => s.terrain[j] !== Terrain.Mountain && !s.mine[j])!;
     s.owner[from] = 0;
@@ -83,7 +83,7 @@ describe('watchtowers', () => {
   });
 
   it('produces no troops', () => {
-    const s = createGame({ w: 15, h: 21, seed: 5, players: twoPlayers });
+    const s = createGame({ w: 15, h: 21, seed: 5, towers: 1, players: twoPlayers });
     const tower = s.terrain.findIndex((t) => t === Terrain.Tower);
     s.owner[tower] = 0;
     s.army[tower] = 10;

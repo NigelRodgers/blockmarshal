@@ -49,26 +49,6 @@ button {
 
 /* ---------- HUD ---------- */
 
-#hud-top {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  padding: calc(var(--safe-top) + 8px) 12px 6px;
-  background: linear-gradient(var(--bg) 70%, transparent);
-  pointer-events: none;
-}
-
-#hud-top > * {
-  pointer-events: auto;
-}
-
-.bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .icon-btn {
   width: 36px;
   height: 36px;
@@ -142,17 +122,6 @@ button {
 #board-ranks li span {
   margin-left: auto;
   color: var(--muted);
-}
-
-#hud-bottom {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  gap: 6px;
-  padding: 8px 10px calc(var(--safe-bottom) + 10px);
-  background: linear-gradient(transparent, var(--bg) 30%);
 }
 
 .ctl {
@@ -313,12 +282,6 @@ details b {
   color: var(--text);
 }
 
-#go-sub,
-#pause-sub {
-  margin: 0 0 8px;
-  color: var(--muted);
-}
-
 #toast {
   position: fixed;
   left: 50%;
@@ -343,69 +306,9 @@ details b {
 }
 
 @media (min-width: 720px) {
-  #hud-bottom {
-    left: 50%;
-    right: auto;
-    width: 520px;
-    transform: translateX(-50%);
-  }
-  #hud-top {
-    padding-left: 24px;
-    padding-right: 24px;
-  }
   #board-ranks {
     max-width: 640px;
   }
-}
-
-/* ---------- Daily challenge ---------- */
-
-.daily {
-  background: linear-gradient(160deg, #2a2116, var(--panel-2));
-  border: 1px solid #4a3620;
-  border-radius: 14px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.daily-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.daily-head b {
-  font-size: 20px;
-}
-
-#daily-meta,
-#daily-streak {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.daily p {
-  margin: 0;
-}
-
-#daily-status {
-  font-weight: 600;
-}
-
-.daily button {
-  padding: 12px;
-  border-radius: 10px;
-  background: var(--panel-2);
-  font-weight: 700;
-}
-
-.daily button.primary {
-  background: var(--accent);
-  color: #1a0f00;
-  font-size: 17px;
 }
 
 .row {
@@ -435,79 +338,7 @@ h3 {
   color: #ff8a80;
 }
 
-/* ---------- Tutorial coach ---------- */
-
-#coach {
-  margin-top: 8px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #2a2416;
-  border: 1px solid #5c4a1f;
-}
-
-.coach-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: #ffd54f;
-  font-size: 13px;
-}
-
-#btn-skip-tut {
-  padding: 4px 10px;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 12px;
-  text-decoration: underline;
-}
-
-#coach-text {
-  margin: 4px 0 0;
-  font-size: 14px;
-  line-height: 1.35;
-}
-
-#btn-skip-gate {
-  background: transparent;
-  color: var(--muted);
-  font-weight: 600;
-  text-decoration: underline;
-  padding: 4px;
-}
-
-/* ---------- Commander stub, install, privacy ---------- */
-
-.commander {
-  margin-top: 6px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px dashed var(--line);
-}
-
-.commander div {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.commander span {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.commander button {
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: var(--panel-2);
-  font-weight: 700;
-  white-space: nowrap;
-}
+/* ---------- Install, privacy ---------- */
 
 .privacy {
   margin: 8px 0 0;
@@ -598,10 +429,6 @@ b.red {
   letter-spacing: 0;
 }
 
-#hud-top .bar #stun {
-  margin-left: auto;
-}
-
 .panel > button.ghost {
   background: transparent;
   border: 1px solid var(--line);
@@ -648,33 +475,11 @@ b.red {
   opacity: 0;
 }
 
-/* ---------- Standings: tap to collapse ---------- */
-
 #board-ranks {
   cursor: pointer;
 }
 
 /* Compact: one row of six chips, colour bar + "troops · land", no names. */
-#hud-top.compact #board-ranks {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 4px;
-  margin-top: 6px;
-}
-
-#hud-top.compact #board-ranks li {
-  padding: 3px 4px 3px 6px;
-  border-left-width: 6px;
-  font-size: 11px;
-}
-
-#hud-top.compact #board-ranks li b {
-  display: none;
-}
-
-#hud-top.compact #board-ranks li span {
-  margin-left: 0;
-  color: var(--text);
-}
 
 /* ---------- Page lock ----------
    The page itself must never pan, rubber-band or zoom (iOS ignores user-scalable=no).
@@ -737,4 +542,100 @@ input {
 .mine-menu #mm-cancel {
   background: transparent;
   color: var(--muted);
+}
+
+/* ---------- Floating HUD ---------- */
+
+#hud {
+  position: fixed;
+  top: calc(var(--safe-top) + 8px);
+  left: 8px;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  pointer-events: none;
+}
+
+#hud > * {
+  pointer-events: auto;
+}
+
+.hud-fab {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(18, 21, 27, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--text);
+  font-size: 20px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.hud-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  min-width: 18px;
+  font-size: 12px;
+  line-height: 18px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #1a0f00;
+  font-weight: 800;
+}
+
+.hud-badge:empty {
+  display: none;
+}
+
+#hud #stun {
+  background: rgba(58, 29, 18, 0.85);
+}
+
+.game-menu {
+  width: min(360px, calc(100vw - 16px));
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(22, 26, 33, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gm-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gm-row #turn {
+  margin-right: auto;
+}
+
+.game-menu #board-ranks {
+  margin: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gm-controls {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.gm-controls .ctl {
+  min-height: 52px;
+  background: rgba(38, 44, 54, 0.85);
+}
+
+.gm-controls .ctl.on {
+  background: var(--accent);
 }

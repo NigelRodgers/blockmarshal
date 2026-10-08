@@ -26,6 +26,10 @@ const MAX_PATH_STEPS = 30;
 /** Extra path cost for walking through a known mine (on top of the risk weight). */
 const MINE_PATH_COST = 25;
 
+/** A bot that gains no land for this many ticks (with troops to spare) stops avoiding mines. */
+const STALL_TICKS = 40;
+const STALL_MIN_ARMY = 20;
+
 const PROFILES: Record<Difficulty, Profile> = {
   easy: { thinkEvery: 3, readsDots: false, riskWeight: 3, aggression: 0.6, defend: false, noise: 0.6, expandRisk: 0.5, towerValue: 0 },
   normal: { thinkEvery: 1, readsDots: true, riskWeight: 10, aggression: 1, defend: true, noise: 0.25, expandRisk: 0.3, towerValue: 70 },
@@ -42,6 +46,10 @@ interface Ctx {
 /** Plays with the same information a human has: its own vision, memory and known numbers. */
 export class Bot {
   private readonly p: Profile;
+  private land = 0;
+  private lastGain = 0;
+  /** Set when the bot has been stuck: plans ignore mine costs until it gains ground again. */
+  private reckless = false;
 
   constructor(
     readonly pid: number,
@@ -55,6 +63,7 @@ export class Bot {
     const me = s.players[this.pid];
     if (!me.alive || me.queue.length || s.tick % this.p.thinkEvery) return;
     const ctx: Ctx = { s, me, vis: visionFor(s, this.pid), k: analyze(s, this.pid, this.p.readsDots) };
+    this.trackProgress(s);
 
     if (this.p.defend && this.defend(ctx)) return;
 
@@ -64,6 +73,24 @@ export class Bot {
     if (plan && (plan.value >= 50 || s.army[src] >= 12)) return this.queuePath(ctx, plan.path);
     if (this.expand(ctx)) return;
     if (plan) this.queuePath(ctx, plan.path);
+  }
+
+  /** Notice when the bot stops gaining ground despite having troops: it's boxed in or blocked. */
+  private trackProgress(s: GameState): void {
+    let land = 0;
+    let army = 0;
+    for (let i = 0; i < s.size; i++) {
+      if (s.owner[i] !== this.pid) continue;
+      land++;
+      army = Math.max(army, s.army[i]);
+    }
+    if (land > this.land) {
+      this.lastGain = s.tick;
+      this.reckless = false;
+    } else if (s.tick - this.lastGain > STALL_TICKS && army >= STALL_MIN_ARMY) {
+      this.reckless = true;
+    }
+    this.land = land;
   }
 
   private biggestStack({ s }: Ctx, exclude: number): number {
@@ -113,7 +140,7 @@ export class Bot {
           if (vis[v]) cost += s.army[v] * 0.05;
           // Blasting through costs troops and a stun: only worth it when there's no way around,
           // e.g. boxed in by mines or a general walled off behind them.
-          if (this.knownMine(ctx, v)) cost += MINE_PATH_COST;
+          if (this.knownMine(ctx, v)) cost += this.reckless ? 2 : MINE_PATH_COST;
         }
         if (dist[u] + cost < dist[v]) {
           dist[v] = dist[u] + cost;
