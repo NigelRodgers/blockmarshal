@@ -4,9 +4,14 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-08
 
+**`50101da`: Mine move cooldown** (not live yet)
+- Correction to `7afd7e4`: moved mines get the same 100-turn cooldown. A mine you pick up and replant can't be picked up again for 100 turns; the mine menu shows "Pick up (in N turns)" greyed out.
+- A captured mine planted for the first time has no cooldown.
+- Bots flag their own cooling-down mine to walk over it safely (0 self-blasts in 12 simulated matches).
+
 **`7afd7e4`: Move cooldown** (not live yet)
 - After a general or city moves, it can't move again for 100 turns (`RELOCATE_COOLDOWN_TICKS` 200). Each building has its own cooldown, and it stays with the building. The menu shows "Move general (in N turns)" greyed out.
-- Mines have no cooldown: pick up and replant as often as you like (still within one connected stretch of land).
+- Mines had no cooldown here (changed in `50101da`).
 - Bots follow the same cooldown, so they hide their general at most once per 100 turns (their own 4-turn limit is gone).
 
 **`a583eb8`: Island rule; aggressive bots that hide and lay traps** (not live yet)
