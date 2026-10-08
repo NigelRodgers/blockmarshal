@@ -37,6 +37,14 @@ Open http://localhost:5199 (or `http://<this PC's LAN IP>:5199` from a phone on 
 
 In-game feedback goes to the D1 database `blockmarshal-feedback` (binding `FEEDBACK_DB`). There is **no public route that reads it**; `POST /api/feedback` is write-only. Nothing identifying is stored: no name, account or IP, only rating, two text answers and a small context blob (screen, turn, result, device type, viewport, version).
 
+Each submission is also **emailed to `FEEDBACK_EMAIL`** ([owner email: Worker secret], set in `wrangler.jsonc`) through [Resend](https://resend.com) once the secret is set:
+
+```bash
+npx wrangler secret put RESEND_API_KEY   # paste the Resend API key when prompted
+```
+
+Without the secret, feedback is only stored, not emailed. Resend's free plan sends from `onboarding@resend.dev` to the account owner's own address, so the Resend account must use [owner email: Worker secret].
+
 ```bash
 npm run feedback          # latest 50 responses from production
 npm run db:migrate        # apply new migrations to production D1

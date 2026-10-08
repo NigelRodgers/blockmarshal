@@ -3,6 +3,8 @@ import type { ClientMessage } from '../src/net/protocol';
 import { cleanName, Match, type Conn } from '../server/match';
 
 const MAX_MESSAGE = 4096;
+/** How often an open lobby re-reports itself to the matchmaker. */
+const HEARTBEAT_SECONDS = 10;
 
 /** Lobby countdown from the LOBBY_SECONDS var (60 in production, often 0 locally). */
 export function lobbyMs(env: Env): number {
@@ -85,11 +87,15 @@ export class MatchDO extends DurableObject<Env> {
     if (this.match && this.match.phase !== 'done') return this.match;
     this.match = new Match(this.matchId, () => this.report(), { lobbyMs: lobbyMs(this.env), soloHandoff: true });
     // The lobby countdown. The game loop itself runs on Match's own interval.
+    let seconds = 0;
     this.lobbyTimer = setInterval(() => {
       this.match?.lobbyTick();
       if (this.match?.phase !== 'lobby') {
         if (this.lobbyTimer) clearInterval(this.lobbyTimer);
         this.lobbyTimer = null;
+        this.report();
+      } else if (++seconds % HEARTBEAT_SECONDS === 0) {
+        // Keeps the matchmaker's list right even if it lost its state.
         this.report();
       }
     }, 1000);
@@ -101,6 +107,6 @@ export class MatchDO extends DurableObject<Env> {
     const m = this.match;
     const open = !!m && m.open;
     const matchmaker = this.env.MATCHMAKER.get(this.env.MATCHMAKER.idFromName('global'));
-    this.ctx.waitUntil(matchmaker.update(this.matchId, m?.humans.length ?? 0, open).catch(() => {}));
+    this.ctx.waitUntil(matchmaker.update(this.matchId, m?.humans.length ?? 0, open, m?.startsAt ?? 0).catch(() => {}));
   }
 }

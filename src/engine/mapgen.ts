@@ -36,10 +36,9 @@ function tryGenerate(o: MapOptions, rng: Rng, attempt: number): GeneratedMap | n
   const terrain = new Uint8Array(size);
   const army = new Int32Array(size);
   const mine = new Uint8Array(size);
+  /** Mountains and mines: tiles an army can't (or shouldn't have to) walk through. */
+  const blocked = new Uint8Array(size);
 
-  for (let i = 0; i < size; i++) if (rng() < o.mountainRate) terrain[i] = Terrain.Mountain;
-
-  // Spread generals out; relax the spacing requirement the longer we fail.
   // Spread generals out by area per player; relax the requirement the longer we fail.
   const minDist = Math.max(4, Math.floor(Math.sqrt((w * h) / o.players) * 1.3 * (1 - attempt / 300)));
   const generals: number[] = [];
@@ -48,24 +47,27 @@ function tryGenerate(o: MapOptions, rng: Rng, attempt: number): GeneratedMap | n
     if (generals.every((g) => manhattan(w, g, c) >= minDist)) generals.push(c);
   }
   if (generals.length < o.players) return null;
+  for (const g of generals) terrain[g] = Terrain.General;
 
-  // Safe zone: the 3x3 around each general has no mountains and (later) no mines,
-  // like minesweeper's guaranteed-safe first click.
-  for (const g of generals) {
-    for (let i = 0; i < size; i++) if (chebyshev(w, g, i) <= 1) terrain[i] = Terrain.Plain;
-    terrain[g] = Terrain.General;
-  }
-
-  const reach = flood(w, h, terrain, generals[0]);
-  if (generals.some((g) => !reach[g])) return null;
-  let reachable = 0;
-  for (let i = 0; i < size; i++) {
-    if (!reach[i]) terrain[i] = Terrain.Mountain;
-    else reachable++;
-  }
-  if (reachable < size * 0.6) return null;
-
+  // Safe zone: the 3x3 around each general never holds a mountain or a mine.
   const nearGeneral = (i: number, d: number) => generals.some((g) => chebyshev(w, g, i) <= d);
+
+  const fits = (i: number) => !blocksSquare(w, h, blocked, i) && allConnected(w, h, blocked, generals[0]);
+
+  // Mountains, one at a time, keeping every open tile reachable.
+  const mountainCandidates: number[] = [];
+  for (let i = 0; i < size; i++) if (terrain[i] === Terrain.Plain && !nearGeneral(i, 1)) mountainCandidates.push(i);
+  let mountains = Math.round(size * o.mountainRate);
+  for (const i of shuffle(rng, mountainCandidates)) {
+    if (mountains <= 0) break;
+    blocked[i] = 1;
+    if (fits(i)) {
+      terrain[i] = Terrain.Mountain;
+      mountains--;
+    } else {
+      blocked[i] = 0;
+    }
+  }
 
   // Watchtowers go where generals are about equally far away, so each one is contested.
   const towerCandidates: { i: number; score: number }[] = [];
@@ -93,28 +95,58 @@ function tryGenerate(o: MapOptions, rng: Rng, attempt: number): GeneratedMap | n
     army[c] = 40 + randInt(rng, 11);
   }
 
+  // Mines under the same rules: never a sealed-off pocket, never a solid 2x2 of mines and mountains.
   const mineCandidates: number[] = [];
   for (let i = 0; i < size; i++) if (terrain[i] === Terrain.Plain && !nearGeneral(i, 1)) mineCandidates.push(i);
-  const mineTotal = Math.round(mineCandidates.length * o.mineRate);
-  for (const m of shuffle(rng, mineCandidates).slice(0, mineTotal)) mine[m] = 1;
+  let mines = Math.round(mineCandidates.length * o.mineRate);
+  for (const i of shuffle(rng, mineCandidates)) {
+    if (mines <= 0) break;
+    blocked[i] = 1;
+    if (fits(i)) {
+      mine[i] = 1;
+      mines--;
+    } else {
+      blocked[i] = 0;
+    }
+  }
 
   return { terrain, army, mine, generals };
 }
 
-function flood(w: number, h: number, terrain: Uint8Array, start: number): Uint8Array {
-  const seen = new Uint8Array(w * h);
+/** True if tile i completes a 2x2 square in which every tile is blocked. */
+export function blocksSquare(w: number, h: number, blocked: Uint8Array, i: number): boolean {
+  const x = i % w;
+  const y = Math.floor(i / w);
+  for (const [ox, oy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) {
+    const x0 = x + ox;
+    const y0 = y + oy;
+    if (x0 < 0 || y0 < 0 || x0 + 1 >= w || y0 + 1 >= h) continue;
+    const a = y0 * w + x0;
+    if (blocked[a] && blocked[a + 1] && blocked[a + w] && blocked[a + w + 1]) return true;
+  }
+  return false;
+}
+
+/** Every unblocked tile is reachable from `start` without stepping on a blocked one. */
+export function allConnected(w: number, h: number, blocked: Uint8Array, start: number): boolean {
+  const size = w * h;
+  let open = 0;
+  for (let i = 0; i < size; i++) if (!blocked[i]) open++;
+  const seen = new Uint8Array(size);
   const stack = [start];
   seen[start] = 1;
+  let reached = 1;
   while (stack.length) {
     const i = stack.pop()!;
     const x = i % w;
     const y = (i / w) | 0;
     const next = [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1];
     for (const j of next) {
-      if (j < 0 || seen[j] || terrain[j] === Terrain.Mountain) continue;
+      if (j < 0 || seen[j] || blocked[j]) continue;
       seen[j] = 1;
+      reached++;
       stack.push(j);
     }
   }
-  return seen;
+  return reached === open;
 }

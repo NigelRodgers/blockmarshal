@@ -3,7 +3,7 @@ import { MATCH_PLAYERS } from '../src/engine/constants';
 import type { PlayerView, ServerMessage } from '../src/net/protocol';
 import { LobbyIndex } from '../server/lobbyIndex';
 import { LocalGame } from '../src/local';
-import { cleanFeedback, MAX_TEXT } from '../server/feedback';
+import { cleanFeedback, feedbackEmail, MAX_TEXT } from '../server/feedback';
 import { cleanName, Match, type Conn } from '../server/match';
 
 /** Fake browser connection that records what the server sends it. */
@@ -121,33 +121,57 @@ describe('matchmaker lobby index', () => {
     const a = idx.assign(0, id);
     const b = idx.assign(1_000, id);
     expect(b).toBe(a); // reservation counts before the match reports back
-    idx.update(a, 2, true, 2_000);
+    idx.update(a, 2, true, 60_000, 2_000);
     expect(idx.assign(3_000, id)).toBe(a);
   });
 
   it('opens a new lobby when the open one is full or about to start', () => {
     const idx = new LobbyIndex();
     const a = idx.assign(0, id);
-    idx.update(a, 6, true, 1_000);
+    idx.update(a, 6, true, 60_000, 1_000);
     const b = idx.assign(2_000, id);
     expect(b).not.toBe(a);
 
     const idx2 = new LobbyIndex();
     const c = idx2.assign(0, id);
-    idx2.update(c, 1, true, 0);
+    idx2.update(c, 1, true, 60_000, 0);
     expect(idx2.assign(59_000, id)).not.toBe(c); // 1 s left on c's countdown
   });
 
   it('forgets lobbies that started or closed, and seats nobody claimed', () => {
     const idx = new LobbyIndex();
     const a = idx.assign(0, id);
-    idx.update(a, 1, false, 1_000);
+    idx.update(a, 1, false, 60_000, 1_000);
     expect(idx.size).toBe(0);
 
     const b = idx.assign(0, id); // reserved, but the player never connects
     expect(idx.size).toBe(1);
     expect(idx.assign(20_000, id)).not.toBe(b);
     expect(idx.size).toBe(1);
+  });
+});
+
+describe('matchmaker recovery (the two-devices bug)', () => {
+  it('sends a second player to the first lobby even after the matchmaker restarts', () => {
+    const before = new LobbyIndex(6, 60_000);
+    const lobby = before.assign(0, () => 'L1');
+    before.update(lobby, 1, true, 60_000, 500); // the match confirms player one
+    before.update(lobby, 1, true, 60_000, 20_500); // ...and keeps sending heartbeats
+    // Cloudflare evicts the matchmaker; it comes back from storage.
+    const after = new LobbyIndex(6, 60_000, JSON.parse(JSON.stringify(before.toJSON())));
+    expect(after.assign(30_000, () => 'NEW')).toBe(lobby);
+  });
+
+  it('relearns an open lobby from its heartbeat if the state was lost entirely', () => {
+    const fresh = new LobbyIndex(6, 60_000);
+    fresh.update('L9', 1, true, 60_000, 30_000); // heartbeat from a lobby it had forgotten
+    expect(fresh.assign(31_000, () => 'NEW')).toBe('L9');
+  });
+
+  it('forgets a lobby that stops sending heartbeats', () => {
+    const idx = new LobbyIndex(6, 120_000);
+    idx.update('L1', 1, true, 120_000, 0);
+    expect(idx.assign(40_000, () => 'NEW')).toBe('NEW');
   });
 });
 
@@ -254,5 +278,16 @@ describe('local game', () => {
     } finally {
       game.stop(); // stops the tick timer so the test exits cleanly
     }
+  });
+});
+
+describe('feedback email', () => {
+  it('formats a readable plain-text email with no personal data', () => {
+    const r = cleanFeedback({ rating: 5, confusing: 'dots', context: { screen: 'end', turn: 40 } })!;
+    const { subject, text } = feedbackEmail(r);
+    expect(subject).toBe('Blockmarshal feedback: 5/5 🤩');
+    expect(text).toContain('Anything confusing?\ndots');
+    expect(text).toContain('(blank)');
+    expect(text).toContain('Context: screen=end, turn=40');
   });
 });

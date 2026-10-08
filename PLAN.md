@@ -14,6 +14,8 @@ Supersedes the bots-only daily challenge below. Kept for history; the daily, tut
 
 - **Solo play is free for the server:** a lobby that ends with one human hands the game to the browser (`src/local.ts`); unreachable server offers "Play vs bots offline".
 
+- **2026-10-08:** fixed board (no pan/zoom; scales to fill the space between the bars), tap the standings to collapse them to colour + numbers, mines cut by 25% (13.5% of eligible plains), map generator guarantees no all-blocked 2x2 of mines/mountains and no sealed-off areas, matchmaker persists its lobby list + lobbies heartbeat (fixes second device landing in a new game), feedback emailed via Resend once `RESEND_API_KEY` is set.
+
 ### Open next steps
 1. ~~Hosting for the game server.~~ Chosen 2026-10-05: Cloudflare Workers + Durable Objects (one `MatchDO` per match, one global `MatchmakerDO`); the free plan covers roughly 170 ten-minute matches a day. See DEPLOY.md.
 2. **Matchmaking that groups humans** (so one human rarely faces five bots): e.g. hold solo lobbies a little longer when other lobbies are filling, merge lobbies before the countdown ends, or show a live "players online" count.

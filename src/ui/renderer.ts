@@ -70,37 +70,14 @@ export class Renderer {
     this.canvas.style.height = `${this.vh}px`;
   }
 
+  /** Scale the whole board to the largest square tiles that fit between the HUD bars. */
   fit(b: Board): void {
-    const availW = this.vw - 8;
-    const availH = this.vh - this.insetTop - this.insetBottom - 8;
-    this.cam.scale = clamp(Math.min(availW / b.w, availH / b.h), 12, 72);
+    const availW = this.vw - 6;
+    const availH = this.vh - this.insetTop - this.insetBottom - 6;
+    this.cam.scale = Math.max(4, Math.min(availW / b.w, availH / b.h, 96));
     const centerY = (this.insetTop + this.vh - this.insetBottom) / 2;
     this.cam.x = b.w / 2;
     this.cam.y = b.h / 2 - (centerY - this.vh / 2) / this.cam.scale;
-  }
-
-  centerOn(b: Board, idx: number): void {
-    const centerY = (this.insetTop + this.vh - this.insetBottom) / 2;
-    this.cam.x = (idx % b.w) + 0.5;
-    this.cam.y = Math.floor(idx / b.w) + 0.5 - (centerY - this.vh / 2) / this.cam.scale;
-  }
-
-  zoomAt(sx: number, sy: number, factor: number): void {
-    const wx = (sx - this.vw / 2) / this.cam.scale + this.cam.x;
-    const wy = (sy - this.vh / 2) / this.cam.scale + this.cam.y;
-    this.cam.scale = clamp(this.cam.scale * factor, 12, 110);
-    this.cam.x = wx - (sx - this.vw / 2) / this.cam.scale;
-    this.cam.y = wy - (sy - this.vh / 2) / this.cam.scale;
-  }
-
-  pan(dx: number, dy: number): void {
-    this.cam.x -= dx / this.cam.scale;
-    this.cam.y -= dy / this.cam.scale;
-  }
-
-  clampTo(b: Board): void {
-    this.cam.x = clamp(this.cam.x, 0, b.w);
-    this.cam.y = clamp(this.cam.y, 0, b.h);
   }
 
   screenToTile(b: Board, sx: number, sy: number): number {
@@ -425,8 +402,4 @@ export class Renderer {
       ctx.fill();
     }
   }
-}
-
-function clamp(v: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, v));
 }

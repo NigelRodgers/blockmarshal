@@ -16,7 +16,8 @@ export const GENERAL_GROWTH_TICKS = 2;
 /** Every owned tile produces +1 every N ticks. */
 export const LAND_GROWTH_TICKS = 50;
 
-export const DEFAULT_MINE_RATE = 0.18;
+/** Share of eligible plains that hide a mine (was 0.18; cut by a quarter). */
+export const DEFAULT_MINE_RATE = 0.135;
 
 export const DEFAULT_MOUNTAIN_RATE = 0.14;
 

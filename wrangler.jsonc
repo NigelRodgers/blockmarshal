@@ -28,6 +28,8 @@
     }
   ],
   // Lobby countdown. Override locally in .dev.vars (e.g. LOBBY_SECONDS=0 to start solo games instantly).
-  "vars": { "LOBBY_SECONDS": "60" },
+  // FEEDBACK_EMAIL gets a copy of each feedback form, sent via Resend once the
+  // RESEND_API_KEY secret is set (`npx wrangler secret put RESEND_API_KEY`).
+  "vars": { "LOBBY_SECONDS": "60", "FEEDBACK_EMAIL": "[owner email: Worker secret]" },
   "observability": { "enabled": true }
 }

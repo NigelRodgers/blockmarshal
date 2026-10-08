@@ -10,6 +10,7 @@ import { Input } from './ui/input';
 import { formatArmy, Renderer } from './ui/renderer';
 
 const NAME_KEY = 'blockmarshal.name';
+const RANKS_KEY = 'blockmarshal.ranksCompact';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -355,8 +356,8 @@ $('btn-home').addEventListener('click', () => {
   const v = view;
   const g = v.owner.findIndex((o, i) => o === v.you && v.terrain[i] === Terrain.General);
   if (g < 0) return;
-  renderer.centerOn(v, g);
   selected = g;
+  updateControls();
 });
 
 // ---------- Feedback ----------
@@ -486,6 +487,25 @@ function updateHud(): void {
     )
     .join('');
   updateControls();
+}
+
+// Standings: tap to collapse to colour + numbers (more room for the board), tap again for names.
+function setRanksCompact(compact: boolean): void {
+  $('hud-top').classList.toggle('compact', compact);
+  try {
+    localStorage.setItem(RANKS_KEY, compact ? '1' : '0');
+  } catch {
+    /* just won't be remembered */
+  }
+  measureInsets();
+  if (view) renderer.fit(view);
+}
+
+$('board-ranks').addEventListener('click', () => setRanksCompact(!$('hud-top').classList.contains('compact')));
+try {
+  $('hud-top').classList.toggle('compact', localStorage.getItem(RANKS_KEY) === '1');
+} catch {
+  /* default: names shown */
 }
 
 function measureInsets(): void {

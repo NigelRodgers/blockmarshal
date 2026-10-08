@@ -647,3 +647,31 @@ b.red {
   height: 1px;
   opacity: 0;
 }
+
+/* ---------- Standings: tap to collapse ---------- */
+
+#board-ranks {
+  cursor: pointer;
+}
+
+/* Compact: one row of six chips, colour bar + "troops · land", no names. */
+#hud-top.compact #board-ranks {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 6px;
+}
+
+#hud-top.compact #board-ranks li {
+  padding: 3px 4px 3px 6px;
+  border-left-width: 6px;
+  font-size: 11px;
+}
+
+#hud-top.compact #board-ranks li b {
+  display: none;
+}
+
+#hud-top.compact #board-ranks li span {
+  margin-left: 0;
+  color: var(--text);
+}

@@ -39,6 +39,31 @@ function context(v: unknown): string {
   return JSON.stringify(out);
 }
 
+/** Plain-text email for one submission. */
+export function feedbackEmail(r: FeedbackRecord): { subject: string; text: string } {
+  const faces = ['', '😖', '🙁', '😐', '🙂', '🤩'];
+  const fun = r.rating ? `${r.rating}/5 ${faces[r.rating]}` : 'no rating';
+  const ctx = JSON.parse(r.context) as Record<string, unknown>;
+  return {
+    subject: `Blockmarshal feedback: ${fun}`,
+    text: [
+      `Fun: ${fun}`,
+      '',
+      'Anything confusing?',
+      r.confusing ?? '(blank)',
+      '',
+      'What would make you play again?',
+      r.improve ?? '(blank)',
+      '',
+      `Context: ${Object.entries(ctx)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(', ') || 'none'}`,
+      '',
+      'All responses: npm run feedback (or Cloudflare dashboard > D1 > blockmarshal-feedback).',
+    ].join('\n'),
+  };
+}
+
 /** Validates a submission. Returns null for spam (honeypot filled) or empty feedback. */
 export function cleanFeedback(input: FeedbackInput): FeedbackRecord | null {
   if (typeof input.website === 'string' && input.website.trim()) return null;
