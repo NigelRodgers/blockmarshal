@@ -4,6 +4,14 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-08
 
+**`a583eb8`: Island rule; aggressive bots that hide and lay traps** (not live yet)
+- New rule: generals, cities and mines only move within one connected stretch of your land (sides count, corners don't). No jumping between separate islands.
+- A stocked mine remembers the tile it came from (where you captured or picked it up) and can only be planted on land connected to that tile. If you've lost that tile, it goes with your general's land.
+- Bots (normal/hard) are more aggressive: they value enemy land and cities more and attack sooner. In 12 simulated bot-only matches the first kill came at turn ~68 instead of ~120.
+- Bots hide: once an enemy has seen their general, they move it out of sight, away from enemy land. Cities move when an enemy army nearby could take them. 8-tick cooldown.
+- Bots use mines: they flag known mines on their border (between plans, not mid-march) and walk onto them to capture them. They plant ambush traps one row behind the front, where enemy dots can't see them yet, plus up to 3 defence mines 2 to 3 steps from the general. They move idle mines to an active front and lift their own mines off any path they plan, so they never trip their own.
+- Bot-only games run a bit longer (median ~615 turns vs ~500) because hidden generals are harder to kill.
+
 **`ba04024`: Floating menu, movable buildings, towers off** (live)
 - HUD is a translucent floating ☰ (top-left) with a panel: turn, standings, Move/Flag, Split, Undo, Clear, Home, sound, feedback, leave. The board fills the screen. A badge on ☰ shows Flag / Split / moving-building mode.
 - Long-press your general or a city you hold → Move → tap a pulsing tile. The new spot must be your own open tile, no mine, not touching another general or city (corners included). Instant, no cooldown; troops stay.
