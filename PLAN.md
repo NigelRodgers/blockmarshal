@@ -20,6 +20,8 @@ Supersedes the bots-only daily challenge below. Kept for history; the daily, tut
 
 - **2026-10-08 (mines update):** flags are server-side and private, max 5, reset every match (fixes flags carrying over). Moving onto a mine you flagged captures it into your stock (no blast). The flag gesture (long-press / Flag mode) on your own open tile plants a stocked mine (no separate Drop button): you see a mine icon, enemies only dots. Your own planted mine trips you unless you flagged it (then you pass and it stays armed); enemies trip it unless *they* flagged it (then they capture it). A captured general's planted mines pass to the captor. Every blast is public (event + mark for all players, even in fog) and the mark fades after 10 turns (CRATER_TICKS = 20). Build id shown on the start screen.
 
+- **2026-10-08 (mines polish):** long-press your own planted mine opens a menu: flag/unflag it (safe passage) or pick it up back into stock to move it. Flags on your own land are only allowed on your own mines (so generals/cities/towers can't show a flag that looks like a mine). Bots treat known mines as costly-but-passable, so a bot walled in by mines (or cut off from a target general) blasts through instead of freezing; bot plans are capped by path length (30 tiles), not path cost.
+
 ### Open next steps
 1. ~~Hosting for the game server.~~ Chosen 2026-10-05: Cloudflare Workers + Durable Objects (one `MatchDO` per match, one global `MatchmakerDO`); the free plan covers roughly 170 ten-minute matches a day. See DEPLOY.md.
 2. **Matchmaking that groups humans** (so one human rarely faces five bots): e.g. hold solo lobbies a little longer when other lobbies are filling, merge lobbies before the countdown ends, or show a live "players online" count.

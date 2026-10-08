@@ -10,7 +10,9 @@ export type ClientMessage =
   /** Flag or unflag a tile (max 5). Flags are private to you. */
   | { t: 'flag'; idx: number }
   /** Plant a captured mine on one of your own tiles. */
-  | { t: 'drop'; idx: number };
+  | { t: 'drop'; idx: number }
+  /** Take one of your planted mines back into stock. */
+  | { t: 'pickup'; idx: number };
 
 export interface LobbySlot {
   name: string;

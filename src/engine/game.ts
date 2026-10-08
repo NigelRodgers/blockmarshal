@@ -242,6 +242,8 @@ export function toggleFlag(state: GameState, pid: number, idx: number): boolean 
   const p = state.players[pid];
   if (idx < 0 || idx >= state.size || state.terrain[idx] === Terrain.Mountain) return false;
   if (p.flags.delete(idx)) return true;
+  // On your own land a flag only means something on your own planted mine (safe passage).
+  if (state.owner[idx] === pid && !(state.mine[idx] && state.mineOwner[idx] === pid)) return false;
   if (p.flags.size >= MAX_FLAGS) return false;
   p.flags.add(idx);
   return true;
@@ -256,6 +258,18 @@ export function plantMine(state: GameState, pid: number, idx: number): boolean {
   state.mineOwner[idx] = pid;
   state.mineCount++;
   p.minesInStock--;
+  return true;
+}
+
+/** Take one of your planted mines back into stock (to move it elsewhere). */
+export function pickUpMine(state: GameState, pid: number, idx: number): boolean {
+  if (idx < 0 || idx >= state.size) return false;
+  if (state.owner[idx] !== pid || !state.mine[idx] || state.mineOwner[idx] !== pid) return false;
+  state.mine[idx] = 0;
+  state.mineOwner[idx] = -1;
+  state.mineCount--;
+  state.players[pid].flags.delete(idx);
+  state.players[pid].minesInStock++;
   return true;
 }
 

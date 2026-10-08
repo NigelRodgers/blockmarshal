@@ -20,6 +20,12 @@ interface Profile {
   towerValue: number;
 }
 
+/** Furthest target a bot plans toward, in tiles. */
+const MAX_PATH_STEPS = 30;
+
+/** Extra path cost for walking through a known mine (on top of the risk weight). */
+const MINE_PATH_COST = 25;
+
 const PROFILES: Record<Difficulty, Profile> = {
   easy: { thinkEvery: 3, readsDots: false, riskWeight: 3, aggression: 0.6, defend: false, noise: 0.6, expandRisk: 0.5, towerValue: 0 },
   normal: { thinkEvery: 1, readsDots: true, riskWeight: 10, aggression: 1, defend: true, noise: 0.25, expandRisk: 0.3, towerValue: 70 },
@@ -72,8 +78,12 @@ export class Bot {
     return src;
   }
 
-  private blocked({ s, me, k }: Ctx, i: number): boolean {
-    if (me.memory[i] === Memory.Mountain) return true;
+  /** Only mountains are walls. Known mines are passable at a price (see paths). */
+  private blocked({ me }: Ctx, i: number): boolean {
+    return me.memory[i] === Memory.Mountain;
+  }
+
+  private knownMine({ s, me, k }: Ctx, i: number): boolean {
     return k.mine[i] === 1 && me.memory[i] !== Memory.Crater && s.owner[i] !== this.pid;
   }
 
@@ -101,6 +111,9 @@ export class Bot {
         if (s.owner[v] !== this.pid) {
           cost += k.prob[v] * this.p.riskWeight;
           if (vis[v]) cost += s.army[v] * 0.05;
+          // Blasting through costs troops and a stun: only worth it when there's no way around,
+          // e.g. boxed in by mines or a general walled off behind them.
+          if (this.knownMine(ctx, v)) cost += MINE_PATH_COST;
         }
         if (dist[u] + cost < dist[v]) {
           dist[v] = dist[u] + cost;
@@ -151,10 +164,12 @@ export class Bot {
     let best: { path: number[]; value: number } | null = null;
     let bestScore = 0;
     for (let t = 0; t < s.size; t++) {
-      if (t === src || !isFinite(dist[t]) || dist[t] > 30) continue;
+      if (t === src || !isFinite(dist[t])) continue;
       const value = this.value(ctx, t) * this.p.aggression;
       if (value <= 0) continue;
       const path = trace(prev, src, t);
+      // Limit by distance walked, not path cost, so a route through a mine still counts.
+      if (path.length > MAX_PATH_STEPS) continue;
       if (this.simulate(ctx, path) <= 0) continue;
       const score = (value / (dist[t] + 3)) * (1 + this.p.noise * this.rng());
       if (score > bestScore) {

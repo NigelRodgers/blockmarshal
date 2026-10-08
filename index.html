@@ -51,7 +51,7 @@
             <li>Mines hide under the ground. Tiles you hold show <b class="red">red dots</b> on the side facing a neighbouring mine.</li>
             <li>Stepping on a mine kills up to 15 troops, halves armies next to it and stuns you for 3 turns.</li>
             <li><b>Long-press</b> (or right-click) to flag a tile, up to 5. Only you see your flags.</li>
-            <li>Move onto a <b>flagged mine</b> to capture it instead of setting it off. Then <b>long-press one of your own tiles</b> (the same flag gesture) to plant it: enemies only see dots, you see the mine. Your own mines trip you too, unless you flag them.</li>
+            <li>Move onto a <b>flagged mine</b> to capture it instead of setting it off. Then <b>long-press one of your own tiles</b> (the same flag gesture) to plant it: enemies only see dots, you see the mine. Your own mines trip you too, unless you flag them. <b>Long-press your own mine</b> to flag/unflag it or pick it up and move it.</li>
             <li>Everyone sees every blast. The mark fades after 10 turns.</li>
             <li>The eye is a <b>watchtower</b>: hold it to see further and spot mines around it.</li>
             <li>Capture an enemy crown to take their empire. Last general standing wins.</li>
@@ -113,6 +113,12 @@
         <button id="fb-send" type="submit" class="primary">Send</button>
         <button id="fb-cancel" type="button">Cancel</button>
       </form>
+    </div>
+
+    <div id="mine-menu" class="mine-menu hidden" role="menu">
+      <button id="mm-flag" role="menuitem">Flag it (walk over safely)</button>
+      <button id="mm-pickup" role="menuitem">Pick up (move it)</button>
+      <button id="mm-cancel" role="menuitem">Cancel</button>
     </div>
 
     <div id="toast"></div>

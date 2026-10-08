@@ -1,6 +1,6 @@
 import type { Bot } from '../src/ai/bot';
 import { BOT_NAMES, LOBBY_SECONDS, MAP_H, MAP_W, MATCH_PLAYERS, TICK_MS } from '../src/engine/constants';
-import { clearQueue, createGame, plantMine, queueMove, toggleFlag, undoMove } from '../src/engine/game';
+import { clearQueue, createGame, pickUpMine, plantMine, queueMove, toggleFlag, undoMove } from '../src/engine/game';
 import { mulberry32, shuffle } from '../src/engine/rng';
 import type { GameState } from '../src/engine/types';
 import type { ClientMessage, ServerMessage } from '../src/net/protocol';
@@ -158,6 +158,8 @@ export class Match {
       toggleFlag(s, pid, msg.idx);
     } else if (msg.t === 'drop' && Number.isInteger(msg.idx)) {
       plantMine(s, pid, msg.idx);
+    } else if (msg.t === 'pickup' && Number.isInteger(msg.idx)) {
+      pickUpMine(s, pid, msg.idx);
     }
   }
 

@@ -194,6 +194,7 @@ function onView(v: PlayerView): void {
 
 function showEnd(v: PlayerView): void {
   endShown = true;
+  closeMineMenu();
   selected = -1;
   const won = v.winner === v.you;
   const turn = Math.floor(v.tick / 2);
@@ -268,8 +269,22 @@ function tryMove(from: number, to: number): boolean {
 function flagGesture(idx: number): void {
   if (!canAct() || idx < 0 || view!.terrain[idx] === Terrain.Mountain) return;
   const v = view!;
-  const plantable = v.owner[idx] === v.you && v.terrain[idx] === Terrain.Plain && !v.myMines.includes(idx);
-  if (plantable && v.minesInStock > 0) return plantMine(idx);
+  if (v.owner[idx] === v.you) {
+    // Your own land: your mines get a menu, open tiles get a mine if you have one.
+    if (v.myMines.includes(idx)) return openMineMenu(idx);
+    if (v.terrain[idx] === Terrain.Plain && v.minesInStock > 0) return plantMine(idx);
+    toast(
+      v.terrain[idx] !== Terrain.Plain
+        ? "Mines can't go on generals, cities or towers"
+        : 'No mines to plant yet: flag a mine, then move onto it to capture it',
+    );
+    return;
+  }
+  toggleFlag(idx);
+}
+
+function toggleFlag(idx: number): void {
+  const v = view!;
   const has = v.flags.includes(idx);
   if (!has && v.flags.length >= MAX_FLAGS) {
     toast(`All ${MAX_FLAGS} flags are out. Remove one first.`);
@@ -280,6 +295,46 @@ function flagGesture(idx: number): void {
   buzz(12);
   updateControls();
 }
+
+// ---------- Menu for your own planted mines ----------
+
+let menuTile = -1;
+
+function openMineMenu(idx: number): void {
+  const v = view!;
+  menuTile = idx;
+  $('mm-flag').textContent = v.flags.includes(idx) ? 'Remove flag' : 'Flag it (walk over safely)';
+  const [x, y] = renderer.toScreen((idx % v.w) + 0.5, Math.floor(idx / v.w) + 0.5);
+  const menu = $('mine-menu');
+  show('mine-menu', true);
+  const r = menu.getBoundingClientRect();
+  menu.style.left = `${Math.max(8, Math.min(window.innerWidth - r.width - 8, x - r.width / 2))}px`;
+  menu.style.top = `${Math.max(8, Math.min(window.innerHeight - r.height - 8, y + renderer.cam.scale * 0.6))}px`;
+  buzz(12);
+}
+
+function closeMineMenu(): void {
+  menuTile = -1;
+  show('mine-menu', false);
+}
+
+$('mm-flag').addEventListener('click', () => {
+  if (menuTile >= 0 && canAct()) toggleFlag(menuTile);
+  closeMineMenu();
+});
+$('mm-pickup').addEventListener('click', () => {
+  const v = view;
+  if (menuTile >= 0 && v && canAct()) {
+    send({ t: 'pickup', idx: menuTile });
+    v.myMines = v.myMines.filter((m) => m !== menuTile);
+    v.flags = v.flags.filter((f) => f !== menuTile);
+    v.minesInStock++;
+    toast('Mine picked up. Long-press one of your open tiles to plant it again.');
+    updateControls();
+  }
+  closeMineMenu();
+});
+$('mm-cancel').addEventListener('click', closeMineMenu);
 
 function plantMine(idx: number): void {
   const v = view!;
@@ -310,6 +365,7 @@ new Input($('board'), renderer, {
   getBoard: () => view,
   onTap(idx) {
     if (!view) return;
+    if (menuTile >= 0) return closeMineMenu();
     if (idx < 0) {
       selected = -1;
     } else if (mode === 'flag') {

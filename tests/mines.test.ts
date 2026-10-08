@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { CRATER_TICKS, MAX_FLAGS, MINE_DAMAGE } from '../src/engine/constants';
-import { plantMine, queueMove, step, toggleFlag } from '../src/engine/game';
+import { Bot } from '../src/ai/bot';
+import { pickUpMine, plantMine, queueMove, step, toggleFlag } from '../src/engine/game';
+import { mulberry32 } from '../src/engine/rng';
 import { createFromLayout } from '../src/engine/layout';
 import { buildView } from '../src/net/view';
 
@@ -161,5 +163,78 @@ describe('blasts', () => {
     expect(s.crater[MINE]).toBe(0);
     expect(buildView(s, A).crater[MINE]).toBe(0);
     expect(buildView(s, B).crater[MINE]).toBe(0);
+  });
+});
+
+describe('moving your own mines', () => {
+  it('picks a planted mine back into stock so it can be planted elsewhere', () => {
+    const s = board();
+    s.players[A].minesInStock = 1;
+    plantMine(s, A, 1);
+    toggleFlag(s, A, 1);
+    expect(pickUpMine(s, A, 1)).toBe(true);
+    expect(s.mine[1]).toBe(0);
+    expect(s.players[A].minesInStock).toBe(1);
+    expect(s.players[A].flags.has(1)).toBe(false);
+    expect(plantMine(s, A, 0)).toBe(true);
+  });
+
+  it('cannot pick up natural or enemy mines', () => {
+    const s = board();
+    expect(pickUpMine(s, A, MINE)).toBe(false); // natural, not A's land
+    s.players[B].minesInStock = 1;
+    expect(plantMine(s, B, 3 * 7 + 4)).toBe(true);
+    expect(pickUpMine(s, A, 3 * 7 + 4)).toBe(false);
+  });
+});
+
+describe('flags and planting on your own land', () => {
+  it('only lets you flag your own tiles where you planted a mine', () => {
+    const s = board();
+    expect(toggleFlag(s, A, 0)).toBe(false); // plain own tile
+    expect(toggleFlag(s, A, 8)).toBe(false); // own general
+    s.players[A].minesInStock = 1;
+    plantMine(s, A, 0);
+    expect(toggleFlag(s, A, 0)).toBe(true);
+    expect(toggleFlag(s, A, 0)).toBe(true); // and unflag it again, mine untouched
+    expect(s.mine[0]).toBe(1);
+  });
+
+  it('never plants on generals, cities or towers', () => {
+    const lv = createFromLayout(['GCT.', '....', '...E'], {
+      players: [
+        { name: 'A', isBot: false },
+        { name: 'B', isBot: false },
+      ],
+    });
+    const s = lv.state;
+    for (const i of [1, 2]) s.owner[i] = A;
+    s.players[A].minesInStock = 3;
+    expect(plantMine(s, A, 0)).toBe(false); // general
+    expect(plantMine(s, A, 1)).toBe(false); // city
+    expect(plantMine(s, A, 2)).toBe(false); // tower
+    expect(s.players[A].minesInStock).toBe(3);
+  });
+});
+
+describe('bots and mines', () => {
+  it('blast their way out when boxed in by mines', () => {
+    // B's general sits in a pocket sealed by mines; open ground lies beyond.
+    const lv = createFromLayout(['G........', '.........', '...***...', '...*E*...', '...***...', '.........'], {
+      players: [
+        { name: 'A', isBot: true },
+        { name: 'B', isBot: true },
+      ],
+      generalArmy: [1, 1],
+    });
+    const s = lv.state;
+    const botB = new Bot(B, 'normal', mulberry32(1));
+    for (let t = 0; t < 200; t++) {
+      botB.think(s);
+      step(s);
+    }
+    const land = s.owner.reduce((n, o) => n + (o === B ? 1 : 0), 0);
+    expect(s.crater.some((c) => c > 0) || land > 1).toBe(true);
+    expect(land).toBeGreaterThan(1);
   });
 });
