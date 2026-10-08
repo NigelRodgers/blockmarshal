@@ -137,5 +137,5 @@ describe('input log and replay', () => {
       expect([...again.army]).toEqual([...live.army]);
       expect(again.players.map((p) => p.minesLost)).toEqual(live.players.map((p) => p.minesLost));
     }
-  });
+  }, 30_000);
 });

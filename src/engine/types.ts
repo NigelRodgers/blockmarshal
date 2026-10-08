@@ -20,8 +20,6 @@ export type InputEvent =
 export interface StockedMine {
   /** The tile it came from: it can only be planted on land connected to this tile. */
   from: number;
-  /** Picked up from the player's own planting (a move), not captured: replanting starts a cooldown. */
-  moved: boolean;
 }
 
 export interface Player {
@@ -69,7 +67,7 @@ export interface GameState {
   mine: Uint8Array;
   /** Tick at which a blast mark disappears; 0 = no mark. Blasts are public. */
   crater: Int32Array;
-  /** Tick from which the general, city or moved mine on this tile may move again (0 = any time). */
+  /** Tick from which the general, city or planted mine on this tile may move again (0 = any time). */
   moveReady: Int32Array;
   /** Who planted each mine: -1 for the map's own mines. */
   mineOwner: Int8Array;

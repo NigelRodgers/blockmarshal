@@ -19,7 +19,7 @@ export const TOWER_GARRISON = 25;
 /** Watchtower vision and number-reveal radius (Chebyshev, so 3 = 7x7). */
 export const TOWER_RADIUS = 3;
 
-/** After a general, city or mine moves, it can't move again for this many ticks (100 turns). Captured mines planted for the first time are free. */
+/** After a general or city moves, or a mine is planted (new or moved), it can't move again for this many ticks (100 turns). */
 export const RELOCATE_COOLDOWN_TICKS = 200;
 
 /** Generals and owned cities produce +1 every N ticks (2 ticks = 1 turn). */

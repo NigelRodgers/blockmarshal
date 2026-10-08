@@ -58,7 +58,7 @@ export interface PlayerView {
   minesInStock: number;
   /** One of your tiles per stocked mine: that mine can only be planted on land connected to it. */
   stockAnchors: number[];
-  /** Your general, cities and mines that moved recently: turns until each may move again. */
+  /** Your general, cities and mines that were moved or planted recently: turns until each may move again. */
   moveCooldowns: { idx: number; turns: number }[];
   /** Mines you planted that are still armed (shown to you as mine icons). */
   myMines: number[];
