@@ -45,4 +45,4 @@ npm run deploy   # build + wrangler deploy
 - `worker/`: Cloudflare Worker entry plus the `MatchDO` / `MatchmakerDO` Durable Objects that host the above.
 - `src/ui/`: canvas renderer, touch/mouse input, effects. `src/main.ts` wires up start screen, lobby, HUD and render loop.
 
-See [PLAN.md](PLAN.md) for the current direction, next steps and mechanic ideas.
+Start with [CLAUDE.md](CLAUDE.md) (how to work on it + backlog). Shipped changes: [CHANGELOG.md](CHANGELOG.md). Design history: [PLAN.md](PLAN.md).

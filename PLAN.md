@@ -1,5 +1,7 @@
 # Blockmarshal v1 plan
 
+> **This file is the history of design decisions.** For the current state, how to work on the project and the open backlog, start with [CLAUDE.md](CLAUDE.md). Shipped changes: [CHANGELOG.md](CHANGELOG.md). Player-facing rules and numbers: the [rules doc](https://claude.ai/code/artifact/e88a1b81-7a45-4e71-872f-f065ac6019a5).
+
 ## Direction change, 2026-10-05: live 6-player matches
 
 Supersedes the bots-only daily challenge below. Kept for history; the daily, tutorial, custom games and Commander stub are removed from the app (still in git history).
@@ -24,7 +26,7 @@ Supersedes the bots-only daily challenge below. Kept for history; the daily, tut
 
 - **2026-10-08 (HUD + relocation):** floating translucent ☰ menu replaces the top/bottom bars (board gets the full screen; badge shows Flag/Split/Move-building mode). Long-press your general or a held city → Move: relocates to your own open tile not touching another general or city (8-neighbour), instantly, no cooldown, troops stay. Flagged own mines draw grey. Watchtowers switched off (`TOWERS_PER_MATCH = 0`; engine code and tests kept). Bot stall breaker: no land gained for 40 ticks with 20+ troops → ignores mine path costs until it gains ground. Without towers, bot-only games run longer (median ~670 vs ~500 turns). Rules + numbers doc: https://claude.ai/code/artifact/e88a1b81-7a45-4e71-872f-f065ac6019a5
 
-### Open next steps
+### Open next steps (superseded: see the Backlog in CLAUDE.md)
 1. ~~Hosting for the game server.~~ Chosen 2026-10-05: Cloudflare Workers + Durable Objects (one `MatchDO` per match, one global `MatchmakerDO`); the free plan covers roughly 170 ten-minute matches a day. See DEPLOY.md.
 2. **Matchmaking that groups humans** (so one human rarely faces five bots): e.g. hold solo lobbies a little longer when other lobbies are filling, merge lobbies before the countdown ends, or show a live "players online" count.
 3. Reconnect to a running match after a dropped connection.
