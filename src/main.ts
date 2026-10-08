@@ -178,7 +178,7 @@ function onView(v: PlayerView): void {
       if (ev.victim !== v.you) toast(ev.by === v.you ? `You captured ${victim}'s crown!` : `${by} captured ${victim}`);
     } else if (ev.kind === 'defuse' && ev.player === v.you) {
       buzz(30);
-      toast(`Mine captured! Long-press one of your tiles to plant it (${v.minesInStock} in stock)`);
+      toast(`Mine captured! Long-press one of your tiles connected to it to plant it (${v.minesInStock} in stock)`);
     } else if (ev.kind === 'captureCity' && ev.player === v.you) {
       toast('City captured');
     } else if (ev.kind === 'captureTower' && ev.player === v.you) {
@@ -274,7 +274,11 @@ function flagGesture(idx: number): void {
     // Your own land: your mines and buildings get a menu, open tiles get a mine if you have one.
     if (v.myMines.includes(idx)) return openMineMenu(idx);
     if (v.terrain[idx] === Terrain.General || v.terrain[idx] === Terrain.City) return openBuildMenu(idx);
-    if (v.terrain[idx] === Terrain.Plain && v.minesInStock > 0) return plantMine(idx);
+    if (v.terrain[idx] === Terrain.Plain && v.minesInStock > 0) {
+      if (plantableAnchor(v, idx) >= 0) return plantMine(idx);
+      toast("Mines only move within one connected stretch of your land: plant it where it came from");
+      return;
+    }
     toast(
       v.terrain[idx] !== Terrain.Plain
         ? "Mines can't go on generals, cities or towers"
@@ -320,9 +324,36 @@ function closeBuildMenu(): void {
   updateControls();
 }
 
-/** Same rule the server enforces: your own open tile, no mine, not touching another general or city. */
-function canMoveBuildingTo(v: PlayerView, from: number, to: number): boolean {
-  if (to === from || v.owner[to] !== v.you || v.terrain[to] !== Terrain.Plain || v.myMines.includes(to)) return false;
+/** Your tiles connected to idx through your own land (sides only): the engine's `island`, on the view. */
+function landOf(v: PlayerView, idx: number): Uint8Array {
+  const out = new Uint8Array(v.owner.length);
+  if (v.owner[idx] !== v.you) return out;
+  const stack = [idx];
+  out[idx] = 1;
+  while (stack.length) {
+    const i = stack.pop()!;
+    const x = i % v.w;
+    const y = Math.floor(i / v.w);
+    for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) {
+      if (nx < 0 || ny < 0 || nx >= v.w || ny >= v.h) continue;
+      const j = ny * v.w + nx;
+      if (out[j] || v.owner[j] !== v.you) continue;
+      out[j] = 1;
+      stack.push(j);
+    }
+  }
+  return out;
+}
+
+/** Index into stockAnchors of a mine that may be planted at idx (same connected land), or -1. */
+function plantableAnchor(v: PlayerView, idx: number): number {
+  const land = landOf(v, idx);
+  return v.stockAnchors.findIndex((a) => land[a] === 1);
+}
+
+/** Same rule the server enforces: your own open tile on the same stretch of land, no mine, not touching another general or city. */
+function canMoveBuildingTo(v: PlayerView, from: number, to: number, land = landOf(v, from)): boolean {
+  if (to === from || !land[to] || v.terrain[to] !== Terrain.Plain || v.myMines.includes(to)) return false;
   const x = to % v.w;
   const y = Math.floor(to / v.w);
   for (let dy = -1; dy <= 1; dy++) {
@@ -341,7 +372,8 @@ function relocationTargets(): number[] {
   const v = view;
   if (!v || !relocating || buildTile < 0) return [];
   const out: number[] = [];
-  for (let i = 0; i < v.owner.length; i++) if (canMoveBuildingTo(v, buildTile, i)) out.push(i);
+  const land = landOf(v, buildTile);
+  for (let i = 0; i < v.owner.length; i++) if (canMoveBuildingTo(v, buildTile, i, land)) out.push(i);
   return out;
 }
 
@@ -350,7 +382,7 @@ $('bm-move').addEventListener('click', () => {
   show('build-menu', false);
   relocating = true;
   if (!relocationTargets().length) {
-    toast('No room: it needs one of your open tiles not touching another general or city');
+    toast('No room: it needs an open tile on this stretch of your land, not touching another general or city');
     closeBuildMenu();
     return;
   }
@@ -415,7 +447,8 @@ $('mm-pickup').addEventListener('click', () => {
     v.myMines = v.myMines.filter((m) => m !== menuTile);
     v.flags = v.flags.filter((f) => f !== menuTile);
     v.minesInStock++;
-    toast('Mine picked up. Long-press one of your open tiles to plant it again.');
+    v.stockAnchors = [...v.stockAnchors, menuTile];
+    toast('Mine picked up. Long-press an open tile on this same stretch of land to plant it again.');
     updateControls();
   }
   closeMineMenu();
@@ -425,6 +458,8 @@ $('mm-cancel').addEventListener('click', closeMineMenu);
 function plantMine(idx: number): void {
   const v = view!;
   send({ t: 'drop', idx });
+  const used = plantableAnchor(v, idx);
+  v.stockAnchors = v.stockAnchors.filter((_, k) => k !== used);
   v.minesInStock--;
   v.myMines = [...v.myMines, idx]; // shown now, confirmed next tick
   buzz(20);

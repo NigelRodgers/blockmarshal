@@ -1,4 +1,4 @@
-import { mineDots, playerStats, stunTicksLeft, visionFor } from '../engine/game';
+import { mineDots, playerStats, stockAnchor, stunTicksLeft, visionFor } from '../engine/game';
 import { Memory, Terrain, type GameState } from '../engine/types';
 import type { PlayerView } from './protocol';
 
@@ -67,7 +67,8 @@ export function buildView(state: GameState, pid: number): PlayerView {
     dots,
     crater,
     flags: [...me.flags],
-    minesInStock: me.minesInStock,
+    minesInStock: me.stock.length,
+    stockAnchors: me.stock.map((from) => stockAnchor(state, pid, from)),
     myMines,
     mines,
     queue: me.queue.slice(),

@@ -35,8 +35,12 @@ export interface Player {
   minesLost: number;
   /** Tiles this player has flagged (at most MAX_FLAGS). Private to the player. */
   flags: Set<number>;
-  /** Captured mines ready to be planted in this player's own territory. */
-  minesInStock: number;
+  /**
+   * Captured or picked-up mines ready to plant, one entry per mine: the tile it
+   * came from. A mine can only be planted on land connected to that tile (see
+   * plantMine); if the tile has been lost, it goes with the general's land.
+   */
+  stock: number[];
 }
 
 export type GameEvent =

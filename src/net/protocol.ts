@@ -11,9 +11,9 @@ export type ClientMessage =
   | { t: 'flag'; idx: number }
   /** Plant a captured mine on one of your own tiles. */
   | { t: 'drop'; idx: number }
-  /** Take one of your planted mines back into stock. */
+  /** Take one of your planted mines back into stock (replant on the same stretch of land). */
   | { t: 'pickup'; idx: number }
-  /** Move your general or a city you hold to another of your open tiles. */
+  /** Move your general or a city you hold to another of your open tiles on the same stretch of land. */
   | { t: 'relocate'; from: number; to: number };
 
 export interface LobbySlot {
@@ -54,8 +54,10 @@ export interface PlayerView {
   crater: number[];
   /** Your flags. */
   flags: number[];
-  /** Mines you've captured and can plant. */
+  /** Mines you've captured or picked up and can plant. */
   minesInStock: number;
+  /** One of your tiles per stocked mine: that mine can only be planted on land connected to it. */
+  stockAnchors: number[];
   /** Mines you planted that are still armed (shown to you as mine icons). */
   myMines: number[];
   /** Every live mine, only once the player is out of the game or it has ended. */

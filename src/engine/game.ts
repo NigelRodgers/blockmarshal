@@ -83,7 +83,7 @@ export function buildState(
     stunUntil: -1,
     minesLost: 0,
     flags: new Set<number>(),
-    minesInStock: 0,
+    stock: [],
   }));
 
   const state: GameState = {
@@ -250,22 +250,57 @@ export function toggleFlag(state: GameState, pid: number, idx: number): boolean 
   return true;
 }
 
-/** Plant a captured mine on one of your own plain tiles. */
-export function plantMine(state: GameState, pid: number, idx: number): boolean {
+/**
+ * Every tile of the player's land connected to idx through their own tiles
+ * (sides only). Empty if idx isn't theirs. Generals, cities and mines can only
+ * move within one of these stretches, never between separate islands.
+ */
+export function island(state: GameState, pid: number, idx: number): Uint8Array {
+  const out = new Uint8Array(state.size);
+  if (idx < 0 || idx >= state.size || state.owner[idx] !== pid) return out;
+  const stack = [idx];
+  out[idx] = 1;
+  while (stack.length) {
+    const i = stack.pop()!;
+    for (const j of state.n4[i]) {
+      if (out[j] || state.owner[j] !== pid) continue;
+      out[j] = 1;
+      stack.push(j);
+    }
+  }
+  return out;
+}
+
+/** Where a stocked mine may be planted: the land around the tile it came from, or the general's if that's lost. */
+export function stockAnchor(state: GameState, pid: number, from: number): number {
+  return state.owner[from] === pid ? from : state.players[pid].general;
+}
+
+/** Index in the player's stock of a mine that may be planted at idx, or -1. */
+export function plantableStock(state: GameState, pid: number, idx: number): number {
   const p = state.players[pid];
-  if (p.minesInStock <= 0 || idx < 0 || idx >= state.size) return false;
-  if (state.owner[idx] !== pid || state.terrain[idx] !== Terrain.Plain || state.mine[idx]) return false;
+  if (!p.stock.length || idx < 0 || idx >= state.size) return -1;
+  if (state.owner[idx] !== pid || state.terrain[idx] !== Terrain.Plain || state.mine[idx]) return -1;
+  const land = island(state, pid, idx);
+  return p.stock.findIndex((from) => land[stockAnchor(state, pid, from)] === 1);
+}
+
+/** Plant a stocked mine on one of your own plain tiles, on the same stretch of land it came from. */
+export function plantMine(state: GameState, pid: number, idx: number): boolean {
+  const k = plantableStock(state, pid, idx);
+  if (k < 0) return false;
   state.mine[idx] = 1;
   state.mineOwner[idx] = pid;
   state.mineCount++;
-  p.minesInStock--;
+  state.players[pid].stock.splice(k, 1);
   return true;
 }
 
 /**
- * Move your general or one of your cities to another of your open tiles.
- * The new spot can't touch another general or city, sides or corners.
- * Troops stay where they are; only the building (and its production) moves.
+ * Move your general or one of your cities to another of your open tiles on the
+ * same connected stretch of land. The new spot can't touch another general or
+ * city, sides or corners. Troops stay where they are; only the building (and
+ * its production) moves.
  */
 export function relocate(state: GameState, pid: number, from: number, to: number): boolean {
   if (!canRelocate(state, pid, from, to)) return false;
@@ -275,15 +310,18 @@ export function relocate(state: GameState, pid: number, from: number, to: number
   return true;
 }
 
-export function canRelocate(state: GameState, pid: number, from: number, to: number): boolean {
+export function canRelocate(state: GameState, pid: number, from: number, to: number, land?: Uint8Array): boolean {
   if (from === to || from < 0 || to < 0 || from >= state.size || to >= state.size) return false;
   const t = state.terrain[from];
   if (state.owner[from] !== pid || (t !== Terrain.General && t !== Terrain.City)) return false;
   if (state.owner[to] !== pid || state.terrain[to] !== Terrain.Plain || state.mine[to]) return false;
-  return !state.n8[to].some((j) => j !== from && (state.terrain[j] === Terrain.General || state.terrain[j] === Terrain.City));
+  if (state.n8[to].some((j) => j !== from && (state.terrain[j] === Terrain.General || state.terrain[j] === Terrain.City))) {
+    return false;
+  }
+  return (land ?? island(state, pid, from))[to] === 1;
 }
 
-/** Take one of your planted mines back into stock (to move it elsewhere). */
+/** Take one of your planted mines back into stock, to plant again on the same stretch of land. */
 export function pickUpMine(state: GameState, pid: number, idx: number): boolean {
   if (idx < 0 || idx >= state.size) return false;
   if (state.owner[idx] !== pid || !state.mine[idx] || state.mineOwner[idx] !== pid) return false;
@@ -291,7 +329,7 @@ export function pickUpMine(state: GameState, pid: number, idx: number): boolean 
   state.mineOwner[idx] = -1;
   state.mineCount--;
   state.players[pid].flags.delete(idx);
-  state.players[pid].minesInStock++;
+  state.players[pid].stock.push(idx);
   return true;
 }
 
@@ -378,7 +416,7 @@ function arrive(state: GameState, p: Player, to: number, amount: number): void {
       state.mineOwner[to] = -1;
       state.mineCount--;
       p.flags.delete(to);
-      p.minesInStock++;
+      p.stock.push(to);
       state.events.push({ kind: 'defuse', idx: to, player: p.id });
     } else {
       amount = detonate(state, to, p, amount);
