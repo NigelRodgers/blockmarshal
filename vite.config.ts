@@ -39,7 +39,7 @@ function serviceWorker(): Plugin {
 function buildId(): string {
   let hash = 'dev';
   try {
-    hash = execSync('git rev-parse --short HEAD').toString().trim();
+    hash = execSync('git rev-parse --short HEAD', { cwd: import.meta.dirname }).toString().trim();
   } catch {
     /* not a git checkout */
   }
