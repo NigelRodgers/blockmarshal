@@ -64,7 +64,13 @@ function stopLocal(): void {
   local = null;
 }
 
-/** Play against bots in this browser: used for solo handoffs and when offline. */
+/**
+ * `?quick` in the URL: skip the lobby and play bots in this browser at once (for testing on a phone,
+ * or a link to share). "Play again" stays in quick mode.
+ */
+const QUICK = new URLSearchParams(location.search).has('quick');
+
+/** Play against bots in this browser: used for solo handoffs, offline, and `?quick`. */
 function startLocal(): void {
   sounds.unlock();
   stopLocal();
@@ -565,10 +571,10 @@ $('btn-lobby-leave').addEventListener('click', toStart);
 $('btn-leave').addEventListener('click', () => {
   if (!canAct() || window.confirm('Leave this game? Your general stays on the board, undefended.')) toStart();
 });
-$('btn-again').addEventListener('click', () => play());
+$('btn-again').addEventListener('click', () => (QUICK ? startLocal() : play()));
 $('btn-menu').addEventListener('click', toStart);
 $('btn-watch').addEventListener('click', () => show('gameover', false));
-$('btn-retry').addEventListener('click', () => play());
+$('btn-retry').addEventListener('click', () => (QUICK ? startLocal() : play()));
 $('btn-offline-solo').addEventListener('click', startLocal);
 $('btn-mode').addEventListener('click', () => {
   mode = mode === 'flag' ? 'move' : 'flag';
@@ -846,4 +852,9 @@ requestAnimationFrame(frame);
 
 if (import.meta.env.DEV) {
   Object.assign(window, { __bm: { renderer, net, sounds, send, getView: () => view } });
+}
+
+if (QUICK) {
+  startLocal();
+  track('quick_start');
 }
