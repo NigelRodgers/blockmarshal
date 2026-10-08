@@ -75,9 +75,8 @@ Before every commit: `npx tsc --noEmit && npx tsc --noEmit -p tsconfig.server.js
 7. Matchmaking that groups humans better (beyond "fullest open lobby").
 
 **Balance / design questions**
-8. Moving a general or city is instant with no cooldown (only limited to the same connected stretch of land), so last-second dodges are possible. Consider a cooldown (e.g. 10 turns).
-9. Bots now hide their general and cities and use mines (`a583eb8`). Watch for complaints that bots teleport their general too often (the 8-tick bot cooldown is in `src/ai/bot.ts`; see item 8 for a cooldown for everyone). Easy bots still do none of this.
-10. Bot-only games are longer (median ~615 turns since hiding, ~500 with towers).
+8. Bots now hide their general and cities and use mines (`a583eb8`). Moves now have a 100-turn cooldown for everyone (`7afd7e4`), so a bot dodges at most once per 100 turns. Easy bots still do none of this.
+9. Bot-only games are longer (median ~615 turns since hiding, ~500 with towers).
 
 **Portals (undecided)**: CrazyGames Basic Launch first (no SDK needed), Poki only if numbers are strong (web exclusivity). Needs: shorter lobby (~15 s), a portal build without the service worker/install button, SDK hooks (gameplay start/stop, ads between matches, invite rooms on CrazyGames).
 

@@ -4,6 +4,11 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-08
 
+**`7afd7e4`: Move cooldown** (not live yet)
+- After a general or city moves, it can't move again for 100 turns (`RELOCATE_COOLDOWN_TICKS` 200). Each building has its own cooldown, and it stays with the building. The menu shows "Move general (in N turns)" greyed out.
+- Mines have no cooldown: pick up and replant as often as you like (still within one connected stretch of land).
+- Bots follow the same cooldown, so they hide their general at most once per 100 turns (their own 4-turn limit is gone).
+
 **`a583eb8`: Island rule; aggressive bots that hide and lay traps** (not live yet)
 - New rule: generals, cities and mines only move within one connected stretch of your land (sides count, corners don't). No jumping between separate islands.
 - A stocked mine remembers the tile it came from (where you captured or picked it up) and can only be planted on land connected to that tile. If you've lost that tile, it goes with your general's land.
