@@ -27,8 +27,8 @@ let view: PlayerView | null = null;
 let pending: Move[] = [];
 let selected = -1;
 let half = false;
-/** What a tap on the board does: move troops, toggle a flag, or plant a mine from stock. */
-let mode: 'move' | 'flag' | 'drop' = 'move';
+/** What a tap on the board does: move troops, or flag (which also plants stocked mines). */
+let mode: 'move' | 'flag' = 'move';
 let fitted = false;
 let endShown = false;
 let lobbyEndsAt = 0;
@@ -179,7 +179,7 @@ function onView(v: PlayerView): void {
       if (ev.victim !== v.you) toast(ev.by === v.you ? `You captured ${victim}'s crown!` : `${by} captured ${victim}`);
     } else if (ev.kind === 'defuse' && ev.player === v.you) {
       buzz(30);
-      toast(`Mine captured! ${v.minesInStock} in stock: tap Drop to plant one`);
+      toast(`Mine captured! Long-press one of your tiles to plant it (${v.minesInStock} in stock)`);
     } else if (ev.kind === 'captureCity' && ev.player === v.you) {
       toast('City captured');
     } else if (ev.kind === 'captureTower' && ev.player === v.you) {
@@ -259,10 +259,17 @@ function tryMove(from: number, to: number): boolean {
   return true;
 }
 
-/** Flags live on the server (they matter for capturing mines) but only you ever see yours. */
-function toggleFlag(idx: number): void {
+/**
+ * The flag gesture (long-press, right-click, or a tap in Flag mode).
+ * On one of your own open tiles while you hold captured mines, it plants one;
+ * everywhere else it toggles a flag. Flags live on the server (they matter for
+ * capturing mines) but only you ever see yours.
+ */
+function flagGesture(idx: number): void {
   if (!canAct() || idx < 0 || view!.terrain[idx] === Terrain.Mountain) return;
   const v = view!;
+  const plantable = v.owner[idx] === v.you && v.terrain[idx] === Terrain.Plain && !v.myMines.includes(idx);
+  if (plantable && v.minesInStock > 0) return plantMine(idx);
   const has = v.flags.includes(idx);
   if (!has && v.flags.length >= MAX_FLAGS) {
     toast(`All ${MAX_FLAGS} flags are out. Remove one first.`);
@@ -274,20 +281,13 @@ function toggleFlag(idx: number): void {
   updateControls();
 }
 
-/** Plant a captured mine on one of your own plain tiles. */
-function dropMine(idx: number): void {
-  if (!canAct() || idx < 0) return;
+function plantMine(idx: number): void {
   const v = view!;
-  if (v.minesInStock <= 0) return;
-  if (v.owner[idx] !== v.you || v.terrain[idx] !== Terrain.Plain || v.myMines.includes(idx)) {
-    toast('Plant mines on your own open tiles');
-    return;
-  }
   send({ t: 'drop', idx });
   v.minesInStock--;
-  v.myMines = [...v.myMines, idx];
+  v.myMines = [...v.myMines, idx]; // shown now, confirmed next tick
   buzz(20);
-  if (v.minesInStock === 0) mode = 'move';
+  toast(v.minesInStock ? `Mine planted. ${v.minesInStock} left to plant.` : 'Mine planted. Flag it to walk over it safely.');
   updateControls();
 }
 
@@ -313,9 +313,7 @@ new Input($('board'), renderer, {
     if (idx < 0) {
       selected = -1;
     } else if (mode === 'flag') {
-      toggleFlag(idx);
-    } else if (mode === 'drop') {
-      dropMine(idx);
+      flagGesture(idx);
     } else if (selected >= 0 && adjacent(selected, idx) && tryMove(selected, idx)) {
       // queued
     } else if (idx === selected && ownsTile(idx)) {
@@ -328,7 +326,7 @@ new Input($('board'), renderer, {
     }
     updateControls();
   },
-  onFlag: toggleFlag,
+  onFlag: flagGesture,
   onPathStart(idx) {
     if (mode !== 'move' || !ownsTile(idx) || !canAct()) return false;
     selected = idx;
@@ -384,11 +382,7 @@ $('btn-mode').addEventListener('click', () => {
   mode = mode === 'flag' ? 'move' : 'flag';
   updateControls();
 });
-$('btn-drop').addEventListener('click', () => {
-  mode = mode === 'drop' ? 'move' : 'drop';
-  if (mode === 'drop') toast('Tap one of your tiles to plant a mine');
-  updateControls();
-});
+
 $('btn-half').addEventListener('click', () => {
   half = !half;
   updateControls();
@@ -511,9 +505,8 @@ function updateControls(): void {
   $('mode-label').textContent = mode === 'flag' ? `Flag ${used}/${MAX_FLAGS}` : `Move · ⚑${MAX_FLAGS - used}`;
   $('mode-ico').textContent = mode === 'flag' ? '⚑' : '➔';
   const stock = view?.minesInStock ?? 0;
-  show('btn-drop', stock > 0 || mode === 'drop');
-  $('btn-drop').classList.toggle('on', mode === 'drop');
-  $('drop-label').textContent = `Drop (${stock})`;
+  // Stocked mines show on the Flag button: the same gesture plants them.
+  $('mine-stock').textContent = stock ? `💣${stock}` : '';
   $('btn-half').classList.toggle('on', half);
 }
 

@@ -172,7 +172,7 @@ export class Renderer {
 
     // Blast marks are public and fade out over CRATER_TICKS.
     if (v.crater[i]) this.crater(x, y, s, 0.2 + 0.7 * Math.min(1, v.crater[i] / CRATER_TICKS));
-    if (mines?.has(i) || myMines.has(i)) this.mineIcon(x, y, s, myMines.has(i));
+    if (mines?.has(i) || myMines.has(i)) this.mineIcon(x, y, s);
     const structure = t === Terrain.General || t === Terrain.City || t === Terrain.Tower;
     if (seen && v.army[i] > 0) this.army(x, y, s, v.army[i], structure);
     if (v.dots[i]) this.dots(x, y, s, v.dots[i]);
@@ -318,30 +318,27 @@ export class Renderer {
     ctx.fillRect(x, y, s, s);
   }
 
-  /** A mine. Your own planted mines sit in the bottom-left corner with a white ring, so troops stay readable. */
-  private mineIcon(x: number, y: number, s: number, mine = false): void {
+  /** Classic mine: dark round body with eight bumps, large and centred. */
+  private mineIcon(x: number, y: number, s: number): void {
     const { ctx } = this;
-    const cx = mine ? x + s * 0.24 : x + s / 2;
-    const cy = mine ? y + s * 0.76 : y + s / 2;
-    const r = mine ? s * 0.12 : s * 0.2;
-    if (mine) {
-      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    const cx = x + s / 2;
+    const cy = y + s / 2;
+    const r = s * 0.24;
+    ctx.fillStyle = '#16181c';
+    // Eight bumps around the body.
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
       ctx.beginPath();
-      ctx.arc(cx, cy, r * 1.75, 0, Math.PI * 2);
+      ctx.arc(cx + Math.cos(a) * r * 1.22, cy + Math.sin(a) * r * 1.22, r * 0.3, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.strokeStyle = '#111';
-    ctx.lineWidth = Math.max(1, s * 0.06);
-    ctx.beginPath();
-    for (let k = 0; k < 4; k++) {
-      const a = (k / 4) * Math.PI;
-      ctx.moveTo(cx - Math.cos(a) * r * 1.5, cy - Math.sin(a) * r * 1.5);
-      ctx.lineTo(cx + Math.cos(a) * r * 1.5, cy + Math.sin(a) * r * 1.5);
-    }
-    ctx.stroke();
-    ctx.fillStyle = '#111';
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    // A small shine so it reads as round.
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.38, cy - r * 0.38, r * 0.22, 0, Math.PI * 2);
     ctx.fill();
   }
 

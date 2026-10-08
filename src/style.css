@@ -696,3 +696,16 @@ textarea,
 input {
   touch-action: manipulation;
 }
+
+/* Captured mines waiting to be planted, shown on the Flag/Move button. */
+.ctl {
+  position: relative;
+}
+
+.ctl .stock {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  font-size: 11px;
+  color: var(--text);
+}
