@@ -8,6 +8,24 @@ Real-time territory war (generals.io-style) on a hidden minefield: 6-player free
 - **What shipped, when:** [CHANGELOG.md](CHANGELOG.md). **Open work:** the Backlog below (single source of truth).
 - History of design decisions: [PLAN.md](PLAN.md). Hosting, costs, feedback storage: [DEPLOY.md](DEPLOY.md).
 
+## Vision (2026-10-10)
+
+Two games share one rules engine (`src/engine`) but are separate concepts. Don't let one's goals leak into the other.
+
+| | **Blockmarshal (this site)** | **Reddit edition** (not started) |
+| --- | --- | --- |
+| What | The original: real-time territory war on a hidden minefield | A daily puzzle-strategy game inside Reddit posts |
+| Why | Passion project | Should make money (Reddit Gold, developer funds), or build skills that do |
+| Focus | **1 vs 1 against bots.** Free-for-all and online play stay, but come second | Daily map, turn-based by default + real-time "Blitz" |
+| Pieces | Current rules only: mines, cities, generals. New pieces only if player feedback asks for them | New pieces switched on per mode: towers back, pre-filled boards, kamikaze drones, turrets |
+| Direction set by | Feedback from people the concept is being shared with | Its own design session, then data from the 2-week mode comparison |
+
+**Current phase for the original: hardening for feedback.** The concept is being shared with people, and their feedback will decide where the game goes. Until then, work goes into making what exists solid rather than adding features:
+- **Design and gameplay:** 1 vs 1 vs bot should feel fair, clear and fun from the first game; tune with replay data (`summary.csv`), not guesses.
+- **Logic and code:** rules correct and tested; replays must keep rebuilding games exactly.
+- **Security:** nothing a stranger can break, flood or read (see DEPLOY.md "Request limits").
+- **Way of working:** small, iterative updates, each tested, committed, logged in CHANGELOG and shipped when ready ("go live"). No big-bang rewrites.
+
 ## Start of every session
 
 1. `git status` and `git log --oneline -5` (the working tree should be clean; the newest commit should match CHANGELOG's top entry).
@@ -83,9 +101,9 @@ Before every commit: `npx tsc --noEmit && npx tsc --noEmit -p tsconfig.server.js
 5. Reconnect to a running match after a dropped connection (currently you can't rejoin).
 6. Matchmaking that groups humans better (beyond "fullest open lobby").
 
-**Plan (agreed 2026-10-09)**
-- Week of 2026-10-09: play, read replays (`summary.csv`: human win rate vs bots in 1 vs 1, target 35-50%) and analytics; fix what shows up. Bot difficulty: one level (normal), tuned to ~60% vs the pre-upgrade bot (`ba04024`).
-- Then the **Reddit edition** (Devvit Web), a separate game on the shared engine: `reddit/` folder; new pieces (towers back, pre-filled boards, kamikaze drones, turrets...) switched on per mode; a daily map per date seed, generated a week ahead, bot-checked with a par score, hand-editable until it goes live at 00:00 UTC; both turn-based (default) and real-time "Blitz" with separate leaderboards, compared after 2 weeks. Start with a design session for the new pieces.
+**Plan (agreed 2026-10-09, updated 2026-10-10)**
+- **Now: harden the original for feedback** (see Vision), focused on 1 vs 1 vs bot. Read replays (`summary.csv`: human win rate vs the bot in 1 vs 1, target 35-50%) and analytics; fix what shows up. Bot difficulty: one level (normal), tuned to ~60% vs the pre-upgrade bot (`ba04024`).
+- **From Fri 2026-10-16** (a scheduled reminder, "Blockmarshal: start Reddit edition dev & design", fires at 09:30): start the **Reddit edition** (Devvit Web), a separate game on the shared engine: `reddit/` folder; new pieces (towers back, pre-filled boards, kamikaze drones, turrets...) switched on per mode; a daily map per date seed, generated a week ahead, bot-checked with a par score, hand-editable until it goes live at 00:00 UTC; both turn-based (default) and real-time "Blitz" with separate leaderboards, compared after 2 weeks. Start with a design session for the new pieces, before any code. Engine changes for it must stay switched off here.
 
 **Balance / design questions**
 7. Bots hide their general and cities and use mines (`a583eb8`); softened in `48228dd` (no moves before turn 13, slower decisions, 2-turn reactions, build-up until turn 40, 1 in 5 hides skipped). Re-tune against the pre-upgrade bot: copy `git show ba04024:src/ai/bot.ts` to a temp file and play 80+ duels per setting (noise is about ±6 points).

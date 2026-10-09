@@ -2,6 +2,12 @@
 
 > **This file is the history of design decisions.** For the current state, how to work on the project and the open backlog, start with [CLAUDE.md](CLAUDE.md). Shipped changes: [CHANGELOG.md](CHANGELOG.md). Player-facing rules and numbers: the [rules doc](https://claude.ai/code/artifact/e88a1b81-7a45-4e71-872f-f065ac6019a5).
 
+## Direction, 2026-10-10: two games, one engine
+
+- **Blockmarshal (this site) is the passion project.** Focus narrows to **1 vs 1 against bots**; free-for-all and online play stay but come second. The concept is now being shared, so the next phase is hardening (design, security, code, logic, gameplay) in small iterative updates, and player feedback decides what comes after. No new pieces unless feedback asks for them.
+- **The Reddit edition is a separate concept** that shares the engine and some mechanics: a daily puzzle-strategy game in Reddit posts (turn-based by default, real-time "Blitz" too), with new pieces (towers, pre-filled boards, drones, turrets). Its goal is to make money, or build skills that do. Development starts the week of 2026-10-16 with a design session.
+- **Bots (2026-10-09):** one difficulty level for everyone, softened from the 2026-10-08 upgrade: no moves before turn 13, slower decisions, 2-turn reactions, build-up until turn 40, 1 in 5 hides skipped. Tuned to win ~60% of 1 vs 1 games against the earlier bot (61% over 160 games).
+
 ## Direction change, 2026-10-05: live 6-player matches
 
 Supersedes the bots-only daily challenge below. Kept for history; the daily, tutorial, custom games and Commander stub are removed from the app (still in git history).
