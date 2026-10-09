@@ -1,14 +1,14 @@
-import { MAX_FLAGS, MINE_DAMAGE } from '../engine/constants';
+import { BOT_ACTION_DELAY_TICKS, MAX_FLAGS, MINE_DAMAGE } from '../engine/constants';
 import {
   canPickUpMine,
   canRelocate,
   island,
   mineLocked,
+  pendingPlants,
   pickUpMine,
   plantableStock,
-  plantMine,
   queueMove,
-  relocate,
+  schedule,
   toggleFlag,
   visionFor,
 } from '../engine/game';
@@ -337,6 +337,7 @@ export class Bot {
     const order = [...this.exposed].sort((a, b) => Number(b === me.general) - Number(a === me.general));
     for (const b of order) {
       if (s.tick < s.moveReady[b]) continue; // moved recently: the 100-turn cooldown holds it
+      if (s.pending.some((a) => a.pid === this.pid && a.from === b)) continue; // already on its way
       if (b !== me.general && !enemies.some((e) => manhattan(s.w, e, b) <= 4 && s.army[e] >= s.army[b])) continue;
       const land = island(s, this.pid, b);
       let best = -1;
@@ -353,7 +354,8 @@ export class Bot {
           best = t;
         }
       }
-      if (best < 0 || !relocate(s, this.pid, b, best)) continue;
+      // Like a human picking a spot, the move lands 3 turns later, and only if still legal then.
+      if (best < 0 || !schedule(s, this.pid, 'relocate', b, best, BOT_ACTION_DELAY_TICKS)) continue;
       // One move per tick; the engine's cooldown then pins that building for 100 turns.
       this.exposed.delete(b);
       return;
@@ -372,11 +374,13 @@ export class Bot {
       if (s.n4[i].some((j) => s.owner[j] === this.pid)) toggleFlag(s, this.pid, i);
     }
 
-    if (me.stock.length) {
+    if (me.stock.length > pendingPlants(s, this.pid)) {
+      // Planting lands 3 turns later (like a human's long-press), if the tile is still ours then.
       const t = this.trapSpot(ctx);
-      if (t >= 0) plantMine(s, this.pid, t);
+      if (t >= 0) schedule(s, this.pid, 'plant', -1, t, BOT_ACTION_DELAY_TICKS);
       return;
     }
+    if (me.stock.length) return; // everything in stock is already being planted
     // Nothing in stock: every so often, bring an idle mine from a quiet corner to a front with an enemy.
     if (s.tick % 10 || this.trapSpot(ctx, true) < 0) return;
     const g = me.general;
@@ -414,6 +418,7 @@ export class Bot {
     }
     // Our queued moves would walk into a trap planted on their path.
     const route = new Set(me.queue.map((m) => m.to));
+    for (const a of s.pending) if (a.pid === this.pid) route.add(a.to); // tiles already spoken for
     let best = -1;
     let bestScore = 0;
     for (let t = 0; t < s.size; t++) {

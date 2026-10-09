@@ -14,7 +14,21 @@ export interface Move {
 export type InputEvent =
   | { tick: number; pid: number; op: 'move'; from: number; to: number; half: boolean }
   | { tick: number; pid: number; op: 'undo' }
-  | { tick: number; pid: number; op: 'clear' };
+  | { tick: number; pid: number; op: 'clear' }
+  | { tick: number; pid: number; op: 'flag'; idx: number }
+  | { tick: number; pid: number; op: 'drop'; idx: number }
+  | { tick: number; pid: number; op: 'pickup'; idx: number }
+  | { tick: number; pid: number; op: 'relocate'; from: number; to: number };
+
+/** A delayed action (bots): carried out at tick `at` if still legal then, else dropped. */
+export interface PendingAction {
+  pid: number;
+  kind: 'relocate' | 'plant';
+  /** Building tile for 'relocate'; unused (-1) for 'plant'. */
+  from: number;
+  to: number;
+  at: number;
+}
 
 /** A mine in a player's stock. */
 export interface StockedMine {
@@ -81,4 +95,6 @@ export interface GameState {
   mineRate: number;
   /** Inputs from human players, for replays and score verification. */
   log: InputEvent[];
+  /** Delayed actions waiting for their tick (see BOT_ACTION_DELAY_TICKS). */
+  pending: PendingAction[];
 }

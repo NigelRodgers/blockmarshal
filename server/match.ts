@@ -164,13 +164,13 @@ export class Match {
     } else if (msg.t === 'clear') {
       clearQueue(s, pid);
     } else if (msg.t === 'flag' && Number.isInteger(msg.idx)) {
-      toggleFlag(s, pid, msg.idx);
+      if (toggleFlag(s, pid, msg.idx)) s.log.push({ tick: s.tick, pid, op: 'flag', idx: msg.idx });
     } else if (msg.t === 'drop' && Number.isInteger(msg.idx)) {
-      plantMine(s, pid, msg.idx);
+      if (plantMine(s, pid, msg.idx)) s.log.push({ tick: s.tick, pid, op: 'drop', idx: msg.idx });
     } else if (msg.t === 'pickup' && Number.isInteger(msg.idx)) {
-      pickUpMine(s, pid, msg.idx);
+      if (pickUpMine(s, pid, msg.idx)) s.log.push({ tick: s.tick, pid, op: 'pickup', idx: msg.idx });
     } else if (msg.t === 'relocate' && Number.isInteger(msg.from) && Number.isInteger(msg.to)) {
-      relocate(s, pid, msg.from, msg.to);
+      if (relocate(s, pid, msg.from, msg.to)) s.log.push({ tick: s.tick, pid, op: 'relocate', from: msg.from, to: msg.to });
     }
   }
 

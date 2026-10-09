@@ -25,6 +25,13 @@ export const TOWER_RADIUS = 3;
  */
 export const RELOCATE_COOLDOWN_TICKS = 200;
 
+/**
+ * Bots plant mines and move their general or cities with this delay (3 turns), like the time
+ * a human spends long-pressing and choosing. The action happens on the third turn and fails
+ * if, by then, it has become illegal (the tile was taken, the land was cut in two...).
+ */
+export const BOT_ACTION_DELAY_TICKS = 6;
+
 /** Generals and owned cities produce +1 every N ticks (2 ticks = 1 turn). */
 export const GENERAL_GROWTH_TICKS = 2;
 

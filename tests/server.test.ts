@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { MATCH_PLAYERS } from '../src/engine/constants';
+import { MATCH_PLAYERS, MODES } from '../src/engine/constants';
+import { mulberry32 } from '../src/engine/rng';
+import { replay } from '../src/session';
 import type { PlayerView, ServerMessage } from '../src/net/protocol';
 import { LobbyIndex } from '../server/lobbyIndex';
 import { LocalGame } from '../src/local';
@@ -289,5 +291,40 @@ describe('feedback email', () => {
     expect(text).toContain('Anything confusing?\ndots');
     expect(text).toContain('(blank)');
     expect(text).toContain('Context: screen=end, turn=40');
+  });
+});
+
+describe('replays', () => {
+  it('rebuild a server game exactly from seed + log, including flags, pick-ups and building moves', () => {
+    const match = new Match('r1', () => {}, { autoRun: false, lobbyMs: 0, seed: 99, mode: 'duel' });
+    const a = conn('Ann');
+    match.add(a);
+    const s = match.state!;
+    const rng = mulberry32(5);
+    for (let t = 0; t < 600 && s.winner < 0; t++) {
+      const mine = [...s.owner.keys()].filter((i) => s.owner[i] === 0);
+      const pick = () => mine[Math.floor(rng() * mine.length)];
+      const r = rng();
+      if (r < 0.5) {
+        const from = pick();
+        match.input(a, { t: 'move', from, to: s.n4[from][Math.floor(rng() * s.n4[from].length)], half: rng() < 0.2 });
+      } else if (r < 0.56) match.input(a, { t: 'flag', idx: Math.floor(rng() * s.size) });
+      else if (r < 0.6) match.input(a, { t: 'pickup', idx: pick() });
+      else if (r < 0.64) match.input(a, { t: 'relocate', from: s.players[0].general, to: pick() });
+      else if (r < 0.66) match.input(a, { t: 'drop', idx: pick() });
+      match.tick();
+    }
+    const ops = new Set(s.log.map((e) => e.op));
+    expect(ops.has('flag')).toBe(true);
+    expect(ops.has('relocate')).toBe(true);
+
+    const { w, h, mineRate, mountainRate } = MODES.duel;
+    const cfg = { w, h, seed: 99, mineRate, mountainRate, players: s.players.map((p) => ({ name: p.name, isBot: p.isBot })) };
+    const again = replay(cfg, 'normal', s.log, s.tick);
+    expect(again.tick).toBe(s.tick);
+    expect([...again.owner]).toEqual([...s.owner]);
+    expect([...again.army]).toEqual([...s.army]);
+    expect([...again.terrain]).toEqual([...s.terrain]);
+    expect([...again.mine]).toEqual([...s.mine]);
   });
 });

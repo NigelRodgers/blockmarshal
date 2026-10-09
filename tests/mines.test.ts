@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { CRATER_TICKS, MAX_FLAGS, MINE_DAMAGE, RELOCATE_COOLDOWN_TICKS } from '../src/engine/constants';
+import { BOT_ACTION_DELAY_TICKS, CRATER_TICKS, MAX_FLAGS, MINE_DAMAGE, RELOCATE_COOLDOWN_TICKS } from '../src/engine/constants';
 import { Bot } from '../src/ai/bot';
-import { pickUpMine, plantMine, queueMove, relocate, step, toggleFlag } from '../src/engine/game';
+import { pickUpMine, plantMine, queueMove, relocate, schedule, step, toggleFlag } from '../src/engine/game';
 import { mulberry32 } from '../src/engine/rng';
 import { createFromLayout } from '../src/engine/layout';
 import { buildView } from '../src/net/view';
@@ -398,6 +398,8 @@ describe('bot tactics', () => {
     s.owner[9 + 4] = A; // A takes (4,1), right next to B's general
     s.army[9 + 4] = 5;
     new Bot(B, 'normal', mulberry32(1)).think(s);
+    expect(s.players[B].general).toBe(spotted); // decided, but it takes 3 turns
+    for (let t = 0; t < BOT_ACTION_DELAY_TICKS; t++) step(s);
     const g = s.players[B].general;
     expect(g).not.toBe(spotted);
     expect(s.terrain[g]).toBe(3);
@@ -409,6 +411,8 @@ describe('bot tactics', () => {
     const g = s.players[B].general;
     s.players[B].stock = [{ from: g }];
     new Bot(B, 'normal', mulberry32(1)).think(s);
+    expect(s.players[B].stock.length).toBe(1); // planting takes 3 turns
+    for (let t = 0; t < BOT_ACTION_DELAY_TICKS; t++) step(s);
     expect(s.players[B].stock.length).toBe(0);
     const planted = [...s.mineOwner.keys()].filter((i) => s.mineOwner[i] === B && s.mine[i]);
     expect(planted.length).toBe(1);
@@ -436,5 +440,52 @@ describe('bot tactics', () => {
     expect(s.mine[mine] === 0 || s.mineOwner[mine] === B).toBe(true);
     const banked = s.players[B].stock.length + s.mineOwner.filter((o) => o === B).length;
     expect(banked).toBe(1);
+  });
+});
+
+describe('delayed actions (bots)', () => {
+  function land() {
+    const lv = createFromLayout(['ooooooo', 'oGooooo', 'ooooooo', '......E'], {
+      players: [
+        { name: 'A', isBot: true },
+        { name: 'B', isBot: true },
+      ],
+    });
+    return lv.state;
+  }
+
+  it('happen on the third turn, not before', () => {
+    const s = land();
+    expect(schedule(s, A, 'relocate', 8, 4, BOT_ACTION_DELAY_TICKS)).toBe(true);
+    for (let t = 0; t < BOT_ACTION_DELAY_TICKS - 1; t++) step(s);
+    expect(s.players[A].general).toBe(8);
+    step(s);
+    expect(s.players[A].general).toBe(4);
+  });
+
+  it('fail if the target is taken in the meantime', () => {
+    const s = land();
+    schedule(s, A, 'relocate', 8, 4, BOT_ACTION_DELAY_TICKS);
+    s.owner[4] = B; // recaptured before the move lands
+    for (let t = 0; t < BOT_ACTION_DELAY_TICKS; t++) step(s);
+    expect(s.players[A].general).toBe(8);
+    expect(s.pending).toEqual([]);
+  });
+
+  it('fail if the land is cut in two in the meantime', () => {
+    const s = land();
+    s.players[A].stock = [{ from: 8 }];
+    expect(schedule(s, A, 'plant', -1, 6, BOT_ACTION_DELAY_TICKS)).toBe(true); // (6,0)
+    for (const i of [5, 12, 19]) s.owner[i] = B; // column 5 taken: (6,0) is cut off from the general
+    for (let t = 0; t < BOT_ACTION_DELAY_TICKS; t++) step(s);
+    expect(s.mine[6]).toBe(0);
+    expect(s.players[A].stock.length).toBe(1); // the mine stays in stock
+  });
+
+  it('never plant more mines than are in stock', () => {
+    const s = land();
+    s.players[A].stock = [{ from: 8 }];
+    expect(schedule(s, A, 'plant', -1, 3, BOT_ACTION_DELAY_TICKS)).toBe(true);
+    expect(schedule(s, A, 'plant', -1, 5, BOT_ACTION_DELAY_TICKS)).toBe(false);
   });
 });

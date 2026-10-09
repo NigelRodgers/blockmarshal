@@ -14,7 +14,7 @@ import {
 } from './constants';
 import { buildNeighbors } from './grid';
 import { generateMap, type GeneratedMap } from './mapgen';
-import { Memory, Terrain, type GameState, type InputEvent, type Move, type Player } from './types';
+import { Memory, Terrain, type GameState, type InputEvent, type Move, type PendingAction, type Player } from './types';
 
 export interface PlayerConfig {
   name: string;
@@ -108,6 +108,7 @@ export function buildState(
     mineCount,
     mineRate,
     log: [],
+    pending: [],
   };
 
   for (const p of players) {
@@ -364,7 +365,39 @@ export function canPickUpMine(state: GameState, pid: number, idx: number): boole
   return state.owner[idx] === pid && state.mine[idx] === 1 && state.mineOwner[idx] === pid;
 }
 
-/** Apply a logged input during replay, without re-logging it. */
+/**
+ * Schedule a general/city move or a mine planting to happen `delay` ticks from now
+ * (bots use BOT_ACTION_DELAY_TICKS). Refused if it's illegal now or the same building
+ * or tile already has an action waiting. The action is checked again when it's due.
+ */
+export function schedule(state: GameState, pid: number, kind: PendingAction['kind'], from: number, to: number, delay: number): boolean {
+  if (state.pending.some((a) => a.pid === pid && (a.to === to || (kind === 'relocate' && a.from === from)))) return false;
+  if (kind === 'relocate' ? !canRelocate(state, pid, from, to) : plantableStock(state, pid, to) < 0) return false;
+  if (kind === 'plant' && pendingPlants(state, pid) >= state.players[pid].stock.length) return false;
+  state.pending.push({ pid, kind, from: kind === 'plant' ? -1 : from, to, at: state.tick + delay });
+  return true;
+}
+
+/** Plantings this player has waiting (each will use one stocked mine). */
+export function pendingPlants(state: GameState, pid: number): number {
+  return state.pending.filter((a) => a.pid === pid && a.kind === 'plant').length;
+}
+
+/** Carry out due actions that are still legal; drop the ones that were intercepted. */
+function runPending(state: GameState): void {
+  if (!state.pending.length) return;
+  const later: PendingAction[] = [];
+  for (const a of state.pending) {
+    if (a.at > state.tick) later.push(a);
+    else if (state.players[a.pid].alive) {
+      if (a.kind === 'relocate') relocate(state, a.pid, a.from, a.to);
+      else plantMine(state, a.pid, a.to);
+    }
+  }
+  state.pending = later;
+}
+
+/** Apply a logged input during replay. Moves skip the log; other actions are re-logged and replay() resets the log. */
 export function applyInput(state: GameState, ev: InputEvent): void {
   const p = state.players[ev.pid];
   if (ev.op === 'move') {
@@ -373,8 +406,18 @@ export function applyInput(state: GameState, ev: InputEvent): void {
     }
   } else if (ev.op === 'undo') {
     p.queue.pop();
-  } else {
+  } else if (ev.op === 'clear') {
     p.queue.length = 0;
+  } else if (!p.alive) {
+    // Actions from a player who is out do nothing (as live).
+  } else if (ev.op === 'flag') {
+    toggleFlag(state, ev.pid, ev.idx);
+  } else if (ev.op === 'drop') {
+    plantMine(state, ev.pid, ev.idx);
+  } else if (ev.op === 'pickup') {
+    pickUpMine(state, ev.pid, ev.idx);
+  } else {
+    relocate(state, ev.pid, ev.from, ev.to);
   }
 }
 
@@ -389,6 +432,8 @@ export function step(state: GameState): void {
     const p = state.players[(state.tick + k) % n];
     if (p.alive) executeNext(state, p);
   }
+  // Delayed actions resolve after this tick's moves, so a capture or cut-off this tick stops them.
+  runPending(state);
 
   if (state.tick % GENERAL_GROWTH_TICKS === 0) {
     for (let i = 0; i < state.size; i++) {
