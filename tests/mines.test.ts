@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BOT_ACTION_DELAY_TICKS, CRATER_TICKS, MAX_FLAGS, MAX_MINE_STOCK, MINE_DAMAGE, RELOCATE_COOLDOWN_TICKS } from '../src/engine/constants';
-import { Bot } from '../src/ai/bot';
+import { Bot, BOT_OPENING_TICKS } from '../src/ai/bot';
 import { pickUpMine, plantMine, queueMove, relocate, schedule, step, toggleFlag } from '../src/engine/game';
 import { mulberry32 } from '../src/engine/rng';
 import { createFromLayout } from '../src/engine/layout';
@@ -397,9 +397,14 @@ describe('bot tactics', () => {
     const spotted = 2 * 9 + 4;
     s.owner[9 + 4] = A; // A takes (4,1), right next to B's general
     s.army[9 + 4] = 5;
-    new Bot(B, 'normal', mulberry32(1)).think(s);
-    expect(s.players[B].general).toBe(spotted); // decided, but it takes 3 turns
-    for (let t = 0; t < BOT_ACTION_DELAY_TICKS; t++) step(s);
+    s.tick = BOT_OPENING_TICKS;
+    const bot = new Bot(B, 'normal', mulberry32(1));
+    bot.think(s);
+    expect(s.players[B].general).toBe(spotted); // it notices a turn or two later, then the move takes 3 turns
+    for (let t = 0; t < 30 && s.players[B].general === spotted; t++) {
+      bot.think(s);
+      step(s);
+    }
     const g = s.players[B].general;
     expect(g).not.toBe(spotted);
     expect(s.terrain[g]).toBe(3);
@@ -410,7 +415,11 @@ describe('bot tactics', () => {
     const s = bLand();
     const g = s.players[B].general;
     s.players[B].stock = [{ from: g }];
-    new Bot(B, 'normal', mulberry32(1)).think(s);
+    const bot = new Bot(B, 'normal', mulberry32(1));
+    bot.think(s);
+    expect(s.players[B].stock.length).toBe(1); // bots don't act before turn 13
+    s.tick = BOT_OPENING_TICKS;
+    bot.think(s);
     expect(s.players[B].stock.length).toBe(1); // planting takes 3 turns
     for (let t = 0; t < BOT_ACTION_DELAY_TICKS; t++) step(s);
     expect(s.players[B].stock.length).toBe(0);
@@ -431,7 +440,7 @@ describe('bot tactics', () => {
     });
     const s = lv.state;
     const bot = new Bot(B, 'normal', mulberry32(1));
-    for (let t = 0; t < 30; t++) {
+    for (let t = 0; t < BOT_OPENING_TICKS + 40; t++) {
       bot.think(s);
       step(s);
     }
@@ -523,6 +532,7 @@ describe('bot planting pace', () => {
     const s = lv.state;
     for (let i = 9; i < 45; i++) if (s.owner[i] < 0) ((s.owner[i] = B), (s.army[i] = 1));
     give(s, B, 4);
+    s.tick = BOT_OPENING_TICKS;
     const bot = new Bot(B, 'normal', mulberry32(1));
     const plantedAt: number[] = [];
     for (let t = 0; t < 40; t++) {
@@ -534,5 +544,26 @@ describe('bot planting pace', () => {
     }
     expect(plantedAt.length).toBeGreaterThanOrEqual(2);
     for (let k = 1; k < plantedAt.length; k++) expect(plantedAt[k] - plantedAt[k - 1]).toBeGreaterThanOrEqual(BOT_ACTION_DELAY_TICKS);
+  });
+});
+
+describe('bot opening', () => {
+  it('makes no move before turn 13, then opens with its whole stack', () => {
+    const lv = createFromLayout(['G........', '.........', '.........', '.........', '........E'], {
+      players: [
+        { name: 'A', isBot: false },
+        { name: 'B', isBot: true },
+      ],
+    });
+    const s = lv.state;
+    const bot = new Bot(B, 'normal', mulberry32(1));
+    let firstMove = -1;
+    for (let t = 0; t < 60 && firstMove < 0; t++) {
+      bot.think(s);
+      step(s);
+      if (s.owner.filter((o) => o === B).length > 1) firstMove = s.tick;
+    }
+    expect(firstMove).toBeGreaterThanOrEqual(BOT_OPENING_TICKS);
+    expect(firstMove).toBeLessThan(BOT_OPENING_TICKS + 6);
   });
 });

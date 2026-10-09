@@ -34,7 +34,20 @@ interface Profile {
   hides: boolean;
   /** Flags and captures mines, then plants them as traps. */
   usesMines: boolean;
+  /** Ticks a threat (an enemy near the general, or seeing a building) must last before the bot reacts. */
+  reactionTicks: number;
+  /** Before this tick, enemy targets are worth only `peaceFactor` of their value: bots build up first. */
+  peaceTicks: number;
+  peaceFactor: number;
+  /** Chance a bot doesn't bother hiding a building an enemy has spotted. */
+  hideSkip: number;
 }
+
+/**
+ * No bot moves before turn 13 (tick 26): like a human "13-start", the general builds up
+ * 13 troops, then the bot opens with the whole stack.
+ */
+export const BOT_OPENING_TICKS = 26;
 
 /** Furthest target a bot plans toward, in tiles. */
 const MAX_PATH_STEPS = 30;
@@ -56,9 +69,12 @@ const IDLE_MINE_DISTANCE = 6;
 const FLAGGED_MINE_VALUE = 15;
 
 const PROFILES: Record<Difficulty, Profile> = {
-  easy: { thinkEvery: 3, readsDots: false, riskWeight: 3, aggression: 0.6, defend: false, noise: 0.6, expandRisk: 0.5, towerValue: 0, hides: false, usesMines: false },
-  normal: { thinkEvery: 1, readsDots: true, riskWeight: 10, aggression: 1.4, defend: true, noise: 0.25, expandRisk: 0.3, towerValue: 70, hides: true, usesMines: true },
-  hard: { thinkEvery: 1, readsDots: true, riskWeight: 16, aggression: 2, defend: true, noise: 0.08, expandRisk: 0.2, towerValue: 70, hides: true, usesMines: true },
+  easy: { thinkEvery: 3, readsDots: false, riskWeight: 3, aggression: 0.6, defend: false, noise: 0.6, expandRisk: 0.5, towerValue: 0, hides: false, usesMines: false, reactionTicks: 6, peaceTicks: 120, peaceFactor: 0.25, hideSkip: 1 },
+  // The one level everyone plays: decides a little less often than every half-turn (1.7),
+  // reacts two turns late, builds up before attacking, and skips 1 in 5 hides. Tuned to win
+  // ~60% of 1 vs 1 games against the pre-2026-10-08 bot (ba04024): 61% over 160 games.
+  normal: { thinkEvery: 1.7, readsDots: true, riskWeight: 10, aggression: 1.1, defend: true, noise: 0.25, expandRisk: 0.3, towerValue: 70, hides: true, usesMines: true, reactionTicks: 4, peaceTicks: 80, peaceFactor: 0.25, hideSkip: 0.2 },
+  hard: { thinkEvery: 1, readsDots: true, riskWeight: 16, aggression: 2, defend: true, noise: 0.08, expandRisk: 0.2, towerValue: 70, hides: true, usesMines: true, reactionTicks: 0, peaceTicks: 0, peaceFactor: 1, hideSkip: 0 },
 };
 
 interface Ctx {
@@ -75,8 +91,12 @@ export class Bot {
   private lastGain = 0;
   /** Set when the bot has been stuck: plans ignore mine costs until it gains ground again. */
   private reckless = false;
-  /** Our general/cities an enemy has had in view since they last moved. */
-  private readonly exposed = new Set<number>();
+  /** Our general/cities an enemy has had in view since they last moved, with the tick it was first seen. */
+  private readonly exposed = new Map<number, number>();
+  /** Exposed buildings the bot decided not to hide (until they're out of sight again). */
+  private readonly unhidden = new Set<number>();
+  /** Tick a threat to the general was first seen (-1: none right now). */
+  private threatSince = -1;
 
   constructor(
     readonly pid: number,
@@ -88,7 +108,8 @@ export class Bot {
 
   think(s: GameState): void {
     const me = s.players[this.pid];
-    if (!me.alive || s.tick % this.p.thinkEvery) return;
+    // Moves queued now run on the next tick: nothing before turn 13.
+    if (!me.alive || s.tick + 1 < BOT_OPENING_TICKS || !this.thinksAt(s.tick)) return;
     const busy = me.queue.length > 0;
     // Hiding and mine work don't use the move queue, so they run even mid-plan.
     if (busy && !this.p.hides && !this.p.usesMines) return;
@@ -106,6 +127,14 @@ export class Bot {
     if (plan && (plan.value >= 35 || s.army[src] >= 10)) return this.queuePath(ctx, plan.path);
     if (this.expand(ctx)) return;
     if (plan) this.queuePath(ctx, plan.path);
+  }
+
+  /**
+   * Decision rhythm. `thinkEvery` may be fractional: 1.5 means 2 decisions every 3 ticks,
+   * a reaction speed between "every half-turn" and "every turn".
+   */
+  private thinksAt(tick: number): boolean {
+    return Math.floor(tick / this.p.thinkEvery) !== Math.floor((tick - 1) / this.p.thinkEvery);
   }
 
   /** Notice when the bot stops gaining ground despite having troops: it's boxed in or blocked. */
@@ -230,14 +259,16 @@ export class Bot {
     const o = s.owner[t];
     if (o === this.pid) return 0;
     const bonus = this.prize(ctx, t) ? FLAGGED_MINE_VALUE : 0;
+    // Early on, bots build up rather than pick fights (a general in reach is still fair game).
+    const peace = s.tick < this.p.peaceTicks ? this.p.peaceFactor : 1;
     if (vis[t]) {
       if (o >= 0 && s.terrain[t] === Terrain.General) return 1000;
-      if (o >= 0 && s.terrain[t] === Terrain.City) return 160 + bonus;
-      if (o >= 0) return 40 + bonus;
+      if (o >= 0 && s.terrain[t] === Terrain.City) return (160 + bonus) * peace;
+      if (o >= 0) return (40 + bonus) * peace;
       if (s.terrain[t] === Terrain.City) return 70;
       if (s.terrain[t] === Terrain.Tower) return this.p.towerValue;
     } else if (me.memory[t] === Memory.General) {
-      return 500;
+      return 500 * peace;
     }
     if (bonus) return bonus;
     return (k.safe[t] ? 12 : 8) * (1 - k.prob[t]);
@@ -300,7 +331,13 @@ export class Bot {
         threat = Math.max(threat, s.army[i]);
       }
     }
-    if (threat < 6 || threat < s.army[g] - 1) return false;
+    if (threat < 6 || threat < s.army[g] - 1) {
+      this.threatSince = -1;
+      return false;
+    }
+    // Like a human, it takes a moment to notice the danger.
+    if (this.threatSince < 0) this.threatSince = s.tick;
+    if (s.tick - this.threatSince < this.p.reactionTicks) return false;
     const src = this.biggestStack(ctx, g);
     if (src < 0 || s.army[src] < 3) return false;
     const { prev } = this.paths(ctx, src);
@@ -330,15 +367,26 @@ export class Bot {
     const { s, me } = ctx;
     const isBuilding = (b: number) =>
       s.owner[b] === this.pid && (s.terrain[b] === Terrain.General || s.terrain[b] === Terrain.City);
-    for (const b of [...this.exposed]) if (!isBuilding(b)) this.exposed.delete(b);
-    for (let b = 0; b < s.size; b++) if (isBuilding(b) && this.seenByEnemy(ctx, b)) this.exposed.add(b);
+    for (const b of [...this.exposed.keys()]) if (!isBuilding(b)) this.exposed.delete(b);
+    for (let b = 0; b < s.size; b++) {
+      if (!isBuilding(b)) continue;
+      if (!this.seenByEnemy(ctx, b)) {
+        this.unhidden.delete(b); // out of sight: a later sighting gets a fresh decision
+        continue;
+      }
+      if (this.exposed.has(b)) continue;
+      this.exposed.set(b, s.tick);
+      // Sometimes it just doesn't bother.
+      if (this.rng() < this.p.hideSkip) this.unhidden.add(b);
+    }
     if (!this.exposed.size) return;
     const enemies = this.enemyTiles(ctx);
     if (!enemies.length) return;
 
     // The general first; a city only when an enemy army nearby could take it.
-    const order = [...this.exposed].sort((a, b) => Number(b === me.general) - Number(a === me.general));
+    const order = [...this.exposed.keys()].sort((a, b) => Number(b === me.general) - Number(a === me.general));
     for (const b of order) {
+      if (this.unhidden.has(b) || s.tick - this.exposed.get(b)! < this.p.reactionTicks) continue;
       if (s.tick < s.moveReady[b]) continue; // moved recently: the 100-turn cooldown holds it
       if (s.pending.some((a) => a.pid === this.pid && a.from === b)) continue; // already on its way
       if (b !== me.general && !enemies.some((e) => manhattan(s.w, e, b) <= 4 && s.army[e] >= s.army[b])) continue;
