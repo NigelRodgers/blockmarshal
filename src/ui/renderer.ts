@@ -17,6 +17,8 @@ export interface DrawOptions {
   fx: Effects;
   /** Tiles to highlight as valid destinations (moving a general or city). */
   targets?: number[];
+  /** No shaking or pulsing (prefers-reduced-motion). */
+  calm?: boolean;
 }
 
 const C = {
@@ -30,8 +32,27 @@ const C = {
   neutralCity: '#7c818a',
   neutralTower: '#4f7a82',
   dot: '#ff2d2d',
-  dotEdge: 'rgba(0,0,0,0.65)',
+  /** Dots toward a locked mine (freshly planted, can't be captured): white, so they differ in lightness too. */
+  dotLocked: '#ffffff',
+  dotEdge: '#0b0d11',
+  darkText: '#111418',
 };
+
+/** Relative luminance (WCAG) of a #rrggbb colour. */
+const lumCache = new Map<string, number>();
+function luminance(hex: string): number {
+  let l = lumCache.get(hex);
+  if (l === undefined) {
+    const ch = [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16) / 255);
+    const [r, g, b] = ch.map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    lumCache.set(hex, l);
+  }
+  return l;
+}
+
+/** Above this tile luminance, dark text contrasts better than white (the two ratios cross at ~0.19). */
+const DARK_TEXT_ABOVE = 0.19;
 
 /** Dot positions in tile units, matching the mineDots bit order. */
 const DOT_OFFSETS: [number, number][] = [
@@ -97,7 +118,7 @@ export class Renderer {
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.fillStyle = C.bg;
     ctx.fillRect(0, 0, this.vw, this.vh);
-    const [ox, oy] = o.fx.shakeOffset(this.cam.scale);
+    const [ox, oy] = o.calm ? [0, 0] : o.fx.shakeOffset(this.cam.scale);
     ctx.translate(ox, oy);
 
     const s = this.cam.scale;
@@ -113,14 +134,15 @@ export class Renderer {
     const mines = v.mines ? new Set(v.mines) : null;
     const flags = new Set(v.flags);
     const myMines = new Set(v.myMines);
+    const cooling = new Set(v.moveCooldowns.map((c) => c.idx));
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
         const [sx, sy] = this.toScreen(x, y);
-        this.drawTile(v, y * v.w + x, sx, sy, s, mines, flags, myMines);
+        this.drawTile(v, y * v.w + x, sx, sy, s, mines, flags, myMines, cooling);
       }
     }
 
-    if (o.targets?.length) this.drawTargets(v, o.targets, s);
+    if (o.targets?.length) this.drawTargets(v, o.targets, s, !!o.calm);
     this.drawQueue(v, [...v.queue, ...o.pending], s);
 
     if (o.selected >= 0 && v.owner[o.selected] === v.you) {
@@ -151,49 +173,60 @@ export class Renderer {
     mines: Set<number> | null,
     flags: Set<number>,
     myMines: Set<number>,
+    cooling: Set<number>,
   ): void {
     const t = v.terrain[i];
     const own = v.owner[i];
     const seen = v.visible[i] === 1;
     const g = Math.max(1, s * 0.05);
 
+    let tile = C.fog;
     if (t === -1) {
       this.flat(x, y, s, g, C.fog);
     } else if (t === Terrain.Mountain) {
       this.mountain(x, y, s, g, !seen);
     } else if (own >= 0) {
-      this.flat(x, y, s, g, v.players[own].color);
+      tile = v.players[own].color;
+      this.flat(x, y, s, g, tile);
       this.icon(t, x, y, s, 1);
     } else if (!seen) {
-      this.flat(x, y, s, g, C.fogKnown);
+      tile = C.fogKnown;
+      this.flat(x, y, s, g, tile);
       this.icon(t, x, y, s, 0.45);
     } else {
-      const color = t === Terrain.City ? C.neutralCity : t === Terrain.Tower ? C.neutralTower : C.plain;
-      this.flat(x, y, s, g, color);
+      tile = t === Terrain.City ? C.neutralCity : t === Terrain.Tower ? C.neutralTower : C.plain;
+      this.flat(x, y, s, g, tile);
       this.icon(t, x, y, s, 0.9);
     }
 
     // Blast marks are public and fade out over CRATER_TICKS.
     if (v.crater[i]) this.crater(x, y, s, 0.2 + 0.7 * Math.min(1, v.crater[i] / CRATER_TICKS));
-    // Your own mine turns grey once you've flagged it (safe for you to cross).
-    if (mines?.has(i) || myMines.has(i)) this.mineIcon(x, y, s, myMines.has(i) && flags.has(i));
+    // Your own mine turns grey once you've flagged it (safe for you to cross),
+    // and wears a white ring while it's locked (on its cooldown: can't be captured or picked up).
+    if (mines?.has(i) || myMines.has(i)) {
+      this.mineIcon(x, y, s, myMines.has(i) && flags.has(i), myMines.has(i) && cooling.has(i));
+    }
     const structure = t === Terrain.General || t === Terrain.City || t === Terrain.Tower;
-    if (seen && v.army[i] > 0) this.army(x, y, s, v.army[i], structure);
-    if (v.dots[i]) this.dots(x, y, s, v.dots[i]);
+    if (seen && v.army[i] > 0) this.army(x, y, s, v.army[i], structure, tile);
+    if (v.dots[i]) this.dots(x, y, s, v.dots[i], v.lockedDots[i]);
     if (flags.has(i) && !v.crater[i] && !myMines.has(i)) this.flag(x, y, s, own >= 0);
   }
 
-  /** Red dots on the tile's edge, pointing at each neighbouring mine. */
-  private dots(x: number, y: number, s: number, mask: number): void {
+  /**
+   * Dots on the tile's edge, pointing at each neighbouring mine: red, or white for a
+   * locked mine (freshly planted, can't be captured). A solid dark rim keeps them
+   * readable on every tile colour, whatever the viewer's colour vision.
+   */
+  private dots(x: number, y: number, s: number, mask: number, locked: number): void {
     const { ctx } = this;
     const r = Math.max(2.5, s * 0.09);
     const reach = s * 0.5 - r - Math.max(1, s * 0.05);
-    ctx.fillStyle = C.dot;
     ctx.strokeStyle = C.dotEdge;
-    ctx.lineWidth = Math.max(1, s * 0.025);
+    ctx.lineWidth = Math.max(1.2, s * 0.035);
     for (let bit = 0; bit < 8; bit++) {
       if (!(mask & (1 << bit))) continue;
       const [dx, dy] = DOT_OFFSETS[bit];
+      ctx.fillStyle = locked & (1 << bit) ? C.dotLocked : C.dot;
       ctx.beginPath();
       ctx.arc(x + s / 2 + dx * reach, y + s / 2 + dy * reach, r, 0, Math.PI * 2);
       ctx.fill();
@@ -322,12 +355,22 @@ export class Renderer {
     ctx.fillRect(x, y, s, s);
   }
 
-  /** Classic mine: dark round body with eight bumps, large and centred. Grey when flagged (safe for you). */
-  private mineIcon(x: number, y: number, s: number, flagged = false): void {
+  /**
+   * Classic mine: dark round body with eight bumps, large and centred. Grey when flagged
+   * (safe for you); a white ring while locked, matching the white dots enemies see.
+   */
+  private mineIcon(x: number, y: number, s: number, flagged = false, locked = false): void {
     const { ctx } = this;
     const cx = x + s / 2;
     const cy = y + s / 2;
     const r = s * 0.24;
+    if (locked) {
+      ctx.strokeStyle = C.dotLocked;
+      ctx.lineWidth = Math.max(1.5, s * 0.06);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 1.75, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     ctx.fillStyle = flagged ? '#9aa0a8' : '#16181c';
     // Eight bumps around the body.
     for (let k = 0; k < 8; k++) {
@@ -367,7 +410,8 @@ export class Renderer {
     ctx.fill();
   }
 
-  private army(x: number, y: number, s: number, n: number, belowIcon = false): void {
+  /** Troop count, dark or white, whichever contrasts more with the tile underneath. */
+  private army(x: number, y: number, s: number, n: number, belowIcon: boolean, tile: string): void {
     const { ctx } = this;
     const label = formatArmy(n);
     let size = s * (label.length >= 4 ? 0.3 : label.length === 3 ? 0.36 : 0.42);
@@ -376,17 +420,18 @@ export class Renderer {
     ctx.font = `700 ${size}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    const dark = luminance(tile) > DARK_TEXT_ABOVE;
     ctx.lineWidth = Math.max(2, size * 0.18);
-    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+    ctx.strokeStyle = dark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.55)';
     ctx.strokeText(label, x + s / 2, cy);
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = dark ? C.darkText : '#fff';
     ctx.fillText(label, x + s / 2, cy);
   }
 
   /** Pulsing outline on each tile a general or city may move to. */
-  private drawTargets(b: Board, tiles: number[], s: number): void {
+  private drawTargets(b: Board, tiles: number[], s: number, calm: boolean): void {
     const { ctx } = this;
-    const pulse = (Math.sin(performance.now() / 220) + 1) / 2;
+    const pulse = calm ? 1 : (Math.sin(performance.now() / 220) + 1) / 2;
     ctx.save();
     ctx.strokeStyle = `rgba(255, 213, 79, ${0.5 + pulse * 0.5})`;
     ctx.lineWidth = Math.max(2, s * 0.08);

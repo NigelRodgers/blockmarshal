@@ -33,8 +33,12 @@ export const DEFAULT_MINE_RATE = 0.135;
 
 export const DEFAULT_MOUNTAIN_RATE = 0.14;
 
-/** Six slots per match. Avoid reds: mine dots are red. */
-export const PLAYER_COLORS = ['#f57c00', '#1e88e5', '#43a047', '#8e24aa', '#00acc1', '#8d6e63'];
+/**
+ * Six slots per match: orange, sky, teal, indigo, pink, brown. Picked to stay apart for
+ * red-green and blue-yellow colour blindness (spread in lightness as well as hue) and to
+ * avoid reds, which are the mine dots. Troop numbers switch between dark and white per tile.
+ */
+export const PLAYER_COLORS = ['#f5a623', '#7ec8f0', '#00806a', '#2e3a9e', '#d16ab8', '#5a3a22'];
 export const BOT_NAMES = ['Ada', 'Bishop', 'Cato', 'Dara', 'Ezra', 'Fen', 'Gale', 'Hux', 'Ivo', 'Juno'];
 
 /** One fixed board that fits portrait phones (~26px tiles on a 390px-wide screen). */

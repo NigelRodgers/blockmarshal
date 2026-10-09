@@ -1,4 +1,4 @@
-import { mineDots, playerStats, stockAnchor, stunTicksLeft, visionFor } from '../engine/game';
+import { lockedDots as lockedMask, mineDots, playerStats, stockAnchor, stunTicksLeft, visionFor } from '../engine/game';
 import { Memory, Terrain, type GameState } from '../engine/types';
 import type { PlayerView } from './protocol';
 
@@ -26,6 +26,7 @@ export function buildView(state: GameState, pid: number): PlayerView {
   const visible = new Array<number>(n);
   const dots = new Array<number>(n);
   const crater = new Array<number>(n);
+  const lockedDots = new Array<number>(n);
 
   for (let i = 0; i < n; i++) {
     const seen = vis[i] === 1;
@@ -43,6 +44,7 @@ export function buildView(state: GameState, pid: number): PlayerView {
     // Blasts are public: everyone sees the mark until it fades.
     crater[i] = state.crater[i] ? Math.max(0, state.crater[i] - state.tick) : 0;
     dots[i] = me.revealed[i] || over ? mineDots(state, i, over ? -2 : pid) : 0;
+    lockedDots[i] = dots[i] ? lockedMask(state, i, over ? -2 : pid) : 0;
   }
 
   const moveCooldowns: { idx: number; turns: number }[] = [];
@@ -74,6 +76,7 @@ export function buildView(state: GameState, pid: number): PlayerView {
     army,
     visible,
     dots,
+    lockedDots,
     crater,
     flags: [...me.flags],
     minesInStock: me.stock.length,

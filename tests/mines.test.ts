@@ -145,6 +145,7 @@ describe('planted mines', () => {
     expect(s.players[B].stunUntil).toBeGreaterThan(s.tick);
 
     const t = withPlanted();
+    t.tick += RELOCATE_COOLDOWN_TICKS; // past the planting cooldown
     t.owner[2] = B;
     t.army[2] = 30;
     toggleFlag(t, B, 1);
@@ -152,6 +153,26 @@ describe('planted mines', () => {
     step(t);
     expect(t.crater[1]).toBe(0);
     expect(t.players[B].stock.length).toBe(1);
+  });
+
+  it('are locked while on their cooldown: an enemy flag does not capture them, and their dots say so', () => {
+    const s = withPlanted();
+    s.owner[2] = B;
+    s.army[2] = 30;
+    s.players[B].revealed[2] = 1;
+    const v = buildView(s, B);
+    expect(v.lockedDots[2]).toBe(1 << 3); // the planted mine to the left; the natural one to the right stays ordinary
+    expect(v.dots[2] & (1 << 3)).not.toBe(0);
+    toggleFlag(s, B, 1);
+    queueMove(s, B, 2, 1);
+    step(s);
+    expect(s.crater[1]).toBeGreaterThan(0); // went off despite the flag
+    expect(s.players[B].stock.length).toBe(0);
+
+    const t = withPlanted();
+    t.tick += RELOCATE_COOLDOWN_TICKS;
+    t.players[B].revealed[2] = 1;
+    expect(buildView(t, B).lockedDots[2]).toBe(0); // cooled down: ordinary dots
   });
 });
 

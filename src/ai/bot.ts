@@ -3,6 +3,7 @@ import {
   canPickUpMine,
   canRelocate,
   island,
+  mineLocked,
   pickUpMine,
   plantableStock,
   plantMine,
@@ -153,13 +154,14 @@ export class Bot {
 
   /** Stepping here sets off a mine we know about (a flagged mine is captured or crossed safely instead). */
   private trap(ctx: Ctx, i: number): boolean {
-    if (ctx.me.flags.has(i)) return false;
-    return this.ownMine(ctx, i) || this.knownMine(ctx, i);
+    if (this.ownMine(ctx, i)) return !ctx.me.flags.has(i);
+    // A locked mine (freshly planted, shown by its dot colour) goes off even when flagged.
+    return this.knownMine(ctx, i) && (!ctx.me.flags.has(i) || mineLocked(ctx.s, i));
   }
 
   /** A known enemy or natural mine we've flagged: walking onto it banks it. */
   private prize(ctx: Ctx, i: number): boolean {
-    return ctx.me.flags.has(i) && this.knownMine(ctx, i) && !this.ownMine(ctx, i);
+    return ctx.me.flags.has(i) && this.knownMine(ctx, i) && !this.ownMine(ctx, i) && !mineLocked(ctx.s, i);
   }
 
   /** Dijkstra over the grid; unknown tiles cost extra in proportion to mine risk. */
@@ -366,7 +368,7 @@ export class Bot {
     // Flag known mines next to our land: paths then walk onto them to bank them. Like a human,
     // only between plans: an army already marching doesn't react to a mine it just uncovered.
     for (let i = 0; i < s.size && !busy && me.flags.size < MAX_FLAGS; i++) {
-      if (me.flags.has(i) || !this.knownMine(ctx, i) || this.ownMine(ctx, i)) continue;
+      if (me.flags.has(i) || !this.knownMine(ctx, i) || this.ownMine(ctx, i) || mineLocked(s, i)) continue;
       if (s.n4[i].some((j) => s.owner[j] === this.pid)) toggleFlag(s, this.pid, i);
     }
 

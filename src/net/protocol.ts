@@ -50,6 +50,8 @@ export interface PlayerView {
   visible: number[];
   /** Mine-direction dot mask (see mineDots) on tiles this player has revealed, else 0. Excludes your own planted mines. */
   dots: number[];
+  /** Subset of `dots`: bits pointing at locked mines (freshly planted, can't be captured). */
+  lockedDots: number[];
   /** Blast marks, visible to everyone: ticks until the mark fades (0 = none). */
   crater: number[];
   /** Your flags. */

@@ -131,11 +131,30 @@ export function reveal(state: GameState, pid: number, idx: number): void {
 }
 
 /**
+ * A freshly planted mine (still on its RELOCATE_COOLDOWN_TICKS) is locked:
+ * nobody can capture it, a flag doesn't help, it just goes off. Public: dots
+ * toward a locked mine draw in a different colour for everyone.
+ */
+export function mineLocked(state: GameState, idx: number): boolean {
+  return state.mine[idx] === 1 && state.mineOwner[idx] >= 0 && state.tick < state.moveReady[idx];
+}
+
+/** Like mineDots, but only the bits pointing at locked mines (see mineLocked). */
+export function lockedDots(state: GameState, idx: number, exceptOwner = -2): number {
+  return neighbourMask(state, idx, (j) => mineLocked(state, j) && state.mineOwner[j] !== exceptOwner);
+}
+
+/**
  * Directions of live mines around a tile, one bit per neighbour:
  * 0 top-left, 1 top, 2 top-right, 3 left, 4 right, 5 bottom-left, 6 bottom, 7 bottom-right.
  * Exploded mines are gone, so their dots disappear.
  */
 export function mineDots(state: GameState, idx: number, exceptOwner = -2): number {
+  return neighbourMask(state, idx, (j) => state.mine[j] === 1 && state.mineOwner[j] !== exceptOwner);
+}
+
+/** One bit per neighbour (mineDots order) for which `hit` is true. */
+function neighbourMask(state: GameState, idx: number, hit: (j: number) => boolean): number {
   const x = idx % state.w;
   const y = Math.floor(idx / state.w);
   let mask = 0;
@@ -145,10 +164,7 @@ export function mineDots(state: GameState, idx: number, exceptOwner = -2): numbe
       if (!dx && !dy) continue;
       const nx = x + dx;
       const ny = y + dy;
-      const j = ny * state.w + nx;
-      if (nx >= 0 && ny >= 0 && nx < state.w && ny < state.h && state.mine[j] && state.mineOwner[j] !== exceptOwner) {
-        mask |= 1 << bit;
-      }
+      if (nx >= 0 && ny >= 0 && nx < state.w && ny < state.h && hit(ny * state.w + nx)) mask |= 1 << bit;
       bit++;
     }
   }
@@ -417,7 +433,8 @@ function executeNext(state: GameState, p: Player): void {
 /**
  * Stepping onto a mine:
  * - flagged by you and planted by you: pass over it, it stays armed;
- * - flagged by you otherwise: capture it into your stock, no blast;
+ * - flagged by you otherwise: capture it into your stock, no blast, unless it's
+ *   locked (freshly planted, see mineLocked): then it goes off anyway;
  * - not flagged by you (including your own planted mines): it goes off.
  */
 function arrive(state: GameState, p: Player, to: number, amount: number): void {
@@ -426,7 +443,7 @@ function arrive(state: GameState, p: Player, to: number, amount: number): void {
     const flagged = p.flags.has(to);
     if (flagged && state.mineOwner[to] === p.id) {
       // Safe passage over your own flagged mine.
-    } else if (flagged) {
+    } else if (flagged && !mineLocked(state, to)) {
       state.mine[to] = 0;
       state.mineOwner[to] = -1;
       state.mineCount--;

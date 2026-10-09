@@ -70,6 +70,12 @@ function stopLocal(): void {
  */
 const QUICK = new URLSearchParams(location.search).has('quick');
 
+/** A new game from any button: online, or straight into bots with `?quick`. */
+function newGame(): void {
+  if (QUICK) startLocal();
+  else void play();
+}
+
 /** Play against bots in this browser: used for solo handoffs, offline, and `?quick`. */
 function startLocal(): void {
   sounds.unlock();
@@ -125,6 +131,8 @@ function onServer(msg: ServerMessage): void {
     lobbyEndsAt = Date.now() + msg.startsInMs;
     renderLobby(msg.slots, msg.capacity);
   } else if (msg.t === 'start') {
+    // A game can start straight from the end screen (`?quick` Play again): close it.
+    show('gameover', false);
     view = null;
     pending = [];
     selected = -1;
@@ -563,18 +571,18 @@ window.addEventListener('keydown', (e) => {
   updateControls();
 });
 
-$('btn-play').addEventListener('click', () => play());
+$('btn-play').addEventListener('click', newGame);
 $('name').addEventListener('keydown', (e) => {
-  if ((e as KeyboardEvent).key === 'Enter') play();
+  if ((e as KeyboardEvent).key === 'Enter') newGame();
 });
 $('btn-lobby-leave').addEventListener('click', toStart);
 $('btn-leave').addEventListener('click', () => {
   if (!canAct() || window.confirm('Leave this game? Your general stays on the board, undefended.')) toStart();
 });
-$('btn-again').addEventListener('click', () => (QUICK ? startLocal() : play()));
+$('btn-again').addEventListener('click', newGame);
 $('btn-menu').addEventListener('click', toStart);
 $('btn-watch').addEventListener('click', () => show('gameover', false));
-$('btn-retry').addEventListener('click', () => (QUICK ? startLocal() : play()));
+$('btn-retry').addEventListener('click', newGame);
 $('btn-offline-solo').addEventListener('click', startLocal);
 $('btn-mode').addEventListener('click', () => {
   mode = mode === 'flag' ? 'move' : 'flag';
@@ -627,7 +635,10 @@ $('fb-rating').addEventListener('click', (e) => {
   const b = (e.target as HTMLElement).closest('button');
   if (!b?.dataset.v) return;
   fbRating = Number(b.dataset.v);
-  document.querySelectorAll('#fb-rating button').forEach((x) => x.classList.toggle('on', x === b));
+  document.querySelectorAll('#fb-rating button').forEach((x) => {
+    x.classList.toggle('on', x === b);
+    x.setAttribute('aria-pressed', String(x === b));
+  });
 });
 
 $('feedback-form').addEventListener('submit', async (e) => {
@@ -700,12 +711,14 @@ $('btn-privacy').addEventListener('click', () => {
 function updateControls(): void {
   const used = view?.flags.length ?? 0;
   $('btn-mode').classList.toggle('on', mode === 'flag');
+  $('btn-mode').setAttribute('aria-pressed', String(mode === 'flag'));
   $('mode-label').textContent = mode === 'flag' ? `Flag ${used}/${MAX_FLAGS}` : `Move · ⚑${MAX_FLAGS - used}`;
   $('mode-ico').textContent = mode === 'flag' ? '⚑' : '➔';
   const stock = view?.minesInStock ?? 0;
   // Stocked mines show on the Flag button: the same gesture plants them.
   $('mine-stock').textContent = stock ? `💣${stock}` : '';
   $('btn-half').classList.toggle('on', half);
+  $('btn-half').setAttribute('aria-pressed', String(half));
   $('hud-badge').textContent = relocating ? '⇄' : mode === 'flag' ? '⚑' : half ? '½' : '';
 }
 
@@ -821,12 +834,17 @@ document.addEventListener(
 
 // ---------- Render loop ----------
 
+/** No screen shake or pulsing for people who ask their system for less motion. */
+const calmMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
 let lastFrame = performance.now();
 function frame(now: number): void {
   const dt = Math.min(now - lastFrame, 250);
   lastFrame = now;
   fx.update(dt);
-  if (view && screen === 'game') renderer.draw(view, { selected, half, pending, fx, targets: relocationTargets() });
+  if (view && screen === 'game') {
+    renderer.draw(view, { selected, half, pending, fx, targets: relocationTargets(), calm: calmMotion.matches });
+  }
   requestAnimationFrame(frame);
 }
 
