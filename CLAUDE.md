@@ -26,6 +26,7 @@ npm run deploy     # build + wrangler deploy (ONLY from this PC; see Secrets)
 npm run feedback   # latest 50 feedback rows from production D1
 npm run db:migrate # apply D1 migrations to production (db:migrate:local for wrangler dev)
 npm run types      # regenerate worker/worker-configuration.d.ts after editing wrangler.jsonc
+npm run sounds     # regenerate public/sounds/*.mp3 from scripts/make-sounds.mjs (needs ffmpeg on PATH)
 npm run replays    # download finished games to Documents\Blockmarshal Replays, then clear them on the server (daily Windows task "Blockmarshal replays", 09:00)
 npm run video -- rec.webm [--title "..."] [--music x.mp3]   # board recording -> MP4 with intro/outro (once: npm run video:setup)
 ```
@@ -77,15 +78,14 @@ Before every commit: `npx tsc --noEmit && npx tsc --noEmit -p tsconfig.server.js
 2. **Bots stuck behind natural mines**: not reproducible in 10+ simulated matches; map generation guarantees no sealed areas. Stall breaker added (40 ticks, 20+ troops). Ask for a screenshot + build id if seen again.
 
 **Before a wider launch**
-3. Replace the two YouTube "no copyright" sound clips (`public/sounds/start.mp3`, `fall.mp3`) with CC0 sounds (Kenney, OpenGameArt CC0, Freesound CC0) and add a credits/licences line on the start screen.
-4. Trademark search for "Blockmarshal" (USPTO, WIPO) before buying a domain.
-5. Custom domain (about $20/yr) + a Cloudflare rate-limiting rule; Workers Paid ($5/mo) before any big traffic push (free plan ~170 ten-minute server matches/day).
-6. Reconnect to a running match after a dropped connection (currently you can't rejoin).
-7. Matchmaking that groups humans better (beyond "fullest open lobby").
+3. Trademark search for "Blockmarshal" (USPTO, WIPO) before buying a domain.
+4. Custom domain (about $20/yr; per-IP request limits already in the Worker); Workers Paid ($5/mo) before any big traffic push (free plan ~170 ten-minute server matches/day).
+5. Reconnect to a running match after a dropped connection (currently you can't rejoin).
+6. Matchmaking that groups humans better (beyond "fullest open lobby").
 
 **Balance / design questions**
-8. Bots now hide their general and cities and use mines (`a583eb8`). Moves now have a 100-turn cooldown for everyone (`7afd7e4`), so a bot dodges at most once per 100 turns. Easy bots still do none of this.
-9. Bot-only games are longer (median ~615 turns since hiding, ~500 with towers).
+7. Bots now hide their general and cities and use mines (`a583eb8`). Moves now have a 100-turn cooldown for everyone (`7afd7e4`), so a bot dodges at most once per 100 turns. Easy bots still do none of this.
+8. Bot-only games are longer (median ~615 turns since hiding, ~500 with towers).
 
 **Portals (undecided)**: CrazyGames Basic Launch first (no SDK needed), Poki only if numbers are strong (web exclusivity). Needs: shorter lobby (~15 s), a portal build without the service worker/install button, SDK hooks (gameplay start/stop, ads between matches, invite rooms on CrazyGames).
 

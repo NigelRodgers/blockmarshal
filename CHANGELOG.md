@@ -4,6 +4,12 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-09
 
+**`163fc36`: Pause, replay controls, recording cancel, new sounds** (not live yet)
+- **Pause** for games against bots in your browser (1 vs 1 vs bot, solo, offline): button under ☰, Resume to carry on.
+- **Replays:** ⏪ / ⏩ jump 10 turns; speeds 0.5×, 1×, 2×, 5×, 10×.
+- **Recording:** ✕ next to the record button stops and throws the recording away.
+- **Sounds**, all made from code (`scripts/make-sounds.mjs`), no licensed clips left: a 2 s brass horn at the start; a small low thud for every mine blast (quieter if it isn't yours); a deep boom with a sagging horn when your general falls; a boom with a rising two-note call when you take a crown.
+
 **Replays, security, recorder, bot delay, duel tuning** (live in `e1af773`; replays table migrated)
 - **1 vs 1** (`203491d`): twice the mines (27% of eligible plains) and 10% more mountains (15.4%). [Sample duel maps](https://claude.ai/artifact/2SmPigB4mPB8yDG8FbZofW).
 - **Your own mines** (`203491d`): pick them up any time. The 100-turn lock now only stops enemies capturing a freshly planted mine.
