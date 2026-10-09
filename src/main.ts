@@ -60,6 +60,7 @@ function show(id: string, on: boolean): void {
 
 function setScreen(next: Screen): void {
   screen = next;
+  if (next === 'game' || next === 'replay') guardHistory();
   show('start', next === 'start');
   show('lobby', next === 'lobby');
   show('hud', next === 'game');
@@ -219,6 +220,7 @@ function onView(v: PlayerView): void {
   if (!fitted) {
     measureInsets();
     renderer.fit(v);
+    placeToast(v);
     fitted = true;
   }
 
@@ -834,12 +836,25 @@ function updateHud(): void {
 }
 
 /**
- * The HUD floats over the board. The bottom strip is kept free for notices (captures, blasts...)
- * so they never cover tiles; on most phones the board is width-limited, so this costs nothing.
+ * The HUD floats over the board, so in a game the board gets the whole screen. A replay
+ * keeps room at the bottom for its control bar.
  */
 function measureInsets(): void {
   renderer.insetTop = 0;
-  renderer.insetBottom = $('toast').offsetHeight + 10 || 40;
+  renderer.insetBottom = screen === 'replay' ? $('replay-bar').offsetHeight + 10 || 54 : 0;
+}
+
+/**
+ * Notices go in empty space next to the board so they don't cover tiles: below it if
+ * there's room (usual on phones, where the board is limited by the screen's width),
+ * else above it. Only a board that fills the whole height gets them on top of it.
+ */
+function placeToast(b: { w: number; h: number }): void {
+  const el = $('toast');
+  const need = (el.offsetHeight || 30) + 8;
+  const top = renderer.toScreen(0, 0)[1];
+  const below = renderer.vh - renderer.toScreen(0, b.h)[1];
+  el.classList.toggle('above', below < need && top >= need);
 }
 
 let toastTimer = 0;
@@ -863,7 +878,10 @@ window.addEventListener('resize', () => {
   renderer.resize();
   measureInsets();
   const shown = view ?? replayView;
-  if (shown) renderer.fit(shown);
+  if (shown) {
+    renderer.fit(shown);
+    placeToast(shown);
+  }
 });
 
 // ---------- Floating game menu ----------
@@ -1142,3 +1160,35 @@ $('btn-rec').addEventListener('click', () => {
   }
   renderRecButton();
 });
+
+// ---------- Edge swipes (browser back/forward) ----------
+
+/**
+ * Phones turn a swipe from the screen edge into Back (left edge) or Forward (right edge),
+ * which threw players out of a game. While a game or replay is on screen there's an extra
+ * history entry, so Back lands on it and we stay; Forward has nowhere to go once we've
+ * pushed it. Android's system back gesture can't be switched off by a page, so this catch
+ * is what saves the game there.
+ */
+function guardHistory(): void {
+  if (!history.state?.bmGuard) history.pushState({ bmGuard: true }, '');
+}
+
+window.addEventListener('popstate', () => {
+  if (screen !== 'game' && screen !== 'replay') return;
+  history.pushState({ bmGuard: true }, '');
+  toast(screen === 'game' ? 'To leave the game, open ☰ and tap ✕' : 'To close the replay, tap ✕');
+});
+
+/** iOS Safari starts its back/forward swipe from about 20px in from either edge. */
+const EDGE_PX = 24;
+document.addEventListener(
+  'touchstart',
+  (e) => {
+    if (screen !== 'game' && screen !== 'replay') return;
+    if ((e.target as HTMLElement).closest('button, input, a, textarea')) return; // keep taps on controls working
+    const x = e.touches[0]?.clientX ?? EDGE_PX;
+    if (x < EDGE_PX || x > window.innerWidth - EDGE_PX) e.preventDefault();
+  },
+  { passive: false },
+);

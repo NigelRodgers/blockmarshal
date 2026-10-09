@@ -299,7 +299,7 @@ details b {
   color: var(--text);
 }
 
-/* Notices sit in a strip below the board (kept free by measureInsets), never over tiles. */
+/* Notices sit in empty space below (or above) the board, see placeToast(). */
 #toast {
   position: fixed;
   left: 50%;
@@ -326,6 +326,12 @@ details b {
 #toast.show {
   opacity: 1;
   transform: translate(-50%, 0);
+}
+
+/* No room under the board (it fills the height): use the band above it instead. */
+#toast.above {
+  top: calc(var(--safe-top) + 4px);
+  bottom: auto;
 }
 
 @media (min-width: 720px) {
