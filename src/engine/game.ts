@@ -6,6 +6,7 @@ import {
   MINE_DAMAGE,
   MINE_STUN_TICKS,
   MAX_FLAGS,
+  MAX_MINE_STOCK,
   CRATER_TICKS,
   PLAYER_COLORS,
   RELOCATE_COOLDOWN_TICKS,
@@ -359,9 +360,12 @@ export function pickUpMine(state: GameState, pid: number, idx: number): boolean 
   return true;
 }
 
-/** Your own planted mine, on your land. Any time: the planting lock only stops enemies capturing it. */
+/**
+ * Your own planted mine, on your land, while your stock has room. Any time otherwise:
+ * the planting lock only stops enemies capturing it.
+ */
 export function canPickUpMine(state: GameState, pid: number, idx: number): boolean {
-  if (idx < 0 || idx >= state.size) return false;
+  if (idx < 0 || idx >= state.size || state.players[pid].stock.length >= MAX_MINE_STOCK) return false;
   return state.owner[idx] === pid && state.mine[idx] === 1 && state.mineOwner[idx] === pid;
 }
 
@@ -479,7 +483,8 @@ function executeNext(state: GameState, p: Player): void {
  * Stepping onto a mine:
  * - flagged by you and planted by you: pass over it, it stays armed;
  * - flagged by you otherwise: capture it into your stock, no blast, unless it's
- *   locked (freshly planted, see mineLocked): then it goes off anyway;
+ *   locked (freshly planted, see mineLocked): then it goes off anyway. With a full
+ *   stock (MAX_MINE_STOCK) it's disarmed but not kept;
  * - not flagged by you (including your own planted mines): it goes off.
  */
 function arrive(state: GameState, p: Player, to: number, amount: number): void {
@@ -493,8 +498,9 @@ function arrive(state: GameState, p: Player, to: number, amount: number): void {
       state.mineOwner[to] = -1;
       state.mineCount--;
       p.flags.delete(to);
-      p.stock.push({ from: to });
-      state.events.push({ kind: 'defuse', idx: to, player: p.id });
+      const kept = p.stock.length < MAX_MINE_STOCK;
+      if (kept) p.stock.push({ from: to });
+      state.events.push({ kind: 'defuse', idx: to, player: p.id, kept });
     } else {
       amount = detonate(state, to, p, amount);
       if (amount <= 0) return;

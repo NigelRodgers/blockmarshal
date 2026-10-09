@@ -1,6 +1,6 @@
 import './style.css';
 import { analyticsConfigured, analyticsOptedOut, setAnalyticsOptOut, track } from './analytics';
-import { MAX_FLAGS, MINE_STUN_TICKS, TICK_MS, isMode, type GameMode } from './engine/constants';
+import { MAX_FLAGS, MAX_MINE_STOCK, MINE_STUN_TICKS, TICK_MS, isMode, type GameMode } from './engine/constants';
 import { Terrain, type Move } from './engine/types';
 import { LocalGame } from './local';
 import { findMatch, Net, uploadReplay } from './net/client';
@@ -248,7 +248,11 @@ function onView(v: PlayerView): void {
       if (ev.victim !== v.you) toast(ev.by === v.you ? `You captured ${victim}'s crown!` : `${by} captured ${victim}`);
     } else if (ev.kind === 'defuse' && ev.player === v.you) {
       buzz(30);
-      toast(`Mine captured! Long-press one of your tiles connected to it to plant it (${v.minesInStock} in stock)`);
+      toast(
+        ev.kept
+          ? `Mine captured! Long-press one of your tiles connected to it to plant it (${v.minesInStock} in stock)`
+          : `Mine disarmed. Your stock is full (${MAX_MINE_STOCK}), so it wasn't kept`,
+      );
     } else if (ev.kind === 'captureCity' && ev.player === v.you) {
       toast('City captured');
     } else if (ev.kind === 'captureTower' && ev.player === v.you) {
@@ -348,6 +352,8 @@ function flagGesture(idx: number): void {
   if (v.owner[idx] === v.you) {
     // Your own land: your mines and buildings get a menu, open tiles get a mine if you have one.
     if (v.myMines.includes(idx)) return openMineMenu(idx);
+    // A flag left on a tile you've since taken: the gesture takes it off (it never plants there).
+    if (v.flags.includes(idx)) return toggleFlag(idx);
     if (v.terrain[idx] === Terrain.General || v.terrain[idx] === Terrain.City) return openBuildMenu(idx);
     if (v.terrain[idx] === Terrain.Plain && v.minesInStock > 0) {
       if (plantableAnchor(v, idx) >= 0) return plantMine(idx);
@@ -508,7 +514,14 @@ function openMineMenu(idx: number): void {
   $('mm-flag').textContent = v.flags.includes(idx) ? 'Remove flag' : 'Flag it (walk over safely)';
   // Your own mine can always be picked up; its lock (white ring) only stops enemies capturing it.
   const locked = v.moveCooldowns.find((c) => c.idx === idx)?.turns ?? 0;
-  $('mm-pickup').textContent = locked ? `Pick up (locked to enemies ${locked} more turns)` : 'Pick up (move it)';
+  const full = v.minesInStock >= MAX_MINE_STOCK;
+  const pick = $<HTMLButtonElement>('mm-pickup');
+  pick.disabled = full;
+  pick.textContent = full
+    ? `Stock full (${MAX_MINE_STOCK}): plant one first`
+    : locked
+      ? `Pick up (locked to enemies ${locked} more turns)`
+      : 'Pick up (move it)';
   placeMenu($('mine-menu'), idx);
   buzz(12);
 }

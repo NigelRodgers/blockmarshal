@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOT_ACTION_DELAY_TICKS, CRATER_TICKS, MAX_FLAGS, MINE_DAMAGE, RELOCATE_COOLDOWN_TICKS } from '../src/engine/constants';
+import { BOT_ACTION_DELAY_TICKS, CRATER_TICKS, MAX_FLAGS, MAX_MINE_STOCK, MINE_DAMAGE, RELOCATE_COOLDOWN_TICKS } from '../src/engine/constants';
 import { Bot } from '../src/ai/bot';
 import { pickUpMine, plantMine, queueMove, relocate, schedule, step, toggleFlag } from '../src/engine/game';
 import { mulberry32 } from '../src/engine/rng';
@@ -487,5 +487,52 @@ describe('delayed actions (bots)', () => {
     s.players[A].stock = [{ from: 8 }];
     expect(schedule(s, A, 'plant', -1, 3, BOT_ACTION_DELAY_TICKS)).toBe(true);
     expect(schedule(s, A, 'plant', -1, 5, BOT_ACTION_DELAY_TICKS)).toBe(false);
+  });
+});
+
+describe('mine stock limit', () => {
+  it('a full stock disarms a flagged mine without keeping it, and blocks pick-ups', () => {
+    const s = board();
+    give(s, A, MAX_MINE_STOCK);
+    s.army[NEXT_TO_MINE] = 20;
+    toggleFlag(s, A, MINE);
+    queueMove(s, A, NEXT_TO_MINE, MINE);
+    step(s);
+    expect(s.mine[MINE]).toBe(0);
+    expect(s.crater[MINE]).toBe(0); // no blast
+    expect(s.players[A].stock.length).toBe(MAX_MINE_STOCK);
+    expect(s.events.some((e) => e.kind === 'defuse' && !e.kept)).toBe(true);
+
+    expect(plantMine(s, A, 0)).toBe(true); // one out: room again
+    expect(pickUpMine(s, A, 0)).toBe(true);
+    expect(pickUpMine(s, A, 0)).toBe(false); // nothing there now
+    expect(plantMine(s, A, 0)).toBe(true);
+    give(s, A, MAX_MINE_STOCK);
+    expect(pickUpMine(s, A, 0)).toBe(false); // full
+  });
+});
+
+describe('bot planting pace', () => {
+  it('plants one mine at a time, each 3 turns after choosing its spot', () => {
+    const lv = createFromLayout(['G........', '.........', '....E....', '.........', '.........'], {
+      players: [
+        { name: 'A', isBot: false },
+        { name: 'B', isBot: true },
+      ],
+    });
+    const s = lv.state;
+    for (let i = 9; i < 45; i++) if (s.owner[i] < 0) ((s.owner[i] = B), (s.army[i] = 1));
+    give(s, B, 4);
+    const bot = new Bot(B, 'normal', mulberry32(1));
+    const plantedAt: number[] = [];
+    for (let t = 0; t < 40; t++) {
+      bot.think(s);
+      expect(s.pending.filter((a) => a.pid === B && a.kind === 'plant').length).toBeLessThanOrEqual(1);
+      const before = s.players[B].stock.length;
+      step(s);
+      if (s.players[B].stock.length < before) plantedAt.push(s.tick);
+    }
+    expect(plantedAt.length).toBeGreaterThanOrEqual(2);
+    for (let k = 1; k < plantedAt.length; k++) expect(plantedAt[k] - plantedAt[k - 1]).toBeGreaterThanOrEqual(BOT_ACTION_DELAY_TICKS);
   });
 });

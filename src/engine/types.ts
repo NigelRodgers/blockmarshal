@@ -65,7 +65,8 @@ export interface Player {
 
 export type GameEvent =
   | { kind: 'explode'; idx: number; player: number; lost: number }
-  | { kind: 'defuse'; idx: number; player: number }
+  /** A flagged mine taken safely; `kept: false` when the player's stock was full (disarmed, not kept). */
+  | { kind: 'defuse'; idx: number; player: number; kept: boolean }
   | { kind: 'eliminated'; victim: number; by: number }
   | { kind: 'captureCity'; idx: number; player: number }
   | { kind: 'captureTower'; idx: number; player: number };

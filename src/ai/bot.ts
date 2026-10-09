@@ -1,4 +1,4 @@
-import { BOT_ACTION_DELAY_TICKS, MAX_FLAGS, MINE_DAMAGE } from '../engine/constants';
+import { BOT_ACTION_DELAY_TICKS, MAX_FLAGS, MAX_MINE_STOCK, MINE_DAMAGE } from '../engine/constants';
 import {
   canPickUpMine,
   canRelocate,
@@ -155,12 +155,15 @@ export class Bot {
   /** Stepping here sets off a mine we know about (a flagged mine is captured or crossed safely instead). */
   private trap(ctx: Ctx, i: number): boolean {
     if (this.ownMine(ctx, i)) return !ctx.me.flags.has(i);
+    // A mine of ours about to be planted here counts too: it may land before we pass.
+    if (ctx.s.pending.some((a) => a.pid === this.pid && a.kind === 'plant' && a.to === i)) return true;
     // A locked mine (freshly planted, shown by its dot colour) goes off even when flagged.
     return this.knownMine(ctx, i) && (!ctx.me.flags.has(i) || mineLocked(ctx.s, i));
   }
 
   /** A known enemy or natural mine we've flagged: walking onto it banks it. */
   private prize(ctx: Ctx, i: number): boolean {
+    if (ctx.me.stock.length >= MAX_MINE_STOCK) return false; // a full stock can't keep it
     return ctx.me.flags.has(i) && this.knownMine(ctx, i) && !this.ownMine(ctx, i) && !mineLocked(ctx.s, i);
   }
 
@@ -374,13 +377,14 @@ export class Bot {
       if (s.n4[i].some((j) => s.owner[j] === this.pid)) toggleFlag(s, this.pid, i);
     }
 
-    if (me.stock.length > pendingPlants(s, this.pid)) {
-      // Planting lands 3 turns later (like a human's long-press), if the tile is still ours then.
+    if (me.stock.length) {
+      // One mine at a time: each lands 3 turns after the bot picks its spot (like a human's
+      // long-press), if the tile is still ours then; only then does it pick the next.
+      if (pendingPlants(s, this.pid)) return;
       const t = this.trapSpot(ctx);
       if (t >= 0) schedule(s, this.pid, 'plant', -1, t, BOT_ACTION_DELAY_TICKS);
       return;
     }
-    if (me.stock.length) return; // everything in stock is already being planted
     // Nothing in stock: every so often, bring an idle mine from a quiet corner to a front with an enemy.
     if (s.tick % 10 || this.trapSpot(ctx, true) < 0) return;
     const g = me.general;
@@ -452,8 +456,10 @@ export class Bot {
     const { s, me } = ctx;
     for (let n = 0; n < Math.min(path.length - 1, 15); n++) {
       const to = path[n + 1];
+      // A planting of ours waiting on this tile would land under our own army: call it off.
+      s.pending = s.pending.filter((a) => !(a.pid === this.pid && a.kind === 'plant' && a.to === to));
       // Our own mine in the way: lift it (back to stock to plant again), or flag it for safe
-      // passage while it's on its move cooldown. If neither works, stop short of it.
+      // passage (stock full, can't lift). If neither works, stop short of it.
       if (this.ownMine(ctx, to) && !me.flags.has(to) && !pickUpMine(s, this.pid, to) && !toggleFlag(s, this.pid, to)) return;
       queueMove(s, this.pid, path[n], to);
     }
