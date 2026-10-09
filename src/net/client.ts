@@ -1,4 +1,5 @@
 import type { GameMode } from '../engine/constants';
+import type { ReplayRecord } from '../replay';
 import type { ClientMessage, ServerMessage } from './protocol';
 
 /** Base URL of the game backend: same origin by default (Vite proxies /api and /ws in dev). */
@@ -13,6 +14,11 @@ export async function findMatch(mode: GameMode): Promise<string> {
   if (!res.ok) throw new Error(`matchmaker ${res.status}`);
   const { matchId } = (await res.json()) as { matchId: string };
   return matchId;
+}
+
+/** Send a finished browser-run game to the server for game analytics. Best effort. */
+export function uploadReplay(replay: ReplayRecord): void {
+  fetch(new URL('/api/replay', backend()), { method: 'POST', body: JSON.stringify(replay), keepalive: true }).catch(() => {});
 }
 
 function socketUrl(matchId: string): string {

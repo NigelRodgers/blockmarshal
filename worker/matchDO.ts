@@ -2,10 +2,16 @@ import { DurableObject } from 'cloudflare:workers';
 import { isMode, type GameMode } from '../src/engine/constants';
 import type { ClientMessage } from '../src/net/protocol';
 import { cleanName, Match, type Conn } from '../server/match';
+import { saveReplay } from './replays';
+import { MessageBudget } from './security';
 
 const MAX_MESSAGE = 4096;
 /** How often an open lobby re-reports itself to the matchmaker. */
 const HEARTBEAT_SECONDS = 10;
+/** Sockets one match accepts (players plus reconnect churn); more is an attack, not a game. */
+const MAX_SOCKETS = 24;
+/** A socket that has had this many messages dropped for flooding is closed. */
+const MAX_DROPPED = 200;
 
 /** Lobby countdown from the LOBBY_SECONDS var (60 in production, often 0 locally). */
 export function lobbyMs(env: Env): number {
@@ -21,9 +27,12 @@ export class MatchDO extends DurableObject<Env> {
   private match: Match | null = null;
   private matchId = '';
   private lobbyTimer: ReturnType<typeof setInterval> | null = null;
+  private sockets = 0;
 
   async fetch(req: Request): Promise<Response> {
     this.matchId ||= new URL(req.url).pathname.split('/').pop() ?? '';
+    if (this.sockets >= MAX_SOCKETS) return new Response('Match is busy', { status: 503 });
+    this.sockets++;
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     server.accept();
@@ -40,7 +49,12 @@ export class MatchDO extends DurableObject<Env> {
       },
     };
 
+    const budget = new MessageBudget();
     server.addEventListener('message', (ev) => {
+      if (!budget.take()) {
+        if (budget.dropped > MAX_DROPPED) server.close(1008, 'flood');
+        return;
+      }
       const data = typeof ev.data === 'string' ? ev.data : '';
       if (!data || data.length > MAX_MESSAGE) return;
       let msg: ClientMessage;
@@ -51,7 +65,12 @@ export class MatchDO extends DurableObject<Env> {
       }
       this.onMessage(conn, msg, server);
     });
-    const gone = () => this.onLeave(conn);
+    let closed = false;
+    const gone = () => {
+      if (!closed) this.sockets--;
+      closed = true;
+      this.onLeave(conn);
+    };
     server.addEventListener('close', gone);
     server.addEventListener('error', gone);
 
@@ -88,7 +107,12 @@ export class MatchDO extends DurableObject<Env> {
 
   private ensureMatch(mode: GameMode): Match {
     if (this.match && this.match.phase !== 'done') return this.match;
-    this.match = new Match(this.matchId, () => this.report(), { lobbyMs: lobbyMs(this.env), soloHandoff: true, mode });
+    this.match = new Match(this.matchId, () => this.report(), {
+      lobbyMs: lobbyMs(this.env),
+      soloHandoff: true,
+      mode,
+      onReplay: (r) => this.ctx.waitUntil(saveReplay(this.env, r).catch(() => {})),
+    });
     // The lobby countdown. The game loop itself runs on Match's own interval.
     let seconds = 0;
     this.lobbyTimer = setInterval(() => {

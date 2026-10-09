@@ -15,9 +15,10 @@ const REMEMBERED: Record<number, number> = {
  * Fog-of-war filter: the slice of the game state one player may see.
  * Runs on the server, so hidden data never reaches the client.
  */
-export function buildView(state: GameState, pid: number): PlayerView {
+export function buildView(state: GameState, pid: number, reveal = false): PlayerView {
   const me = state.players[pid];
-  const over = state.winner >= 0 || !me.alive;
+  // The whole board shows once you're out or the game is over, and always in a replay (`reveal`).
+  const over = reveal || state.winner >= 0 || !me.alive;
   const vis = over ? new Uint8Array(state.size).fill(1) : visionFor(state, pid);
   const n = state.size;
   const terrain = new Array<number>(n);
@@ -43,7 +44,8 @@ export function buildView(state: GameState, pid: number): PlayerView {
     }
     // Blasts are public: everyone sees the mark until it fades.
     crater[i] = state.crater[i] ? Math.max(0, state.crater[i] - state.tick) : 0;
-    dots[i] = me.revealed[i] || over ? mineDots(state, i, over ? -2 : pid) : 0;
+    // A replay draws every mine, so the dots pointing at them would only be clutter.
+    dots[i] = !reveal && (me.revealed[i] || over) ? mineDots(state, i, over ? -2 : pid) : 0;
     lockedDots[i] = dots[i] ? lockedMask(state, i, over ? -2 : pid) : 0;
   }
 

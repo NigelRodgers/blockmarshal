@@ -14,7 +14,13 @@ export class LocalGame {
   constructor(name: string, onMessage: (msg: ServerMessage) => void, mode: GameMode = 'ffa') {
     this.conn = { id: 'local', name: cleanName(name), send: onMessage };
     // No countdown: with one human it starts at once, bots in every other seat.
-    this.match = new Match('local', () => {}, { lobbyMs: 0, mode });
+    // Also hand over the replay of a game left early (the match no longer has us to send it to).
+    this.match = new Match('local', () => {}, {
+      lobbyMs: 0,
+      mode,
+      source: 'browser',
+      onReplay: (replay) => onMessage({ t: 'replay', replay }),
+    });
     this.match.add(this.conn);
   }
 

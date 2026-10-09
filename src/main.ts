@@ -1,9 +1,12 @@
 import './style.css';
 import { analyticsConfigured, analyticsOptedOut, setAnalyticsOptOut, track } from './analytics';
-import { MAX_FLAGS, MINE_STUN_TICKS, isMode, type GameMode } from './engine/constants';
+import { MAX_FLAGS, MINE_STUN_TICKS, TICK_MS, isMode, type GameMode } from './engine/constants';
 import { Terrain, type Move } from './engine/types';
 import { LocalGame } from './local';
-import { findMatch, Net } from './net/client';
+import { findMatch, Net, uploadReplay } from './net/client';
+import { replayTurns, validateReplay, type ReplayRecord } from './replay';
+import { ReplayPlayer } from './replayPlayer';
+import { getReplay, listReplays, saveReplay } from './replayStore';
 import type { ClientMessage, PlayerView, ServerMessage } from './net/protocol';
 import { Effects } from './ui/effects';
 import { Input } from './ui/input';
@@ -21,7 +24,7 @@ const fx = new Effects();
 const net = new Net(onServer, onDisconnect);
 const sounds = new Sounds();
 
-type Screen = 'start' | 'lobby' | 'game';
+type Screen = 'start' | 'lobby' | 'game' | 'replay';
 let screen: Screen = 'start';
 let view: PlayerView | null = null;
 /** Moves sent since the last server view, drawn until the server echoes them back. */
@@ -32,6 +35,15 @@ let half = false;
 let mode: 'move' | 'flag' = 'move';
 let fitted = false;
 let endShown = false;
+
+// Replay playback (see the Replays section at the end).
+/** The game that just ended, for "Watch replay" on the end screen. */
+let lastReplay: ReplayRecord | null = null;
+let replayer: ReplayPlayer | null = null;
+let replayView: PlayerView | null = null;
+let replayTimer = 0;
+let replaySpeed = 1;
+let replayPaused = false;
 let lobbyEndsAt = 0;
 /** Set while playing a browser-only match against bots. */
 let local: LocalGame | null = null;
@@ -47,6 +59,8 @@ function setScreen(next: Screen): void {
   show('start', next === 'start');
   show('lobby', next === 'lobby');
   show('hud', next === 'game');
+  show('replay-bar', next === 'replay');
+  if (next !== 'replay') stopReplay();
   if (next !== 'game') closeGameMenu();
   if (next !== 'game') show('gameover', false);
 }
@@ -149,6 +163,7 @@ function onServer(msg: ServerMessage): void {
   } else if (msg.t === 'start') {
     // A game can start straight from the end screen (`?quick` Play again): close it.
     show('gameover', false);
+    show('btn-go-replay', false);
     view = null;
     pending = [];
     selected = -1;
@@ -163,6 +178,13 @@ function onServer(msg: ServerMessage): void {
   } else if (msg.t === 'solo') {
     // Nobody else joined: the server hands this game to the browser.
     startLocal();
+  } else if (msg.t === 'replay') {
+    if (lastReplay?.id === msg.replay.id) return; // a browser game can hand it over twice
+    lastReplay = msg.replay;
+    show('btn-go-replay', true);
+    void saveReplay(msg.replay);
+    // The server already has its own games; browser-run ones are sent for analytics (unless turned off).
+    if (msg.replay.source === 'browser' && !analyticsOptedOut()) uploadReplay(msg.replay);
   } else if (msg.t === 'error') {
     if (msg.code === 'full' && joinAttempt < 3) play(joinAttempt + 1);
     else toast(msg.message);
@@ -833,7 +855,8 @@ function buzz(pattern: number | number[]): void {
 window.addEventListener('resize', () => {
   renderer.resize();
   measureInsets();
-  if (view) renderer.fit(view);
+  const shown = view ?? replayView;
+  if (shown) renderer.fit(shown);
 });
 
 // ---------- Floating game menu ----------
@@ -908,6 +931,8 @@ function frame(now: number): void {
   fx.update(dt);
   if (view && screen === 'game') {
     renderer.draw(view, { selected, half, pending, fx, targets: relocationTargets(), calm: calmMotion.matches });
+  } else if (replayView && screen === 'replay') {
+    renderer.draw(replayView, { selected: -1, half: false, pending: [], fx, calm: calmMotion.matches });
   }
   requestAnimationFrame(frame);
 }
@@ -940,3 +965,144 @@ if (QUICK) {
   startLocal();
   track('quick_start', { game: gameMode });
 }
+
+// ---------- Replays ----------
+
+const REPLAY_SPEEDS = [1, 2, 4, 8, 16];
+
+function stopReplay(): void {
+  clearInterval(replayTimer);
+  replayTimer = 0;
+  replayer = null;
+  replayView = null;
+}
+
+/** Watch a finished game: the whole board, from the first human's seat. */
+function watchReplay(r: ReplayRecord): void {
+  stopLocal();
+  net.close();
+  view = null;
+  show('replays', false);
+  show('gameover', false);
+  setScreen('replay');
+  replayer = new ReplayPlayer(r);
+  replayPaused = false;
+  ($('rp-seek') as HTMLInputElement).max = String(r.ticks);
+  fitted = false;
+  showReplayFrame();
+  restartReplayTimer();
+  renderReplayBar();
+}
+
+function replaySeat(r: ReplayRecord): number {
+  return Math.max(0, r.players.findIndex((p) => !p.isBot));
+}
+
+function showReplayFrame(): void {
+  if (!replayer) return;
+  replayView = replayer.view(replaySeat(replayer.record));
+  if (!fitted) {
+    measureInsets();
+    renderer.fit(replayView);
+    fitted = true;
+  }
+  for (const ev of replayView.events) {
+    if (ev.kind === 'explode') fx.explode((ev.idx % replayView.w) + 0.5, Math.floor(ev.idx / replayView.w) + 0.5);
+  }
+  renderReplayBar();
+}
+
+function restartReplayTimer(): void {
+  clearInterval(replayTimer);
+  replayTimer = window.setInterval(() => {
+    if (!replayer || replayPaused) return;
+    if (replayer.done) {
+      replayPaused = true;
+      renderReplayBar();
+      return;
+    }
+    replayer.step();
+    showReplayFrame();
+  }, TICK_MS / replaySpeed);
+}
+
+function renderReplayBar(): void {
+  if (!replayer) return;
+  const r = replayer.record;
+  $('rp-play').textContent = replayPaused ? '▶' : '❚❚';
+  $('rp-play').setAttribute('aria-label', replayPaused ? 'Play' : 'Pause');
+  $('rp-speed').textContent = `${replaySpeed}×`;
+  $('rp-turn').textContent = `Turn ${Math.floor(replayer.tick / 2)} / ${replayTurns(r)}`;
+  ($('rp-seek') as HTMLInputElement).value = String(replayer.tick);
+}
+
+$('rp-play').addEventListener('click', () => {
+  if (!replayer) return;
+  if (replayer.done) {
+    replayer.restart();
+    showReplayFrame();
+  }
+  replayPaused = !replayPaused;
+  renderReplayBar();
+});
+$('rp-speed').addEventListener('click', () => {
+  replaySpeed = REPLAY_SPEEDS[(REPLAY_SPEEDS.indexOf(replaySpeed) + 1) % REPLAY_SPEEDS.length];
+  restartReplayTimer();
+  renderReplayBar();
+});
+$('rp-seek').addEventListener('change', () => {
+  if (!replayer) return;
+  replayer.seek(Number(($('rp-seek') as HTMLInputElement).value));
+  showReplayFrame();
+});
+$('rp-close').addEventListener('click', () => {
+  setScreen('start');
+  void openReplayList();
+});
+
+$('btn-go-replay').addEventListener('click', () => {
+  if (lastReplay) watchReplay(lastReplay);
+});
+
+/** The list of games kept in this browser. */
+async function openReplayList(): Promise<void> {
+  const list = await listReplays();
+  const ul = $('replay-list');
+  ul.innerHTML = list.length
+    ? list
+        .map((r) => {
+          const me = replaySeat(r);
+          const result = r.winner < 0 ? 'Unfinished' : r.winner === me ? 'Won' : 'Lost';
+          const when = new Date(r.endedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+          const what = r.mode === 'duel' ? '1 vs 1' : 'Free-for-all';
+          return `<li><button data-id="${escapeHtml(r.id)}"><b>${result}</b> · ${what} · ${replayTurns(r)} turns<span>${when}</span></button></li>`;
+        })
+        .join('')
+    : '<li class="empty">No games yet. Finished games show up here.</li>';
+  show('replays', true);
+}
+
+$('replay-list').addEventListener('click', async (e) => {
+  const id = (e.target as HTMLElement).closest('button')?.dataset.id;
+  if (!id) return;
+  const r = await getReplay(id);
+  if (r) watchReplay(r);
+});
+$('btn-replays').addEventListener('click', () => void openReplayList());
+$('btn-replays-close').addEventListener('click', () => show('replays', false));
+
+// A replay file downloaded to the PC (npm run replays): watch it here.
+$('btn-replay-file').addEventListener('click', () => $('replay-file').click());
+$('replay-file').addEventListener('change', async () => {
+  const input = $<HTMLInputElement>('replay-file');
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  try {
+    const r = validateReplay(JSON.parse(await file.text()), ['server', 'browser']);
+    if (r) watchReplay(r);
+    else toast("That file isn't a Blockmarshal replay");
+  } catch {
+    toast("That file isn't a Blockmarshal replay");
+  }
+});

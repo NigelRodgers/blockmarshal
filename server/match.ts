@@ -5,6 +5,7 @@ import { mulberry32, shuffle } from '../src/engine/rng';
 import type { GameState } from '../src/engine/types';
 import type { ClientMessage, ServerMessage } from '../src/net/protocol';
 import { buildView } from '../src/net/view';
+import type { ReplayRecord } from '../src/replay';
 import { createBots, runTick } from '../src/session';
 
 /** A connected browser, as the match sees it. */
@@ -30,6 +31,10 @@ export interface MatchOptions {
   soloHandoff?: boolean;
   /** Free-for-all (default) or a 1 vs 1 duel: sets the seat count and the board size. */
   mode?: GameMode;
+  /** Where this match runs, for its replay record. */
+  source?: ReplayRecord['source'];
+  /** Called once with the replay when a game that started ends (won or abandoned). */
+  onReplay?: (r: ReplayRecord) => void;
 }
 
 const MAX_QUEUE = 200;
@@ -56,6 +61,8 @@ export class Match {
   private timer: ReturnType<typeof setInterval> | null = null;
   private readonly connected = new Set<Conn>();
   readonly mode: GameMode;
+  private seed = 0;
+  private startedAt = 0;
   /** Seats in this match (humans + bots). */
   readonly capacity: number;
 
@@ -129,6 +136,8 @@ export class Match {
     }
     this.phase = 'playing';
     const seed = this.opts.seed ?? (Math.random() * 2 ** 32) >>> 0;
+    this.seed = seed;
+    this.startedAt = this.now();
     const botNames = shuffle(mulberry32(seed), [...BOT_NAMES]);
     const { w, h, mineRate, mountainRate } = MODES[this.mode];
     const players = Array.from({ length: this.capacity }, (_, i) =>
@@ -181,10 +190,37 @@ export class Match {
 
   private finish(): void {
     if (this.phase === 'done') return;
+    const played = this.phase === 'playing';
     this.phase = 'done';
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    if (played && this.state) {
+      const replay = this.replay(this.state);
+      for (const c of this.connected) c.send({ t: 'replay', replay });
+      try {
+        this.opts.onReplay?.(replay);
+      } catch {
+        /* storing a replay must never break a match */
+      }
+    }
     for (const c of this.humans) if (c.match === this) c.match = undefined;
     this.onDone(this);
+  }
+
+  /** Seed + settings + human inputs: enough to rebuild the whole game (see ReplayPlayer). */
+  private replay(s: GameState): ReplayRecord {
+    return {
+      v: 1,
+      id: crypto.randomUUID(),
+      mode: this.mode,
+      source: this.opts.source ?? 'server',
+      seed: this.seed,
+      players: s.players.map((p) => ({ name: p.name, isBot: p.isBot })),
+      log: s.log.slice(),
+      ticks: s.tick,
+      winner: s.winner,
+      startedAt: this.startedAt,
+      endedAt: this.now(),
+    };
   }
 }

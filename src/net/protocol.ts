@@ -1,5 +1,6 @@
 import type { GameMode } from '../engine/constants';
 import type { GameEvent, Move } from '../engine/types';
+import type { ReplayRecord } from '../replay';
 
 /** Messages from a browser to the game server. */
 export type ClientMessage =
@@ -83,4 +84,6 @@ export type ServerMessage =
   | { t: 'view'; view: PlayerView }
   /** You're the only human: play this one against bots in your browser instead. */
   | { t: 'solo' }
+  /** The finished game, to keep in the browser (sent when a game ends). */
+  | { t: 'replay'; replay: ReplayRecord }
   | { t: 'error'; code?: 'full'; message: string };

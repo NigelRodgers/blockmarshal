@@ -93,6 +93,8 @@ export class Renderer {
 
   /** Scale the whole board to the largest square tiles that fit between the HUD bars. */
   fit(b: Board): void {
+    // A page opened in the background can report a 0x0 window until it's shown: measure again.
+    if (!this.vw || !this.vh) this.resize();
     const availW = this.vw - 6;
     const availH = this.vh - this.insetTop - this.insetBottom - 6;
     this.cam.scale = Math.max(4, Math.min(availW / b.w, availH / b.h, 96));
