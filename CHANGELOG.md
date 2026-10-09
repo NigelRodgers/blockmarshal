@@ -4,6 +4,11 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-09
 
+**`48228dd`: Softer bots** (not live yet)
+- Bots make no move at all before turn 13, then open with their whole stack (a human-style "13-start").
+- They decide a bit less often than every half-turn, react to danger about 2 turns late, build up before picking fights until turn 40, and skip hiding a spotted general/city 1 time in 5. Mine play is unchanged.
+- Tuned so the bot wins about 60% of 1 vs 1 games against the bot from before the 2026-10-08 upgrade (61% over 160 games; it was 79%). Same level in every mode.
+
 **`55fbcba`: Mine stock limit, bot planting pace, unflagging** (live in `5b465a2`)
 - You hold at most **5** unplanted mines. With a full stock, a flagged mine you walk onto is disarmed (no blast) but not kept, and your own mines can't be picked up until you plant one.
 - Bots plant **one mine at a time**, each landing 3 turns after they pick the spot.

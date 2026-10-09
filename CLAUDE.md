@@ -83,8 +83,12 @@ Before every commit: `npx tsc --noEmit && npx tsc --noEmit -p tsconfig.server.js
 5. Reconnect to a running match after a dropped connection (currently you can't rejoin).
 6. Matchmaking that groups humans better (beyond "fullest open lobby").
 
+**Plan (agreed 2026-10-09)**
+- Week of 2026-10-09: play, read replays (`summary.csv`: human win rate vs bots in 1 vs 1, target 35-50%) and analytics; fix what shows up. Bot difficulty: one level (normal), tuned to ~60% vs the pre-upgrade bot (`ba04024`).
+- Then the **Reddit edition** (Devvit Web), a separate game on the shared engine: `reddit/` folder; new pieces (towers back, pre-filled boards, kamikaze drones, turrets...) switched on per mode; a daily map per date seed, generated a week ahead, bot-checked with a par score, hand-editable until it goes live at 00:00 UTC; both turn-based (default) and real-time "Blitz" with separate leaderboards, compared after 2 weeks. Start with a design session for the new pieces.
+
 **Balance / design questions**
-7. Bots now hide their general and cities and use mines (`a583eb8`). Moves now have a 100-turn cooldown for everyone (`7afd7e4`), so a bot dodges at most once per 100 turns. Easy bots still do none of this.
+7. Bots hide their general and cities and use mines (`a583eb8`); softened in `48228dd` (no moves before turn 13, slower decisions, 2-turn reactions, build-up until turn 40, 1 in 5 hides skipped). Re-tune against the pre-upgrade bot: copy `git show ba04024:src/ai/bot.ts` to a temp file and play 80+ duels per setting (noise is about ±6 points).
 8. Bot-only games are longer (median ~615 turns since hiding, ~500 with towers).
 
 **Portals (undecided)**: CrazyGames Basic Launch first (no SDK needed), Poki only if numbers are strong (web exclusivity). Needs: shorter lobby (~15 s), a portal build without the service worker/install button, SDK hooks (gameplay start/stop, ads between matches, invite rooms on CrazyGames).
