@@ -40,6 +40,9 @@ let mode: 'move' | 'flag' = 'move';
 let fitted = false;
 let endShown = false;
 
+/** A browser-run game the player has paused (see the Pause section at the end). */
+let gamePaused = false;
+
 // Replay playback (see the Replays section at the end).
 /** The game that just ended, for "Watch replay" on the end screen. */
 let lastReplay: ReplayRecord | null = null;
@@ -64,6 +67,7 @@ function setScreen(next: Screen): void {
   show('start', next === 'start');
   show('lobby', next === 'lobby');
   show('hud', next === 'game');
+  setPaused(false);
   show('replay-bar', next === 'replay');
   show('btn-rec', RECORDER && (next === 'game' || next === 'replay'));
   // In a replay only the record button of the HUD column shows (see .replaying in style.css).
@@ -122,6 +126,7 @@ function startLocal(): void {
   show('offline', false);
   view = null;
   local = new LocalGame(playerName(), onServer, gameMode);
+  show('btn-pause', true);
 }
 
 async function play(attempt = 0): Promise<void> {
@@ -138,6 +143,7 @@ async function play(attempt = 0): Promise<void> {
   $('lobby-time').textContent = '…';
   $('lobby-slots').innerHTML = '';
   try {
+    show('btn-pause', false);
     await net.connect(await findMatch(gameMode));
   } catch {
     setScreen('start');
@@ -180,7 +186,7 @@ function onServer(msg: ServerMessage): void {
     fitted = false;
     endShown = false;
     setScreen('game');
-    void sounds.play('start');
+    void sounds.play('horn');
   } else if (msg.t === 'view') {
     onView(msg.view);
   } else if (msg.t === 'solo') {
@@ -227,6 +233,7 @@ function onView(v: PlayerView): void {
   for (const ev of v.events) {
     if (ev.kind === 'explode') {
       fx.explode((ev.idx % v.w) + 0.5, Math.floor(ev.idx / v.w) + 0.5);
+      void sounds.play('thud', ev.player === v.you ? 1 : 0.45); // every blast is public; yours is loud
       if (ev.player === v.you) {
         buzz([30, 40, 90]);
         toast(`Boom! Lost ${ev.lost} troops, stunned 3 turns`);
@@ -235,7 +242,9 @@ function onView(v: PlayerView): void {
       const by = v.players[ev.by].name;
       const victim = v.players[ev.victim].name;
       // A crown falls: yours, or one you just took.
-      if (ev.victim === v.you || ev.by === v.you) void sounds.play('fall');
+      // Your crown falls (deep boom, sagging horn) or you take one (boom, rising call).
+      if (ev.victim === v.you) void sounds.play('fall');
+      else if (ev.by === v.you) void sounds.play('capture');
       if (ev.victim !== v.you) toast(ev.by === v.you ? `You captured ${victim}'s crown!` : `${by} captured ${victim}`);
     } else if (ev.kind === 'defuse' && ev.player === v.you) {
       buzz(30);
@@ -304,7 +313,7 @@ function escapeHtml(s: string): string {
 // ---------- Player actions ----------
 
 function canAct(): boolean {
-  return !!view && screen === 'game' && view.players[view.you].alive && view.winner < 0;
+  return !!view && screen === 'game' && !gamePaused && view.players[view.you].alive && view.winner < 0;
 }
 
 function ownsTile(idx: number): boolean {
@@ -993,7 +1002,9 @@ if (QUICK) {
 
 // ---------- Replays ----------
 
-const REPLAY_SPEEDS = [1, 2, 4, 8, 16];
+const REPLAY_SPEEDS = [0.5, 1, 2, 5, 10];
+/** ⏪ / ⏩ jump this many ticks (10 turns). */
+const REPLAY_JUMP = 20;
 
 function stopReplay(): void {
   clearInterval(replayTimer);
@@ -1070,6 +1081,14 @@ $('rp-play').addEventListener('click', () => {
   replayPaused = !replayPaused;
   renderReplayBar();
 });
+function replayJump(ticks: number): void {
+  if (!replayer) return;
+  replayer.seek(Math.max(0, Math.min(replayer.record.ticks, replayer.tick + ticks)));
+  showReplayFrame();
+}
+$('rp-back').addEventListener('click', () => replayJump(-REPLAY_JUMP));
+$('rp-fwd').addEventListener('click', () => replayJump(REPLAY_JUMP));
+
 $('rp-speed').addEventListener('click', () => {
   replaySpeed = REPLAY_SPEEDS[(REPLAY_SPEEDS.indexOf(replaySpeed) + 1) % REPLAY_SPEEDS.length];
   restartReplayTimer();
@@ -1145,7 +1164,15 @@ function renderRecButton(): void {
   b.classList.toggle('on', on);
   b.setAttribute('aria-pressed', String(on));
   b.setAttribute('aria-label', on ? 'Stop recording and save the video' : 'Start recording');
+  show('btn-rec-cancel', on);
 }
+
+$('btn-rec-cancel').addEventListener('click', () => {
+  recorder.cancel();
+  clearInterval(recTimer);
+  toast('Recording thrown away');
+  renderRecButton();
+});
 
 $('btn-rec').addEventListener('click', () => {
   if (recorder.recording) {
@@ -1192,3 +1219,18 @@ document.addEventListener(
   },
   { passive: false },
 );
+
+// ---------- Pause (games against bots in this browser) ----------
+
+function setPaused(on: boolean): void {
+  gamePaused = on && !!local && screen === 'game';
+  if (gamePaused) local!.pause();
+  else local?.resume();
+  show('paused', gamePaused);
+}
+
+$('btn-pause').addEventListener('click', () => {
+  closeGameMenu();
+  setPaused(true);
+});
+$('btn-resume').addEventListener('click', () => setPaused(false));

@@ -153,6 +153,17 @@ export class Match {
     if (this.opts.autoRun !== false) this.timer = setInterval(() => this.tick(), this.opts.tickMs ?? TICK_MS);
   }
 
+  /** Stop / restart the clock (browser-run games only: nobody else is waiting). */
+  pause(): void {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
+  }
+
+  resume(): void {
+    if (this.phase !== 'playing' || this.timer || this.opts.autoRun === false) return;
+    this.timer = setInterval(() => this.tick(), this.opts.tickMs ?? TICK_MS);
+  }
+
   tick(): void {
     if (this.phase !== 'playing' || !this.state) return;
     runTick(this.state, this.bots);

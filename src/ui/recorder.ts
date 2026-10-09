@@ -28,6 +28,7 @@ export class CanvasRecorder {
   private rec: MediaRecorder | null = null;
   private chunks: Blob[] = [];
   private startedAt = 0;
+  private discard = false;
 
   constructor(private readonly canvas: HTMLCanvasElement) {}
 
@@ -49,9 +50,11 @@ export class CanvasRecorder {
     this.rec.ondataavailable = (e) => {
       if (e.data.size) this.chunks.push(e.data);
     };
+    this.discard = false;
     this.rec.onstop = () => {
       stream.getTracks().forEach((t) => t.stop());
-      this.download(new Blob(this.chunks, { type: mimeType || 'video/webm' }));
+      if (!this.discard) this.download(new Blob(this.chunks, { type: mimeType || 'video/webm' }));
+      this.chunks = [];
     };
     this.rec.start(1000);
     this.startedAt = performance.now();
@@ -60,6 +63,13 @@ export class CanvasRecorder {
 
   stop(): void {
     if (this.recording) this.rec!.stop();
+  }
+
+  /** Stop and throw the recording away (no download). */
+  cancel(): void {
+    if (!this.recording) return;
+    this.discard = true;
+    this.rec!.stop();
   }
 
   private download(blob: Blob): void {

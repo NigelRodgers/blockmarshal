@@ -22,8 +22,10 @@ function serviceWorker(): Plugin {
         'icon-512.png',
         'icon-maskable-512.png',
         'apple-touch-icon.png',
-        'sounds/start.mp3',
+        'sounds/horn.mp3',
+        'sounds/thud.mp3',
         'sounds/fall.mp3',
+        'sounds/capture.mp3',
         ...files,
       ];
       const version = createHash('sha256').update(files.sort().join('|')).digest('hex').slice(0, 12);

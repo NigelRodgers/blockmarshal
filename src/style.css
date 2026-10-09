@@ -762,7 +762,7 @@ body.replaying #hud.hidden {
   display: flex !important;
 }
 
-body.replaying #hud > :not(#btn-rec) {
+body.replaying #hud > :not(.rec-row) {
   display: none !important;
 }
 
@@ -779,4 +779,26 @@ body.replaying #hud > :not(#btn-rec) {
 .rec-btn.on {
   background: rgba(120, 20, 20, 0.85);
   color: #fff;
+}
+
+/* Record and its cancel sit side by side under the menu button. */
+.rec-row {
+  display: flex;
+  gap: 6px;
+}
+
+.rec-row:has(> .hidden + .hidden) {
+  display: none;
+}
+
+#btn-rec-cancel {
+  font-size: 16px;
+}
+
+body.replaying #hud > .rec-row {
+  display: flex !important;
+}
+
+#replay-bar button {
+  min-width: 40px;
 }

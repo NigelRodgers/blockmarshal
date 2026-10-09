@@ -29,6 +29,15 @@ export class LocalGame {
     else if (msg.t !== 'join') this.match.input(this.conn, msg);
   }
 
+  /** Freeze the game (only possible here: a browser game has nobody else to keep waiting). */
+  pause(): void {
+    this.match.pause();
+  }
+
+  resume(): void {
+    this.match.resume();
+  }
+
   /** Stops the tick loop; the match ends once nobody is watching. */
   stop(): void {
     this.match.remove(this.conn);

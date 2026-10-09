@@ -17,8 +17,13 @@
     <!-- Floating HUD: a translucent menu button over the board; everything else lives in its panel. -->
     <div id="hud" class="hidden">
       <button id="btn-menu-hud" class="hud-fab" aria-label="Game menu" aria-expanded="false">&#9776;<span id="hud-badge" class="hud-badge"></span></button>
-      <!-- Owner-only (?recorder=on): records the board to a video file. -->
-      <button id="btn-rec" class="hud-fab rec-btn hidden" aria-label="Start recording" aria-pressed="false">●</button>
+      <!-- Games against bots in this browser can be paused. -->
+      <button id="btn-pause" class="hud-fab hidden" aria-label="Pause game">❚❚</button>
+      <!-- Owner-only (?recorder=on): records the board to a video file; ✕ throws the recording away. -->
+      <div class="rec-row">
+        <button id="btn-rec" class="hud-fab rec-btn hidden" aria-label="Start recording" aria-pressed="false">●</button>
+        <button id="btn-rec-cancel" class="hud-fab hidden" aria-label="Cancel recording (discard it)">✕</button>
+      </div>
       <div id="stun" class="hidden" title="Stunned by a mine: turns until you can move"><span class="ring"></span>Stunned <b id="stun-n">3</b></div>
       <div id="game-menu" class="game-menu hidden">
         <div class="gm-row">
@@ -133,6 +138,14 @@
       </form>
     </div>
 
+    <div id="paused" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="paused-title">
+      <div class="panel small">
+        <h2 id="paused-title">Paused</h2>
+        <p class="sub">The bots are waiting too.</p>
+        <button id="btn-resume" class="primary">Resume</button>
+      </div>
+    </div>
+
     <div id="replays" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="replays-title">
       <div class="panel small">
         <h2 id="replays-title">Replays</h2>
@@ -145,7 +158,9 @@
     </div>
 
     <div id="replay-bar" class="hidden" role="toolbar" aria-label="Replay controls">
+      <button id="rp-back" aria-label="Back 10 turns">⏪</button>
       <button id="rp-play" aria-label="Pause">❚❚</button>
+      <button id="rp-fwd" aria-label="Forward 10 turns">⏩</button>
       <button id="rp-speed" aria-label="Playback speed">1×</button>
       <input id="rp-seek" type="range" min="0" max="1" value="0" aria-label="Jump to turn" />
       <span id="rp-turn">Turn 0</span>

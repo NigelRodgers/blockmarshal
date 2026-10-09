@@ -1,10 +1,13 @@
 const MUTE_KEY = 'blockmarshal.muted';
 
-export type SoundName = 'start' | 'fall';
+/** Made by scripts/make-sounds.mjs (our own synthesised audio). */
+export type SoundName = 'horn' | 'thud' | 'fall' | 'capture';
 
 const FILES: Record<SoundName, string> = {
-  start: './sounds/start.mp3',
+  horn: './sounds/horn.mp3',
+  thud: './sounds/thud.mp3',
   fall: './sounds/fall.mp3',
+  capture: './sounds/capture.mp3',
 };
 
 /**
@@ -50,14 +53,16 @@ export class Sounds {
     );
   }
 
-  async play(name: SoundName): Promise<void> {
+  async play(name: SoundName, volume = 1): Promise<void> {
     if (this.muted || !this.ctx) return;
     await this.loading;
     const buffer = this.buffers.get(name);
     if (!buffer) return;
     const src = this.ctx.createBufferSource();
     src.buffer = buffer;
-    src.connect(this.ctx.destination);
+    const gain = this.ctx.createGain();
+    gain.gain.value = volume;
+    src.connect(gain).connect(this.ctx.destination);
     src.start();
   }
 
