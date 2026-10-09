@@ -4,6 +4,14 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-09
 
+**`9af73d2`: Locked mines, white dots, colour-blind palette, accessibility** (not live yet)
+- Fix: freshly planted mines were still being stolen. A mine on its 100-turn cooldown is now locked: an enemy's flag doesn't capture it, it goes off.
+- Dots toward a locked mine are **white** (red otherwise), for everyone; your own locked mine wears a white ring. Bots read this and don't try to capture locked mines.
+- New player colours (orange, sky, teal, indigo, pink, brown): the hardest pair to tell apart with colour blindness is about a third further apart than before, and so are mine dots vs tiles.
+- Troop numbers are dark or white per tile, whichever contrasts more (white on neutral land was 1.55:1). Dots have a solid dark rim.
+- Accessibility: visible keyboard focus, bigger menu buttons (44px), larger control labels, screen-reader labels and states for dialogs, toggles, toasts and the board. With "reduce motion" on, no screen shake, pulsing or slide-ins.
+- Fix `?quick`: Play again from the end screen now starts the next quick game (the end screen stayed on top). Play and Try again stay in quick mode too.
+
 **`850d8ce`: Quick start** (live)
 - Open https://blockmarshal.rodgersnigel.workers.dev/?quick to skip the lobby and play 5 bots in your browser at once (same as "Play vs bots offline", no server cost). Play again stays in quick mode. Analytics event `quick_start`.
 
