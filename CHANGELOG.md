@@ -4,13 +4,13 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-09
 
-**`4494898`: 1 vs 1** (not live yet)
+**`4494898`: 1 vs 1** (live in `a545b13`)
 - Start screen: **Game** = Free-for-all (6 players, as before) or **1 vs 1**. For 1 vs 1 pick **vs Human** (a 2-seat lobby; if nobody joins before the timer, a bot steps in) or **vs Bot** (starts at once in your browser, no server cost). Your picks are remembered.
 - Duels use a smaller 11 x 17 board (bigger tiles on phones). Bot-vs-bot duels last about 380 turns (median), against about 600 for free-for-all.
 - The matchmaker keeps separate lobby lists, so free-for-all and 1 vs 1 players never land in each other's lobbies.
 - `?quick=duel` (or `?quick=1v1`) starts an instant duel against a bot.
 
-**`9af73d2`: Locked mines, white dots, colour-blind palette, accessibility** (not live yet)
+**`9af73d2`: Locked mines, white dots, colour-blind palette, accessibility** (live in `a545b13`)
 - Fix: freshly planted mines were still being stolen. A mine on its 100-turn cooldown is now locked: an enemy's flag doesn't capture it, it goes off.
 - Dots toward a locked mine are **white** (red otherwise), for everyone; your own locked mine wears a white ring. Bots read this and don't try to capture locked mines.
 - New player colours (orange, sky, teal, indigo, pink, brown): the hardest pair to tell apart with colour blindness is about a third further apart than before, and so are mine dots vs tiles.
