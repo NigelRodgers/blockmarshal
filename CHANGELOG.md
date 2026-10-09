@@ -4,7 +4,7 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-09
 
-**Replays, security, recorder, bot delay, duel tuning** (not live yet: needs `npm run db:migrate` before deploy)
+**Replays, security, recorder, bot delay, duel tuning** (live in `e1af773`; replays table migrated)
 - **1 vs 1** (`203491d`): twice the mines (27% of eligible plains) and 10% more mountains (15.4%). [Sample duel maps](https://claude.ai/artifact/2SmPigB4mPB8yDG8FbZofW).
 - **Your own mines** (`203491d`): pick them up any time. The 100-turn lock now only stops enemies capturing a freshly planted mine.
 - **Notices** (`203491d`, `1360a99`): captures, blasts and other messages go in the empty band below the board (above it if there's no room below), so they don't cover tiles. The board itself keeps the full screen.
