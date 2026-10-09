@@ -1,3 +1,4 @@
+import type { GameMode } from '../engine/constants';
 import type { ClientMessage, ServerMessage } from './protocol';
 
 /** Base URL of the game backend: same origin by default (Vite proxies /api and /ws in dev). */
@@ -6,9 +7,9 @@ function backend(): URL {
   return new URL(override || location.origin);
 }
 
-/** Ask the matchmaker which match to join. */
-export async function findMatch(): Promise<string> {
-  const res = await fetch(new URL('/api/join', backend()), { method: 'POST' });
+/** Ask the matchmaker which match to join, for a free-for-all or a duel. */
+export async function findMatch(mode: GameMode): Promise<string> {
+  const res = await fetch(new URL('/api/join', backend()), { method: 'POST', body: JSON.stringify({ mode }) });
   if (!res.ok) throw new Error(`matchmaker ${res.status}`);
   const { matchId } = (await res.json()) as { matchId: string };
   return matchId;

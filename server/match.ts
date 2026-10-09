@@ -1,5 +1,5 @@
 import type { Bot } from '../src/ai/bot';
-import { BOT_NAMES, LOBBY_SECONDS, MAP_H, MAP_W, MATCH_PLAYERS, TICK_MS } from '../src/engine/constants';
+import { BOT_NAMES, LOBBY_SECONDS, MODES, TICK_MS, type GameMode } from '../src/engine/constants';
 import { clearQueue, createGame, pickUpMine, plantMine, queueMove, relocate, toggleFlag, undoMove } from '../src/engine/game';
 import { mulberry32, shuffle } from '../src/engine/rng';
 import type { GameState } from '../src/engine/types';
@@ -28,6 +28,8 @@ export interface MatchOptions {
    * (in their browser) instead of running a server match for one person.
    */
   soloHandoff?: boolean;
+  /** Free-for-all (default) or a 1 vs 1 duel: sets the seat count and the board size. */
+  mode?: GameMode;
 }
 
 const MAX_QUEUE = 200;
@@ -40,8 +42,9 @@ export function cleanName(raw: unknown): string {
 }
 
 /**
- * One game: a lobby that fills for up to LOBBY_SECONDS (or until six humans
- * join), then a match where empty slots are bots. The server is authoritative;
+ * One game: a lobby that fills for up to LOBBY_SECONDS (or until every seat
+ * has a human: six in free-for-all, two in a duel), then a match where empty
+ * slots are bots. The server is authoritative;
  * each player only ever receives their own fog-filtered view.
  */
 export class Match {
@@ -52,6 +55,9 @@ export class Match {
   private bots: Bot[] = [];
   private timer: ReturnType<typeof setInterval> | null = null;
   private readonly connected = new Set<Conn>();
+  readonly mode: GameMode;
+  /** Seats in this match (humans + bots). */
+  readonly capacity: number;
 
   constructor(
     readonly id: string,
@@ -59,6 +65,8 @@ export class Match {
     private readonly opts: MatchOptions = {},
   ) {
     this.startsAt = this.now() + (opts.lobbyMs ?? LOBBY_SECONDS * 1000);
+    this.mode = opts.mode ?? 'ffa';
+    this.capacity = MODES[this.mode].players;
   }
 
   private now(): number {
@@ -66,7 +74,7 @@ export class Match {
   }
 
   get open(): boolean {
-    return this.phase === 'lobby' && this.humans.length < MATCH_PLAYERS;
+    return this.phase === 'lobby' && this.humans.length < this.capacity;
   }
 
   add(conn: Conn): void {
@@ -75,7 +83,7 @@ export class Match {
     this.connected.add(conn);
     conn.match = this;
     // Full, or the countdown is zero (local testing): start right away.
-    if (this.humans.length >= MATCH_PLAYERS || this.now() >= this.startsAt) this.start();
+    if (this.humans.length >= this.capacity || this.now() >= this.startsAt) this.start();
     else this.broadcastLobby();
   }
 
@@ -106,7 +114,7 @@ export class Match {
         t: 'lobby',
         matchId: this.id,
         slots: this.humans.map((h) => ({ name: h.name, you: h === c })),
-        capacity: MATCH_PLAYERS,
+        capacity: this.capacity,
         startsInMs,
       });
     }
@@ -122,10 +130,11 @@ export class Match {
     this.phase = 'playing';
     const seed = this.opts.seed ?? (Math.random() * 2 ** 32) >>> 0;
     const botNames = shuffle(mulberry32(seed), [...BOT_NAMES]);
-    const players = Array.from({ length: MATCH_PLAYERS }, (_, i) =>
+    const { w, h } = MODES[this.mode];
+    const players = Array.from({ length: this.capacity }, (_, i) =>
       i < this.humans.length ? { name: this.humans[i].name, isBot: false } : { name: botNames[i % botNames.length], isBot: true },
     );
-    this.state = createGame({ w: MAP_W, h: MAP_H, seed, players });
+    this.state = createGame({ w, h, seed, players });
     this.bots = createBots(this.state, 'normal');
     this.humans.forEach((c, pid) => {
       c.pid = pid;

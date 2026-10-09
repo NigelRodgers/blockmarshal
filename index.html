@@ -42,6 +42,15 @@
         <p class="tag">Six generals. One minefield. Last crown standing wins.</p>
         <label for="name">Your name</label>
         <input id="name" maxlength="16" autocomplete="nickname" placeholder="Player" />
+        <label id="mode-title">Game</label>
+        <div class="seg" id="mode-seg" role="group" aria-labelledby="mode-title">
+          <button type="button" data-mode="ffa" aria-pressed="true">Free-for-all &middot; 6</button>
+          <button type="button" data-mode="duel" aria-pressed="false">1 vs 1</button>
+        </div>
+        <div class="seg hidden" id="opp-seg" role="group" aria-label="Opponent">
+          <button type="button" data-opp="human" aria-pressed="true">vs Human</button>
+          <button type="button" data-opp="bot" aria-pressed="false">vs Bot</button>
+        </div>
         <button id="btn-play" class="primary">Play</button>
         <button id="btn-install" class="hidden">Install as app</button>
         <button id="btn-feedback-start" class="ghost">Send feedback</button>
@@ -58,6 +67,7 @@
             <li>Everyone sees every blast. The mark fades after 10 turns.</li>
             <li><b>Long-press your general or a city you hold</b> to move it to another of your open tiles on the same connected stretch of land. It can't touch another general or city, even at a corner, and can't move again for 100 turns.</li>
             <li>Capture an enemy crown to take their empire. Last general standing wins.</li>
+            <li><b>1 vs 1</b> is a duel on a smaller board, against another player (a bot steps in if nobody joins in time) or straight against a bot.</li>
             <li>Tap <b>&#9776;</b> for standings, Split, Undo, Clear, sound, feedback and leaving.</li>
           </ul>
         </details>
@@ -71,7 +81,7 @@
       <div class="panel small">
         <h2 id="lobby-title">Finding players</h2>
         <div class="countdown" aria-live="off"><span id="lobby-time">1:00</span></div>
-        <p class="sub">The game starts when 6 players join or the timer ends. Bots fill any empty seats.</p>
+        <p id="lobby-sub" class="sub">The game starts when 6 players join or the timer ends. Bots fill any empty seats.</p>
         <ol id="lobby-slots"></ol>
         <button id="btn-lobby-leave">Leave</button>
       </div>

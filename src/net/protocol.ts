@@ -1,8 +1,10 @@
+import type { GameMode } from '../engine/constants';
 import type { GameEvent, Move } from '../engine/types';
 
 /** Messages from a browser to the game server. */
 export type ClientMessage =
-  | { t: 'join'; name: string }
+  /** `mode` must match the lobby the matchmaker picked (missing = free-for-all). */
+  | { t: 'join'; name: string; mode?: GameMode }
   | { t: 'leave' }
   | { t: 'move'; from: number; to: number; half: boolean }
   | { t: 'undo' }

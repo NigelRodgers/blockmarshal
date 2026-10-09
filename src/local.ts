@@ -1,3 +1,4 @@
+import type { GameMode } from './engine/constants';
 import type { ClientMessage, ServerMessage } from './net/protocol';
 import { cleanName, Match, type Conn } from '../server/match';
 
@@ -10,10 +11,10 @@ export class LocalGame {
   private readonly conn: Conn;
   private readonly match: Match;
 
-  constructor(name: string, onMessage: (msg: ServerMessage) => void) {
+  constructor(name: string, onMessage: (msg: ServerMessage) => void, mode: GameMode = 'ffa') {
     this.conn = { id: 'local', name: cleanName(name), send: onMessage };
-    // No countdown: with one human it starts at once, bots in the other five seats.
-    this.match = new Match('local', () => {}, { lobbyMs: 0 });
+    // No countdown: with one human it starts at once, bots in every other seat.
+    this.match = new Match('local', () => {}, { lobbyMs: 0, mode });
     this.match.add(this.conn);
   }
 

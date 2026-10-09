@@ -1,6 +1,6 @@
 import './style.css';
 import { analyticsConfigured, analyticsOptedOut, setAnalyticsOptOut, track } from './analytics';
-import { MAX_FLAGS, MINE_STUN_TICKS } from './engine/constants';
+import { MAX_FLAGS, MINE_STUN_TICKS, isMode, type GameMode } from './engine/constants';
 import { Terrain, type Move } from './engine/types';
 import { LocalGame } from './local';
 import { findMatch, Net } from './net/client';
@@ -11,6 +11,8 @@ import { formatArmy, Renderer } from './ui/renderer';
 import { Sounds } from './ui/sound';
 
 const NAME_KEY = 'blockmarshal.name';
+const MODE_KEY = 'blockmarshal.mode';
+const OPPONENT_KEY = 'blockmarshal.opponent';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -66,13 +68,27 @@ function stopLocal(): void {
 
 /**
  * `?quick` in the URL: skip the lobby and play bots in this browser at once (for testing on a phone,
- * or a link to share). "Play again" stays in quick mode.
+ * or a link to share). `?quick=duel` (or `?quick=1v1`) makes it a 1 vs 1. "Play again" stays in quick mode.
  */
-const QUICK = new URLSearchParams(location.search).has('quick');
+const params = new URLSearchParams(location.search);
+const QUICK = params.has('quick');
+const QUICK_MODE: GameMode = ['duel', '1v1'].includes(params.get('quick') ?? '') ? 'duel' : 'ffa';
 
-/** A new game from any button: online, or straight into bots with `?quick`. */
+/** Start-screen choice: free-for-all, or 1 vs 1 against a human (matchmaking) or a bot (in the browser). */
+let gameMode: GameMode = 'ffa';
+let opponent: 'human' | 'bot' = 'human';
+try {
+  const m = localStorage.getItem(MODE_KEY);
+  if (isMode(m)) gameMode = m;
+  if (localStorage.getItem(OPPONENT_KEY) === 'bot') opponent = 'bot';
+} catch {
+  /* defaults */
+}
+if (QUICK) gameMode = QUICK_MODE;
+
+/** A new game from any button: online, or straight into bots (`?quick`, or 1 vs 1 against a bot). */
 function newGame(): void {
-  if (QUICK) startLocal();
+  if (QUICK || (gameMode === 'duel' && opponent === 'bot')) startLocal();
   else void play();
 }
 
@@ -83,7 +99,7 @@ function startLocal(): void {
   net.close();
   show('offline', false);
   view = null;
-  local = new LocalGame(playerName(), onServer);
+  local = new LocalGame(playerName(), onServer, gameMode);
 }
 
 async function play(attempt = 0): Promise<void> {
@@ -100,7 +116,7 @@ async function play(attempt = 0): Promise<void> {
   $('lobby-time').textContent = '…';
   $('lobby-slots').innerHTML = '';
   try {
-    await net.connect(await findMatch());
+    await net.connect(await findMatch(gameMode));
   } catch {
     setScreen('start');
     $('offline-sub').textContent = 'Check your connection and try again.';
@@ -108,8 +124,8 @@ async function play(attempt = 0): Promise<void> {
     return;
   }
   joinAttempt = attempt;
-  net.send({ t: 'join', name: playerName() });
-  if (attempt === 0) track('lobby_join');
+  net.send({ t: 'join', name: playerName(), mode: gameMode });
+  if (attempt === 0) track('lobby_join', { game: gameMode });
 }
 
 /** A lobby can fill between the matchmaker's answer and our arrival; try another a few times. */
@@ -168,7 +184,7 @@ function onView(v: PlayerView): void {
 
   if (first) {
     const humans = v.players.filter((p) => !p.isBot).length;
-    track('game_start', { humans, bots: v.players.length - humans, mode: local ? 'local' : 'online' });
+    track('game_start', { humans, bots: v.players.length - humans, mode: local ? 'local' : 'online', game: gameMode });
     selected = v.owner.findIndex((o, i) => o === v.you && v.terrain[i] === Terrain.General);
   }
   if (!fitted) {
@@ -230,6 +246,11 @@ function showEnd(v: PlayerView): void {
 // ---------- Lobby ----------
 
 function renderLobby(slots: { name: string; you: boolean }[], capacity: number): void {
+  const duel = capacity === 2;
+  $('lobby-title').textContent = duel ? 'Finding an opponent' : 'Finding players';
+  $('lobby-sub').textContent = duel
+    ? 'The game starts when another player joins. If nobody does before the timer ends, you play a bot.'
+    : `The game starts when ${capacity} players join or the timer ends. Bots fill any empty seats.`;
   const rows = slots.map((s) => `<li class="${s.you ? 'you' : ''}">${escapeHtml(s.name)}${s.you ? ' (you)' : ''}</li>`);
   for (let i = slots.length; i < capacity; i++) rows.push('<li class="empty">Waiting… a bot takes this seat at 0:00</li>');
   $('lobby-slots').innerHTML = rows.join('');
@@ -572,6 +593,47 @@ window.addEventListener('keydown', (e) => {
 });
 
 $('btn-play').addEventListener('click', newGame);
+
+// ---------- Game mode picker ----------
+
+function renderModePicker(): void {
+  for (const b of document.querySelectorAll<HTMLButtonElement>('#mode-seg button')) {
+    const on = b.dataset.mode === gameMode;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+  }
+  for (const b of document.querySelectorAll<HTMLButtonElement>('#opp-seg button')) {
+    const on = b.dataset.opp === opponent;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+  }
+  show('opp-seg', gameMode === 'duel');
+  $('btn-play').textContent = gameMode === 'duel' ? (opponent === 'bot' ? 'Play vs bot' : 'Find opponent') : 'Play';
+}
+
+function savePick(): void {
+  try {
+    localStorage.setItem(MODE_KEY, gameMode);
+    localStorage.setItem(OPPONENT_KEY, opponent);
+  } catch {
+    /* just not remembered */
+  }
+  renderModePicker();
+}
+
+for (const b of document.querySelectorAll<HTMLButtonElement>('#mode-seg button')) {
+  b.addEventListener('click', () => {
+    if (isMode(b.dataset.mode)) gameMode = b.dataset.mode;
+    savePick();
+  });
+}
+for (const b of document.querySelectorAll<HTMLButtonElement>('#opp-seg button')) {
+  b.addEventListener('click', () => {
+    opponent = b.dataset.opp === 'bot' ? 'bot' : 'human';
+    savePick();
+  });
+}
+renderModePicker();
 $('name').addEventListener('keydown', (e) => {
   if ((e as KeyboardEvent).key === 'Enter') newGame();
 });
@@ -874,5 +936,5 @@ if (import.meta.env.DEV) {
 
 if (QUICK) {
   startLocal();
-  track('quick_start');
+  track('quick_start', { game: gameMode });
 }

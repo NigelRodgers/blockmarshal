@@ -1,4 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
+import { isMode, type GameMode } from '../src/engine/constants';
 import type { ClientMessage } from '../src/net/protocol';
 import { cleanName, Match, type Conn } from '../server/match';
 
@@ -60,8 +61,10 @@ export class MatchDO extends DurableObject<Env> {
   private onMessage(conn: Conn, msg: ClientMessage, socket: WebSocket): void {
     if (msg.t === 'join') {
       if (conn.match) return;
-      const match = this.ensureMatch();
-      if (!match.open) {
+      const mode = isMode(msg.mode) ? msg.mode : 'ffa';
+      const match = this.ensureMatch(mode);
+      // A lobby only takes players looking for its own mode.
+      if (!match.open || match.mode !== mode) {
         conn.send({ t: 'error', code: 'full', message: 'That game just filled up. Finding another…' });
         socket.close(1000, 'full');
         return;
@@ -83,9 +86,9 @@ export class MatchDO extends DurableObject<Env> {
     this.report();
   }
 
-  private ensureMatch(): Match {
+  private ensureMatch(mode: GameMode): Match {
     if (this.match && this.match.phase !== 'done') return this.match;
-    this.match = new Match(this.matchId, () => this.report(), { lobbyMs: lobbyMs(this.env), soloHandoff: true });
+    this.match = new Match(this.matchId, () => this.report(), { lobbyMs: lobbyMs(this.env), soloHandoff: true, mode });
     // The lobby countdown. The game loop itself runs on Match's own interval.
     let seconds = 0;
     this.lobbyTimer = setInterval(() => {
@@ -107,6 +110,8 @@ export class MatchDO extends DurableObject<Env> {
     const m = this.match;
     const open = !!m && m.open;
     const matchmaker = this.env.MATCHMAKER.get(this.env.MATCHMAKER.idFromName('global'));
-    this.ctx.waitUntil(matchmaker.update(this.matchId, m?.humans.length ?? 0, open, m?.startsAt ?? 0).catch(() => {}));
+    this.ctx.waitUntil(
+      matchmaker.update(this.matchId, m?.humans.length ?? 0, open, m?.startsAt ?? 0, m?.mode ?? 'ffa').catch(() => {}),
+    );
   }
 }

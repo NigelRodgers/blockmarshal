@@ -1,4 +1,5 @@
 import { cleanFeedback, feedbackEmail, type FeedbackInput, type FeedbackRecord } from '../server/feedback';
+import { isMode, type GameMode } from '../src/engine/constants';
 import { MatchDO } from './matchDO';
 import { MatchmakerDO } from './matchmakerDO';
 
@@ -9,7 +10,7 @@ const MAX_FEEDBACK_BYTES = 8192;
 
 /**
  * Routes:
- *   POST /api/join      -> the matchmaker picks a lobby, returns { matchId }
+ *   POST /api/join      -> body { mode?: 'ffa' | 'duel' }; the matchmaker picks a lobby, returns { matchId }
  *   POST /api/feedback  -> anonymous feedback into the private D1 database (write-only)
  *   GET  /ws/:matchId   -> WebSocket into that match's Durable Object
  *   everything else     -> static client (handled by the assets binding)
@@ -20,7 +21,7 @@ export default {
 
     if (url.pathname === '/api/join' && req.method === 'POST') {
       const matchmaker = env.MATCHMAKER.get(env.MATCHMAKER.idFromName('global'));
-      const matchId = await matchmaker.assign();
+      const matchId = await matchmaker.assign(await joinMode(req));
       return Response.json({ matchId }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
@@ -35,6 +36,16 @@ export default {
     return env.ASSETS.fetch(req);
   },
 } satisfies ExportedHandler<Env>;
+
+/** The game mode a join asks for; anything unreadable means free-for-all. */
+async function joinMode(req: Request): Promise<GameMode> {
+  try {
+    const body = (await req.json()) as { mode?: unknown };
+    return isMode(body?.mode) ? body.mode : 'ffa';
+  } catch {
+    return 'ffa';
+  }
+}
 
 /**
  * Stores one feedback submission. Write-only on purpose: there is no route to

@@ -45,5 +45,16 @@ export const BOT_NAMES = ['Ada', 'Bishop', 'Cato', 'Dara', 'Ezra', 'Fen', 'Gale'
 export const MAP_W = 15;
 export const MAP_H = 25;
 export const MATCH_PLAYERS = 6;
+
+/** Free-for-all (six generals) or a 1 vs 1 duel on a smaller board (bigger tiles, shorter games). */
+export type GameMode = 'ffa' | 'duel';
+export const MODES: Record<GameMode, { players: number; w: number; h: number }> = {
+  ffa: { players: MATCH_PLAYERS, w: MAP_W, h: MAP_H },
+  duel: { players: 2, w: 11, h: 17 },
+};
+
+export function isMode(x: unknown): x is GameMode {
+  return x === 'ffa' || x === 'duel';
+}
 export const LOBBY_SECONDS = 60;
 export const TICK_MS = 500;

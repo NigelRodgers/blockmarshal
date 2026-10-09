@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { MAP_H, MAP_W, MATCH_PLAYERS } from '../src/engine/constants';
+import { MODES, type GameMode } from '../src/engine/constants';
 import { createGame } from '../src/engine/game';
 import { allConnected } from '../src/engine/mapgen';
 import { Terrain } from '../src/engine/types';
 
-const players = Array.from({ length: MATCH_PLAYERS }, (_, i) => ({ name: `${i}`, isBot: i > 0 }));
-
-describe('map fairness', () => {
-  const games = Array.from({ length: 60 }, (_, seed) => createGame({ w: MAP_W, h: MAP_H, seed: seed + 1, players }));
+describe.each(Object.keys(MODES) as GameMode[])('map fairness (%s)', (mode) => {
+  const { w, h, players: n } = MODES[mode];
+  const players = Array.from({ length: n }, (_, i) => ({ name: `${i}`, isBot: i > 0 }));
+  const games = Array.from({ length: 60 }, (_, seed) => createGame({ w, h, seed: seed + 1, players }));
 
   it('never has a 2x2 square made only of mines and mountains', () => {
     for (const s of games) {
