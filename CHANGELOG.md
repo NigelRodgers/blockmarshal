@@ -4,6 +4,15 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-09
 
+**Replays, security, recorder, bot delay, duel tuning** (not live yet: needs `npm run db:migrate` before deploy)
+- **1 vs 1** (`203491d`): twice the mines (27% of eligible plains) and 10% more mountains (15.4%). [Sample duel maps](https://claude.ai/artifact/2SmPigB4mPB8yDG8FbZofW).
+- **Your own mines** (`203491d`): pick them up any time. The 100-turn lock now only stops enemies capturing a freshly planted mine.
+- **Notices** (`203491d`): captures, blasts and other messages sit in a strip under the board, which is fitted around it, so they never cover tiles.
+- **Bots act with a 3-turn delay** (`56c43ed`): a bot planting a mine or moving its general/city decides now, and it happens on the third turn, only if still legal (target not taken, land not cut in two). Mirrors a human's long-press time.
+- **Replays** (`56c43ed`, `32ca3b9`): every human action is logged, so a game rebuilds exactly from its seed. Each player's browser keeps their last 50 games (start screen > Replays, end screen > Watch replay): whole board, play/pause, 1-16x, seek. Every game is stored on the server; browser-run games are uploaded (unless analytics is turned off). `npm run replays` downloads them to `Documents\Blockmarshal Replays` (a JSON per game + `summary.csv`) and clears them from the server; a Windows task runs it daily at 09:00. Server copies older than 60 days are deleted by a daily cron.
+- **Security** (`32ca3b9`): per-IP rate limits (join 30/min, sockets 40/min, feedback 5/min, replay uploads 10/min); API and sockets only from this site; body size caps; per-socket message budget (floods dropped, socket closed); max 24 sockets per match; HSTS and frame blocking.
+- **Recorder** (`33f7458`, `db81256`): owner-only record button under the menu button (enable once per browser with `?recorder=on`). Records the board itself to a .webm; `npm run video -- file.webm [--title "..."] [--music track.mp3]` turns it into an MP4 with intro and outro.
+
 **`4494898`: 1 vs 1** (live in `a545b13`)
 - Start screen: **Game** = Free-for-all (6 players, as before) or **1 vs 1**. For 1 vs 1 pick **vs Human** (a 2-seat lobby; if nobody joins before the timer, a bot steps in) or **vs Bot** (starts at once in your browser, no server cost). Your picks are remembered.
 - Duels use a smaller 11 x 17 board (bigger tiles on phones). Bot-vs-bot duels last about 380 turns (median), against about 600 for free-for-all.

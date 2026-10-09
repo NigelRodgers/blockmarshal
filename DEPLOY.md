@@ -65,6 +65,14 @@ Or browse it in the Cloudflare dashboard: Storage & Databases → D1 → blockma
 
 The single-player build at `blockmarshal.pages.dev` (Pages project `blockmarshal`) was deleted on 2026-10-07.
 
+## Replays (private)
+
+Every finished game is a row in the D1 table `replays` (migration `0002_replays.sql`). Run `npm run db:migrate` once before the first deploy that writes replays. `npm run replays` downloads rows to the PC and deletes them from D1; a daily cron (03:17 UTC) deletes anything older than 60 days. Browser-run games are uploaded by the player's browser to `POST /api/replay` unless they turned analytics off.
+
+## Request limits
+
+Rate-limit bindings in `wrangler.jsonc` (`ratelimits`): join 30/min, sockets 40/min, feedback 5/min, replay uploads 10/min per IP. Counted per Cloudflare location, so approximate. The Worker also refuses API/socket requests from other sites (Origin check) and caps body sizes; each match socket has a message budget and a match takes at most 24 sockets.
+
 ## Post-deploy checklist
 
 - [x] Open the Worker URL: start screen loads, no console errors (2026-10-07).

@@ -26,6 +26,8 @@ npm run deploy     # build + wrangler deploy (ONLY from this PC; see Secrets)
 npm run feedback   # latest 50 feedback rows from production D1
 npm run db:migrate # apply D1 migrations to production (db:migrate:local for wrangler dev)
 npm run types      # regenerate worker/worker-configuration.d.ts after editing wrangler.jsonc
+npm run replays    # download finished games to Documents\Blockmarshal Replays, then clear them on the server (daily Windows task "Blockmarshal replays", 09:00)
+npm run video -- rec.webm [--title "..."] [--music x.mp3]   # board recording -> MP4 with intro/outro (once: npm run video:setup)
 ```
 
 Before every commit: `npx tsc --noEmit && npx tsc --noEmit -p tsconfig.server.json && npx vitest run`.
@@ -44,7 +46,11 @@ Before every commit: `npx tsc --noEmit && npx tsc --noEmit -p tsconfig.server.js
 | `src/ui/` | `renderer.ts` (canvas; fixed board, no pan/zoom), `input.ts` (tap, long-press, drag paths), `effects.ts`, `sound.ts` |
 | `public/` | icons, manifest, `_headers` (CSP etc.), `sounds/` |
 | `sw/sw.js` | Service worker template; `vite.config.ts` fills the precache list and injects `__BUILD__` |
-| `migrations/` | D1 schema (feedback table) |
+| `migrations/` | D1 schema (feedback, replays) |
+| `src/replay.ts`, `src/replayPlayer.ts`, `src/replayStore.ts` | Replay record format + upload validation, playback (re-simulates from seed + human log), browser storage (IndexedDB, last 50) |
+| `worker/security.ts`, `worker/replays.ts` | Origin check, rate-limit helpers, socket message budget; replay rows in D1 + daily prune |
+| `src/ui/recorder.ts`, `tools/video/` | Owner-only canvas recorder (`?recorder=on`); Remotion project that renders recordings to MP4 |
+| `scripts/pull-replays.mjs` | `npm run replays` |
 
 ## Secrets, accounts, settings
 
@@ -52,6 +58,8 @@ Before every commit: `npx tsc --noEmit && npx tsc --noEmit -p tsconfig.server.js
 - **PostHog EU** project key lives only in `.env.local` (gitignored). Deploying from elsewhere without it silently turns analytics off.
 - **Resend** API key (send-only) is a Worker secret `RESEND_API_KEY`; feedback emails go to `FEEDBACK_EMAIL` ([owner email: Worker secret]) from `onboarding@resend.dev` (may land in Spam).
 - Never commit keys; never echo them back in chat.
+- **Replays** download to `%BLOCKMARSHAL_REPLAYS%` or `Documents\Blockmarshal Replays` via the Windows scheduled task "Blockmarshal replays" (daily 09:00, catches up if the PC was off). Its `pull.log` says what each run did.
+- **Recorder** button shows only in browsers opened once with `?recorder=on` (`?recorder=off` hides it). Not a secret: it only records your own screen.
 
 ## Working conventions
 
