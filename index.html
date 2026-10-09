@@ -17,6 +17,8 @@
     <!-- Floating HUD: a translucent menu button over the board; everything else lives in its panel. -->
     <div id="hud" class="hidden">
       <button id="btn-menu-hud" class="hud-fab" aria-label="Game menu" aria-expanded="false">&#9776;<span id="hud-badge" class="hud-badge"></span></button>
+      <!-- Owner-only (?recorder=on): records the board to a video file. -->
+      <button id="btn-rec" class="hud-fab rec-btn hidden" aria-label="Start recording" aria-pressed="false">●</button>
       <div id="stun" class="hidden" title="Stunned by a mine: turns until you can move"><span class="ring"></span>Stunned <b id="stun-n">3</b></div>
       <div id="game-menu" class="game-menu hidden">
         <div class="gm-row">

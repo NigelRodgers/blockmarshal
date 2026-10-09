@@ -11,6 +11,7 @@ import type { ClientMessage, PlayerView, ServerMessage } from './net/protocol';
 import { Effects } from './ui/effects';
 import { Input } from './ui/input';
 import { formatArmy, Renderer } from './ui/renderer';
+import { CanvasRecorder, recorderEnabled } from './ui/recorder';
 import { Sounds } from './ui/sound';
 
 const NAME_KEY = 'blockmarshal.name';
@@ -18,6 +19,9 @@ const MODE_KEY = 'blockmarshal.mode';
 const OPPONENT_KEY = 'blockmarshal.opponent';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+
+/** Owner-only screen recorder (see ui/recorder.ts). */
+const RECORDER = recorderEnabled();
 
 const renderer = new Renderer($<HTMLCanvasElement>('board'));
 const fx = new Effects();
@@ -60,6 +64,9 @@ function setScreen(next: Screen): void {
   show('lobby', next === 'lobby');
   show('hud', next === 'game');
   show('replay-bar', next === 'replay');
+  show('btn-rec', RECORDER && (next === 'game' || next === 'replay'));
+  // In a replay only the record button of the HUD column shows (see .replaying in style.css).
+  document.body.classList.toggle('replaying', next === 'replay');
   if (next !== 'replay') stopReplay();
   if (next !== 'game') closeGameMenu();
   if (next !== 'game') show('gameover', false);
@@ -1105,4 +1112,33 @@ $('replay-file').addEventListener('change', async () => {
   } catch {
     toast("That file isn't a Blockmarshal replay");
   }
+});
+
+// ---------- Recorder (owner only) ----------
+
+const recorder = new CanvasRecorder($<HTMLCanvasElement>('board'));
+let recTimer = 0;
+
+function renderRecButton(): void {
+  const b = $('btn-rec');
+  const on = recorder.recording;
+  const secs = Math.floor(recorder.elapsed);
+  b.textContent = on ? `● ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}` : '●';
+  b.classList.toggle('on', on);
+  b.setAttribute('aria-pressed', String(on));
+  b.setAttribute('aria-label', on ? 'Stop recording and save the video' : 'Start recording');
+}
+
+$('btn-rec').addEventListener('click', () => {
+  if (recorder.recording) {
+    recorder.stop();
+    clearInterval(recTimer);
+    toast('Recording saved to your downloads');
+  } else if (recorder.start()) {
+    recTimer = window.setInterval(renderRecButton, 500);
+    toast('Recording the board. Tap ● again to stop.');
+  } else {
+    toast("This browser can't record the board");
+  }
+  renderRecButton();
 });

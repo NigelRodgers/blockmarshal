@@ -748,3 +748,29 @@ input {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* ---------- Recorder (owner only) ---------- */
+
+/* Second in the HUD column, under the menu button. In replays it's the only HUD item shown. */
+body.replaying #hud.hidden {
+  display: flex !important;
+}
+
+body.replaying #hud > :not(#btn-rec) {
+  display: none !important;
+}
+
+.rec-btn {
+  width: auto;
+  min-width: 44px;
+  padding: 0 8px;
+  color: #ff5252;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-btn.on {
+  background: rgba(120, 20, 20, 0.85);
+  color: #fff;
+}
