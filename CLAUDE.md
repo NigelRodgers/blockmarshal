@@ -1,6 +1,6 @@
 # Blockmarshal: session guide
 
-Real-time 6-player territory war (generals.io-style) on a hidden minefield. Mobile-first web game.
+Real-time territory war (generals.io-style) on a hidden minefield: 6-player free-for-all or 1 vs 1. Mobile-first web game.
 
 - **Live:** https://blockmarshal.rodgersnigel.workers.dev (start screen shows `Build <git hash> · <time>`)
 - **Repo:** github.com/NigelRodgers/blockmarshal (PRIVATE, branch `main`)
@@ -34,11 +34,11 @@ Before every commit: `npx tsc --noEmit && npx tsc --noEmit -p tsconfig.server.js
 
 | Path | What |
 | --- | --- |
-| `src/engine/` | Pure, deterministic rules. `game.ts` (state, step, moves, mines, flags, planting, relocation), `mapgen.ts` (fair maps: no sealed areas, no 2x2 blocks), `knowledge.ts` (what a player can infer from dots), `constants.ts` (every tunable number), `layout.ts` (hand-drawn boards for tests) |
+| `src/engine/` | Pure, deterministic rules. `game.ts` (state, step, moves, mines, flags, planting, relocation), `mapgen.ts` (fair maps: no sealed areas, no 2x2 blocks), `knowledge.ts` (what a player can infer from dots), `constants.ts` (every tunable number; `MODES` = seats and board per game mode), `layout.ts` (hand-drawn boards for tests) |
 | `src/ai/bot.ts` | Bots: same info as players; Dijkstra paths; known mines cost `MINE_PATH_COST`; stall breaker |
 | `src/net/` | `protocol.ts` (client/server messages, `PlayerView`), `view.ts` (fog-of-war filter, runs server-side), `client.ts` (fetch `/api/join`, WebSocket per match) |
 | `server/` | Runtime-independent: `match.ts` (lobby countdown, bot fill, tick loop, input handling, solo handoff), `lobbyIndex.ts` (matchmaker routing), `feedback.ts` (validation + email text) |
-| `worker/` | Cloudflare Worker: `index.ts` routes (`POST /api/join`, `POST /api/feedback`, `/ws/<matchId>`, static assets), `matchDO.ts` (one Durable Object per match), `matchmakerDO.ts` (one global, persisted lobby index) |
+| `worker/` | Cloudflare Worker: `index.ts` routes (`POST /api/join` with `{ mode }`, `POST /api/feedback`, `/ws/<matchId>`, static assets), `matchDO.ts` (one Durable Object per match; refuses joins for another mode), `matchmakerDO.ts` (one global, persisted lobby index per mode) |
 | `src/local.ts` | Browser-run match (solo handoff + "Play vs bots offline"), same `Match` class |
 | `src/main.ts` | Client controller: screens, lobby, input actions, floating menu, mine/building menus, HUD, sounds, feedback form |
 | `src/ui/` | `renderer.ts` (canvas; fixed board, no pan/zoom), `input.ts` (tap, long-press, drag paths), `effects.ts`, `sound.ts` |
@@ -55,7 +55,7 @@ Before every commit: `npx tsc --noEmit && npx tsc --noEmit -p tsconfig.server.js
 
 ## Working conventions
 
-- Quick test on any device: open the live site (or the Vite URL) with `?quick` to skip the lobby and play bots in the browser at once.
+- Quick test on any device: open the live site (or the Vite URL) with `?quick` (free-for-all) or `?quick=duel` (1 vs 1) to skip the lobby and play bots in the browser at once.
 - The user tests on a phone and usually ends a request with "go live": deploy with `npm run deploy`, then confirm the deployed build id (`grep` the hash in `dist/assets/index-*.js`) and spot-check the live site.
 - Every shipped change: commit (message ends with the Co-Authored-By line), push, add a CHANGELOG entry, update the rules doc if rules/numbers changed, and move items in/out of the Backlog here.
 - Tunable numbers belong in `src/engine/constants.ts` (or the named file in the rules doc's reference table).
