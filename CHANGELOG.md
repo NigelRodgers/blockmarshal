@@ -4,6 +4,12 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-09
 
+**`55fbcba`: Mine stock limit, bot planting pace, unflagging** (not live yet)
+- You hold at most **5** unplanted mines. With a full stock, a flagged mine you walk onto is disarmed (no blast) but not kept, and your own mines can't be picked up until you plant one.
+- Bots plant **one mine at a time**, each landing 3 turns after they pick the spot.
+- Fixed bots occasionally stepping on their own freshly planted mine.
+- Long-press (or Flag-mode tap) on one of your tiles that still carries a flag now removes the flag instead of planting a mine.
+
 **`163fc36`: Pause, replay controls, recording cancel, new sounds** (not live yet)
 - **Pause** for games against bots in your browser (1 vs 1 vs bot, solo, offline): button under ☰, Resume to carry on.
 - **Replays:** ⏪ / ⏩ jump 10 turns; speeds 0.5×, 1×, 2×, 5×, 10×.
