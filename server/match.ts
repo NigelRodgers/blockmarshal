@@ -130,11 +130,11 @@ export class Match {
     this.phase = 'playing';
     const seed = this.opts.seed ?? (Math.random() * 2 ** 32) >>> 0;
     const botNames = shuffle(mulberry32(seed), [...BOT_NAMES]);
-    const { w, h } = MODES[this.mode];
+    const { w, h, mineRate, mountainRate } = MODES[this.mode];
     const players = Array.from({ length: this.capacity }, (_, i) =>
       i < this.humans.length ? { name: this.humans[i].name, isBot: false } : { name: botNames[i % botNames.length], isBot: true },
     );
-    this.state = createGame({ w, h, seed, players });
+    this.state = createGame({ w, h, seed, players, mineRate, mountainRate });
     this.bots = createBots(this.state, 'normal');
     this.humans.forEach((c, pid) => {
       c.pid = pid;

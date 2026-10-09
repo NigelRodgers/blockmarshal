@@ -299,17 +299,23 @@ details b {
   color: var(--text);
 }
 
+/* Notices sit in a strip below the board (kept free by measureInsets), never over tiles. */
 #toast {
   position: fixed;
   left: 50%;
-  top: calc(var(--safe-top) + 96px);
-  transform: translate(-50%, -8px);
-  max-width: calc(100% - 32px);
-  padding: 8px 14px;
+  bottom: calc(var(--safe-bottom) + 4px);
+  transform: translate(-50%, 8px);
+  max-width: calc(100% - 16px);
+  min-height: 30px;
+  padding: 5px 12px;
   border-radius: 10px;
   background: rgba(20, 24, 31, 0.95);
   border: 1px solid var(--line);
+  font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   opacity: 0;
   pointer-events: none;
   transition:

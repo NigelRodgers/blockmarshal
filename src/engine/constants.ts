@@ -19,7 +19,10 @@ export const TOWER_GARRISON = 25;
 /** Watchtower vision and number-reveal radius (Chebyshev, so 3 = 7x7). */
 export const TOWER_RADIUS = 3;
 
-/** After a general or city moves, or a mine is planted (new or moved), it can't move again for this many ticks (100 turns). */
+/**
+ * After a general or city moves it can't move again for this many ticks (100 turns). A planted mine
+ * is locked against enemies for the same time (no capturing it); its owner may pick it up any time.
+ */
 export const RELOCATE_COOLDOWN_TICKS = 200;
 
 /** Generals and owned cities produce +1 every N ticks (2 ticks = 1 turn). */
@@ -46,11 +49,21 @@ export const MAP_W = 15;
 export const MAP_H = 25;
 export const MATCH_PLAYERS = 6;
 
-/** Free-for-all (six generals) or a 1 vs 1 duel on a smaller board (bigger tiles, shorter games). */
+/**
+ * Free-for-all (six generals) or a 1 vs 1 duel on a smaller board (bigger tiles, shorter games).
+ * Duels have twice the mines and 10% more mountains.
+ */
 export type GameMode = 'ffa' | 'duel';
-export const MODES: Record<GameMode, { players: number; w: number; h: number }> = {
-  ffa: { players: MATCH_PLAYERS, w: MAP_W, h: MAP_H },
-  duel: { players: 2, w: 11, h: 17 },
+export interface ModeConfig {
+  players: number;
+  w: number;
+  h: number;
+  mineRate: number;
+  mountainRate: number;
+}
+export const MODES: Record<GameMode, ModeConfig> = {
+  ffa: { players: MATCH_PLAYERS, w: MAP_W, h: MAP_H, mineRate: DEFAULT_MINE_RATE, mountainRate: DEFAULT_MOUNTAIN_RATE },
+  duel: { players: 2, w: 11, h: 17, mineRate: DEFAULT_MINE_RATE * 2, mountainRate: DEFAULT_MOUNTAIN_RATE * 1.1 },
 };
 
 export function isMode(x: unknown): x is GameMode {

@@ -311,19 +311,16 @@ describe('relocating generals and cities', () => {
     expect(relocate(s, A, 3, 15)).toBe(true);
   });
 
-  it('holds every planted mine for 100 turns too, new or moved', () => {
+  it('locks every planted mine against enemies for 100 turns; its owner can pick it up any time', () => {
     const s = land();
     give(s, A, 1); // freshly captured
     expect(plantMine(s, A, 0)).toBe(true);
     expect(buildView(s, A).moveCooldowns).toEqual([{ idx: 0, turns: 100 }]);
-    expect(pickUpMine(s, A, 0)).toBe(false);
-    for (let t = 0; t < RELOCATE_COOLDOWN_TICKS; t++) step(s);
-    expect(pickUpMine(s, A, 0)).toBe(true);
-    expect(plantMine(s, A, 1)).toBe(true); // moved: held again
+    expect(pickUpMine(s, A, 0)).toBe(true); // no wait for the owner
+    expect(plantMine(s, A, 1)).toBe(true); // replanted: locked again
     expect(buildView(s, A).moveCooldowns).toEqual([{ idx: 1, turns: 100 }]);
-    expect(pickUpMine(s, A, 1)).toBe(false);
     for (let t = 0; t < RELOCATE_COOLDOWN_TICKS; t++) step(s);
-    expect(pickUpMine(s, A, 1)).toBe(true);
+    expect(buildView(s, A).moveCooldowns).toEqual([]);
   });
 
   it("refuses moving onto mines, enemy land, or someone else's buildings", () => {

@@ -466,10 +466,9 @@ function openMineMenu(idx: number): void {
   const v = view!;
   menuTile = idx;
   $('mm-flag').textContent = v.flags.includes(idx) ? 'Remove flag' : 'Flag it (walk over safely)';
-  const wait = v.moveCooldowns.find((c) => c.idx === idx)?.turns ?? 0;
-  const pick = $('mm-pickup') as HTMLButtonElement;
-  pick.textContent = wait ? `Pick up (in ${wait} turns)` : 'Pick up (move it)';
-  pick.disabled = wait > 0;
+  // Your own mine can always be picked up; its lock (white ring) only stops enemies capturing it.
+  const locked = v.moveCooldowns.find((c) => c.idx === idx)?.turns ?? 0;
+  $('mm-pickup').textContent = locked ? `Pick up (locked to enemies ${locked} more turns)` : 'Pick up (move it)';
   placeMenu($('mine-menu'), idx);
   buzz(12);
 }
@@ -805,10 +804,13 @@ function updateHud(): void {
   updateControls();
 }
 
-/** The HUD floats over the board, so the board gets the whole screen. */
+/**
+ * The HUD floats over the board. The bottom strip is kept free for notices (captures, blasts...)
+ * so they never cover tiles; on most phones the board is width-limited, so this costs nothing.
+ */
 function measureInsets(): void {
   renderer.insetTop = 0;
-  renderer.insetBottom = 0;
+  renderer.insetBottom = $('toast').offsetHeight + 10 || 40;
 }
 
 let toastTimer = 0;

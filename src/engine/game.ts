@@ -358,10 +358,10 @@ export function pickUpMine(state: GameState, pid: number, idx: number): boolean 
   return true;
 }
 
+/** Your own planted mine, on your land. Any time: the planting lock only stops enemies capturing it. */
 export function canPickUpMine(state: GameState, pid: number, idx: number): boolean {
   if (idx < 0 || idx >= state.size) return false;
-  if (state.owner[idx] !== pid || !state.mine[idx] || state.mineOwner[idx] !== pid) return false;
-  return state.tick >= state.moveReady[idx];
+  return state.owner[idx] === pid && state.mine[idx] === 1 && state.mineOwner[idx] === pid;
 }
 
 /** Apply a logged input during replay, without re-logging it. */

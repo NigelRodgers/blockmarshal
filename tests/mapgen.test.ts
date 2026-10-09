@@ -5,9 +5,9 @@ import { allConnected } from '../src/engine/mapgen';
 import { Terrain } from '../src/engine/types';
 
 describe.each(Object.keys(MODES) as GameMode[])('map fairness (%s)', (mode) => {
-  const { w, h, players: n } = MODES[mode];
+  const { w, h, players: n, mineRate, mountainRate } = MODES[mode];
   const players = Array.from({ length: n }, (_, i) => ({ name: `${i}`, isBot: i > 0 }));
-  const games = Array.from({ length: 60 }, (_, seed) => createGame({ w, h, seed: seed + 1, players }));
+  const games = Array.from({ length: 60 }, (_, seed) => createGame({ w, h, seed: seed + 1, players, mineRate, mountainRate }));
 
   it('never has a 2x2 square made only of mines and mountains', () => {
     for (const s of games) {
@@ -29,7 +29,7 @@ describe.each(Object.keys(MODES) as GameMode[])('map fairness (%s)', (mode) => {
     }
   });
 
-  it('places about a quarter fewer mines than before (~13.5% of eligible plains)', () => {
+  it("places about the mode's mine rate on eligible plains (13.5% free-for-all, 27% duel)", () => {
     let mines = 0;
     let plains = 0;
     for (const s of games) {
@@ -39,7 +39,7 @@ describe.each(Object.keys(MODES) as GameMode[])('map fairness (%s)', (mode) => {
       }
     }
     const rate = mines / plains;
-    expect(rate).toBeGreaterThan(0.1);
-    expect(rate).toBeLessThan(0.15);
+    expect(rate).toBeGreaterThan(mineRate * 0.75);
+    expect(rate).toBeLessThan(mineRate * 1.1);
   });
 });

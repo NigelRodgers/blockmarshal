@@ -15,7 +15,7 @@ function conn(id: string): Conn & { inbox: ServerMessage[] } {
 }
 
 describe('1 vs 1', () => {
-  const { w, h } = MODES.duel;
+  const { w, h, mineRate, mountainRate } = MODES.duel;
 
   it('starts as soon as a second human joins, on the duel board, with no bots', () => {
     let now = 0;
@@ -64,7 +64,7 @@ describe('1 vs 1', () => {
 
   it('places the two generals far apart', () => {
     for (let seed = 1; seed <= 30; seed++) {
-      const s = createGame({ w, h, seed, players: [{ name: 'a', isBot: true }, { name: 'b', isBot: true }] });
+      const s = createGame({ w, h, seed, mineRate, mountainRate, players: [{ name: 'a', isBot: true }, { name: 'b', isBot: true }] });
       expect(manhattan(w, s.players[0].general, s.players[1].general)).toBeGreaterThanOrEqual(10);
     }
   });
@@ -72,7 +72,7 @@ describe('1 vs 1', () => {
   it('bot duels finish', () => {
     let finished = 0;
     for (let seed = 1; seed <= 4; seed++) {
-      const s = createGame({ w, h, seed, players: [{ name: 'a', isBot: true }, { name: 'b', isBot: true }] });
+      const s = createGame({ w, h, seed, mineRate, mountainRate, players: [{ name: 'a', isBot: true }, { name: 'b', isBot: true }] });
       const rng = mulberry32(seed);
       const bots = s.players.map((p) => new Bot(p.id, 'normal', rng));
       while (s.winner < 0 && s.tick < 4000) {
