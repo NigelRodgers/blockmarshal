@@ -14,7 +14,9 @@
     "feedback": "wrangler d1 execute blockmarshal-feedback --remote --command \"SELECT id, created_at, rating, confusing, improve, context FROM feedback ORDER BY id DESC LIMIT 50\"",
     "db:migrate": "wrangler d1 migrations apply blockmarshal-feedback --remote",
     "db:migrate:local": "wrangler d1 migrations apply blockmarshal-feedback --local",
-    "replays": "node scripts/pull-replays.mjs"
+    "replays": "node scripts/pull-replays.mjs",
+    "video:setup": "npm install --prefix tools/video",
+    "video": "node tools/video/render.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",

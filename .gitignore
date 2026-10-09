@@ -4,3 +4,5 @@ dist
 .env.local
 .wrangler
 .dev.vars
+tools/video/node_modules
+tools/video/public
