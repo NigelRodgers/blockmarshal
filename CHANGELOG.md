@@ -4,9 +4,14 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-10
 
-**1 vs 1 board: fewer mines, more mountains, generals at opposite edges** (not live yet)
-- Mines 15% fewer (23% of eligible plains, was 27%); mountains 15% more (17.7% of tiles, was 15.4%). Free-for-all unchanged.
-- One general starts within 4 rows of the top edge, the other within 4 rows of the bottom (which is which is random).
+**Bring your own mines** (not live yet; designed in a grilling session, see PLAN.md)
+- **Mine stock, every mode:** everyone starts with **5 mines** in stock (the cap). Below 5, you get **+1 every 30 turns**; the countdown starts when your stock drops below full and pauses while it's full. The stock shows the countdown (`💣4 ⏱29`). Refill mines can be planted anywhere on your general's stretch of land. Captures still count toward the cap.
+- **Full stock no longer wastes mines:** walking onto a flagged mine with a full stock crosses it safely and leaves it there, still flagged. You see it as a grey mine on your land; step on it again once your stock has room to collect it. An enemy who takes that tile without a flag sets it off.
+- **Flags come back** when a flagged mine is captured or picked up by its owner (as they already did when it exploded).
+- Natural mines never respawn.
+- **1 vs 1 board** (`c3a1418`'s mine-heavy duel board, reworked): about **15 natural mines** (11.5% of eligible plains, was 27%) and **41 mountains** (21.8% of tiles, was 15.4%): half the natural mines, with half of the removed ones turned into mountains. One general starts within 4 rows of the top edge, the other within 4 rows of the bottom. Free-for-all's board is unchanged for now.
+- Bots play the new stock: they keep flags on mines they crossed, collect them later, and take back a spare flag to pass their own mines when stock and flags are both full (with full stocks from the start, they stalled behind their own traps).
+- Bot strength unchanged: 41 of 80 duels against the live bot's code on the same rules (51%). Bot-vs-bot duels: median 368 turns, about 8.5 blasts a game.
 
 **Bots finish off a general that holds out** (not live yet)
 - A replay showed a bot taking 780 turns to beat a player who never moved. Once it owned everything else, no single stack of its could beat the idle general (which grows every turn), so it did nothing, with thousands of troops spread over its land. Now, with nothing else to do, it **gathers**: it marches its biggest stacks to a tile beside the enemy general it has seen (else onto its biggest stack), then attacks once one stack can win. Its own general stays home.

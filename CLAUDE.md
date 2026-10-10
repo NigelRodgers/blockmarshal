@@ -112,4 +112,8 @@ Before every commit: `npx tsc --noEmit && npx tsc --noEmit -p tsconfig.server.js
 
 **Portals (undecided)**: CrazyGames Basic Launch first (no SDK needed), Poki only if numbers are strong (web exclusivity). Needs: shorter lobby (~15 s), a portal build without the service worker/install button, SDK hooks (gameplay start/stop, ads between matches, invite rooms on CrazyGames).
 
+**Replays**: the browser list loads every stored game in full (`listReplays()` → IndexedDB `getAll()`, up to 50 x 20-100 KB) just to draw the menu: keep a small summary store for the list. Replays have no id/URL of their own and no share button; that waits for server-side storage (with a leaderboard and a way to pay for it).
+
+**Free-for-all board** under the new mine stock (6 players x 5 mines + refills on top of the old natural mines): tune its mine/mountain rates once there's data.
+
 **Mechanic ideas**: turrets; walls you can build and that can be blasted; flares (reveal 5x5); rivers + bridges; decoy crown; armory/mine charges; watchtowers back on (`TOWERS_PER_MATCH`).
