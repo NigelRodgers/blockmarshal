@@ -4,10 +4,10 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-10
 
-**Games against bots pause when you leave the page** (not live yet)
+**Games against bots pause when you leave the page** (live in `4d021c7`)
 - Switching apps, locking the phone or changing tab now pauses a game against bots running in your browser (1 vs 1 vs bot, solo, offline). Browsers slow timers in hidden pages, so before this the bots kept playing while you couldn't see the board. Coming back shows the Paused panel; tap Resume when ready. Online games can't pause, as before.
 
-**Replays carry their build** (not live yet)
+**Replays carry their build** (live in `4d021c7`)
 - Every replay now records the short git hash of the code that played it (`build`). Browser games use the client build; server games get it from the Worker's `BUILD` var, which `npm run deploy` (now `scripts/deploy.mjs`) sets to the git hash.
 - Bots are re-simulated when a replay plays, so a replay made by an older build can play out differently. The replay viewer now notices when the rebuilt game doesn't end the way the real one did and says so ("Made on build …, so this replay no longer matches the real game"). Replay notices show at the top (the controls cover the bottom) and wrap on phones.
 - `npm run replays`: `summary.csv` gets a `build` column (empty for older games; existing files are upgraded in place), so results can be split by bot version.
