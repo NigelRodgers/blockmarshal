@@ -59,6 +59,9 @@ const MINE_PATH_COST = 25;
 const STALL_TICKS = 40;
 const STALL_MIN_ARMY = 20;
 
+/** Smallest stack worth marching to a gathering point (see gather). */
+const GATHER_MIN_ARMY = 5;
+
 /** Planted mines a bot keeps around its general for defence. */
 const DEFENCE_MINES = 3;
 
@@ -126,7 +129,8 @@ export class Bot {
     const plan = this.bestTarget(ctx, src);
     if (plan && (plan.value >= 35 || s.army[src] >= 10)) return this.queuePath(ctx, plan.path);
     if (this.expand(ctx)) return;
-    if (plan) this.queuePath(ctx, plan.path);
+    if (plan) return this.queuePath(ctx, plan.path);
+    this.gather(ctx);
   }
 
   /**
@@ -321,6 +325,36 @@ export class Bot {
     return true;
   }
 
+  /**
+   * Nothing in reach of one stack and no land to grab, but troops spread over our land
+   * (e.g. an enemy general holding out with more troops than any stack of ours): march
+   * the biggest other stack to a tile beside a known enemy general, else onto our biggest
+   * stack, so the stacks merge into one that can attack. The general stays home.
+   */
+  private gather(ctx: Ctx): boolean {
+    const { s, me, vis } = ctx;
+    let goal = -1;
+    for (let t = 0; t < s.size && goal < 0; t++) {
+      const general = vis[t]
+        ? s.owner[t] >= 0 && s.owner[t] !== this.pid && s.terrain[t] === Terrain.General
+        : me.memory[t] === Memory.General;
+      if (!general) continue;
+      for (const j of s.n4[t]) if (s.owner[j] === this.pid && (goal < 0 || s.army[j] > s.army[goal])) goal = j;
+    }
+    if (goal < 0) goal = this.biggestStack(ctx, -1);
+    if (goal < 0) return false;
+    let src = -1;
+    for (let i = 0; i < s.size; i++) {
+      if (s.owner[i] !== this.pid || i === goal || i === me.general || s.army[i] < GATHER_MIN_ARMY) continue;
+      if (src < 0 || s.army[i] > s.army[src]) src = i;
+    }
+    if (src < 0) return false;
+    const { prev } = this.paths(ctx, src);
+    if (prev[goal] < 0) return false;
+    this.queuePath(ctx, trace(prev, src, goal));
+    return true;
+  }
+
   /** Pull the biggest outside stack home if a visible enemy army threatens the general. */
   private defend(ctx: Ctx): boolean {
     const { s, me, vis } = ctx;
@@ -502,13 +536,18 @@ export class Bot {
 
   private queuePath(ctx: Ctx, path: number[]): void {
     const { s, me } = ctx;
+    const end = path[path.length - 1];
+    const forGeneral = s.terrain[end] === Terrain.General && s.owner[end] !== this.pid;
     for (let n = 0; n < Math.min(path.length - 1, 15); n++) {
       const to = path[n + 1];
       // A planting of ours waiting on this tile would land under our own army: call it off.
       s.pending = s.pending.filter((a) => !(a.pid === this.pid && a.kind === 'plant' && a.to === to));
       // Our own mine in the way: lift it (back to stock to plant again), or flag it for safe
-      // passage (stock full, can't lift). If neither works, stop short of it.
-      if (this.ownMine(ctx, to) && !me.flags.has(to) && !pickUpMine(s, this.pid, to) && !toggleFlag(s, this.pid, to)) return;
+      // passage (stock full, can't lift). If neither works, stop short of it, unless the
+      // target is a general: then take the blast (simulate counted it), or with a full stock
+      // and no flags left the bot would stall in front of a general it can beat.
+      const blocked = this.ownMine(ctx, to) && !me.flags.has(to) && !pickUpMine(s, this.pid, to) && !toggleFlag(s, this.pid, to);
+      if (blocked && !forGeneral) return;
       queueMove(s, this.pid, path[n], to);
     }
   }

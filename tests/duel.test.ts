@@ -83,4 +83,15 @@ describe('1 vs 1', () => {
     }
     expect(finished).toBeGreaterThanOrEqual(3);
   }, 60_000);
+
+  it('the bot finishes off a human who never moves', () => {
+    // Seeds where it used to hold the whole board for 3000+ turns: its troops sat spread out
+    // (no single stack beat the growing general), or its own mine blocked the last step.
+    for (const seed of [4, 6, 7, 9]) {
+      const match = new Match('m', () => {}, { autoRun: false, lobbyMs: 0, seed, mode: 'duel' });
+      match.add(conn('Idle'));
+      for (let t = 0; t < 1400 && match.phase === 'playing'; t++) match.tick();
+      expect(match.state!.winner, `seed ${seed}`).toBe(1);
+    }
+  }, 60_000);
 });

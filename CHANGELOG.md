@@ -4,6 +4,14 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-10
 
+**Bots finish off a general that holds out** (not live yet)
+- A replay showed a bot taking 780 turns to beat a player who never moved. Once it owned everything else, no single stack of its could beat the idle general (which grows every turn), so it did nothing, with thousands of troops spread over its land. Now, with nothing else to do, it **gathers**: it marches its biggest stacks to a tile beside the enemy general it has seen (else onto its biggest stack), then attacks once one stack can win. Its own general stays home.
+- A second stall: the attack path crossed one of the bot's own mines, and with a full stock and no flags left it could neither lift nor flag it, so it stopped short every turn. On the way to a general it now takes the blast.
+- Against an idle player over 30 duel maps: median 245 turns (was 344), slowest 550; before, 3 maps never ended within 3000 turns. Normal play is unchanged: 39 of 80 duels against the bot from before this change (49%).
+
+**Notices are see-through** (not live yet)
+- In-game notices (blasts, captures) have a 55% see-through background with a text shadow, so they hide less of the board.
+
 **Games against bots pause when you leave the page** (live in `4d021c7`)
 - Switching apps, locking the phone or changing tab now pauses a game against bots running in your browser (1 vs 1 vs bot, solo, offline). Browsers slow timers in hidden pages, so before this the bots kept playing while you couldn't see the board. Coming back shows the Paused panel; tap Resume when ready. Online games can't pause, as before.
 
