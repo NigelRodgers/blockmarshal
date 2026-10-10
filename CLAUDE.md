@@ -103,11 +103,11 @@ Before every commit: `npx tsc --noEmit && npx tsc --noEmit -p tsconfig.server.js
 6. Matchmaking that groups humans better (beyond "fullest open lobby").
 
 **Plan (agreed 2026-10-09, updated 2026-10-10)**
-- **Now: harden the original for feedback** (see Vision), focused on 1 vs 1 vs bot. Read replays (`summary.csv`: human win rate vs the bot in 1 vs 1, target 35-50%) and analytics; fix what shows up. Bot difficulty: one level (normal), tuned to ~60% vs the pre-upgrade bot (`ba04024`).
+- **Now: harden the original for feedback** (see Vision), focused on 1 vs 1 vs bot. Read replays (`summary.csv`: human win rate vs the bot in 1 vs 1, target 35-50%) and analytics; fix what shows up. Bot difficulty: one level (normal), tuned to ~60% vs the pre-upgrade bot (`b4e7976`).
 - **From Fri 2026-10-16** (a scheduled reminder, "Blockmarshal: start Reddit edition dev & design", fires at 09:30): start the **Reddit edition** (Devvit Web), a separate game on the shared engine: `reddit/` folder; new pieces (towers back, pre-filled boards, kamikaze drones, turrets...) switched on per mode; a daily map per date seed, generated a week ahead, bot-checked with a par score, hand-editable until it goes live at 00:00 UTC; both turn-based (default) and real-time "Blitz" with separate leaderboards, compared after 2 weeks. Start with a design session for the new pieces, before any code. Engine changes for it must stay switched off here.
 
 **Balance / design questions**
-7. Bots hide their general and cities and use mines (`a583eb8`); softened in `48228dd` (no moves before turn 13, slower decisions, 2-turn reactions, build-up until turn 40, 1 in 5 hides skipped). Re-tune against the pre-upgrade bot: copy `git show ba04024:src/ai/bot.ts` to a temp file and play 80+ duels per setting (noise is about ±6 points).
+7. Bots hide their general and cities and use mines (`a7235f5`); softened in `875d6f8` (no moves before turn 13, slower decisions, 2-turn reactions, build-up until turn 40, 1 in 5 hides skipped). Re-tune against the pre-upgrade bot: copy `git show b4e7976:src/ai/bot.ts` to a temp file and play 80+ duels per setting (noise is about ±6 points).
 8. Bot-only games are longer (median ~615 turns since hiding, ~500 with towers).
 
 **Portals (undecided)**: CrazyGames Basic Launch first (no SDK needed), Poki only if numbers are strong (web exclusivity). Needs: shorter lobby (~15 s), a portal build without the service worker/install button, SDK hooks (gameplay start/stop, ads between matches, invite rooms on CrazyGames).
