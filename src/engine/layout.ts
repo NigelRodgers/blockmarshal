@@ -13,6 +13,8 @@ export interface LayoutOptions {
   generalArmy?: number[];
   cityGarrison?: number;
   towerGarrison?: number;
+  /** Mines in each stock at the start. Default 0: hand-drawn boards test one rule at a time. */
+  stock?: number;
 }
 
 export interface LayoutGame {
@@ -85,7 +87,7 @@ export function createFromLayout(rows: string[], opts: LayoutOptions): LayoutGam
   const state = buildState(
     { w, h, seed: 0, players: opts.players, mineRate: plains ? mines.length / plains : 0 },
     { terrain, army, mine, generals },
-    { generalArmy: opts.generalArmy, owned },
+    { generalArmy: opts.generalArmy, owned, stock: opts.stock ?? 0 },
   );
   return { state, goals, mines };
 }

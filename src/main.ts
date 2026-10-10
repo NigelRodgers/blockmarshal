@@ -253,7 +253,7 @@ function onView(v: PlayerView): void {
       toast(
         ev.kept
           ? `Mine captured! Long-press one of your tiles connected to it to plant it (${v.minesInStock} in stock)`
-          : `Mine disarmed. Your stock is full (${MAX_MINE_STOCK}), so it wasn't kept`,
+          : `Stock full (${MAX_MINE_STOCK}): crossed safely, the mine stays here. Step on it again later to collect it`,
       );
     } else if (ev.kind === 'captureCity' && ev.player === v.you) {
       toast('City captured');
@@ -831,8 +831,10 @@ function updateControls(): void {
   $('mode-label').textContent = mode === 'flag' ? `Flag ${used}/${MAX_FLAGS}` : `Move · ⚑${MAX_FLAGS - used}`;
   $('mode-ico').textContent = mode === 'flag' ? '⚑' : '➔';
   const stock = view?.minesInStock ?? 0;
-  // Stocked mines show on the Flag button: the same gesture plants them.
-  $('mine-stock').textContent = stock ? `💣${stock}` : '';
+  const refill = view?.refillTurns ?? 0;
+  // Stocked mines show on the Flag button: the same gesture plants them. ⏱ = turns to the next refill.
+  $('mine-stock').textContent = stock || refill ? `💣${stock}${refill ? ` ⏱${refill}` : ''}` : '';
+  $('mine-stock').title = refill ? `${stock} mines in stock, +1 in ${refill} turns` : `${stock} mines in stock`;
   $('btn-half').classList.toggle('on', half);
   $('btn-half').setAttribute('aria-pressed', String(half));
   $('hud-badge').textContent = relocating ? '⇄' : mode === 'flag' ? '⚑' : half ? '½' : '';

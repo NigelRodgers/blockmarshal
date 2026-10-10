@@ -136,11 +136,12 @@ export class Renderer {
     const mines = v.mines ? new Set(v.mines) : null;
     const flags = new Set(v.flags);
     const myMines = new Set(v.myMines);
+    const kept = new Set(v.keptMines);
     const cooling = new Set(v.moveCooldowns.map((c) => c.idx));
     for (let y = y0; y <= y1; y++) {
       for (let x = x0; x <= x1; x++) {
         const [sx, sy] = this.toScreen(x, y);
-        this.drawTile(v, y * v.w + x, sx, sy, s, mines, flags, myMines, cooling);
+        this.drawTile(v, y * v.w + x, sx, sy, s, mines, flags, myMines, cooling, kept);
       }
     }
 
@@ -176,6 +177,7 @@ export class Renderer {
     flags: Set<number>,
     myMines: Set<number>,
     cooling: Set<number>,
+    kept: Set<number>,
   ): void {
     const t = v.terrain[i];
     const own = v.owner[i];
@@ -205,8 +207,9 @@ export class Renderer {
     if (v.crater[i]) this.crater(x, y, s, 0.2 + 0.7 * Math.min(1, v.crater[i] / CRATER_TICKS));
     // Your own mine turns grey once you've flagged it (safe for you to cross),
     // and wears a white ring while it's locked (on its cooldown: can't be captured or picked up).
-    if (mines?.has(i) || myMines.has(i)) {
-      this.mineIcon(x, y, s, myMines.has(i) && flags.has(i), myMines.has(i) && cooling.has(i));
+    // A mine you crossed with a full stock: grey (safe for you), with your flag since it isn't yours.
+    if (mines?.has(i) || myMines.has(i) || kept.has(i)) {
+      this.mineIcon(x, y, s, kept.has(i) || (myMines.has(i) && flags.has(i)), myMines.has(i) && cooling.has(i));
     }
     const structure = t === Terrain.General || t === Terrain.City || t === Terrain.Tower;
     if (seen && v.army[i] > 0) this.army(x, y, s, v.army[i], structure, tile);

@@ -59,14 +59,18 @@ export interface PlayerView {
   crater: number[];
   /** Your flags. */
   flags: number[];
-  /** Mines you've captured or picked up and can plant. */
+  /** Mines you can plant: the starting stock, refills, captures and pick-ups. */
   minesInStock: number;
+  /** Turns until the next refill mine (0 while the stock is full). */
+  refillTurns: number;
   /** One of your tiles per stocked mine: that mine can only be planted on land connected to it. */
   stockAnchors: number[];
   /** Your general, cities and mines that were moved or planted recently: turns until each may move again. */
   moveCooldowns: { idx: number; turns: number }[];
   /** Mines you planted that are still armed (shown to you as mine icons). */
   myMines: number[];
+  /** Mines you crossed with a full stock: on your land, flagged by you, not yours (step on one with room in stock to collect it). */
+  keptMines: number[];
   /** Every live mine, only once the player is out of the game or it has ended. */
   mines: number[] | null;
   queue: Move[];

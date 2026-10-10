@@ -32,7 +32,7 @@ export interface PendingAction {
 
 /** A mine in a player's stock. */
 export interface StockedMine {
-  /** The tile it came from: it can only be planted on land connected to this tile. */
+  /** The tile it came from: it can only be planted on land connected to this tile. -1: a refill, planted on the general's land. */
   from: number;
 }
 
@@ -61,11 +61,13 @@ export interface Player {
    * been lost, it goes with the general's land.
    */
   stock: StockedMine[];
+  /** Tick the next refill mine arrives (see STOCK_REFILL_TICKS); -1 while the stock is full. */
+  refillAt: number;
 }
 
 export type GameEvent =
   | { kind: 'explode'; idx: number; player: number; lost: number }
-  /** A flagged mine taken safely; `kept: false` when the player's stock was full (disarmed, not kept). */
+  /** A flagged mine taken safely; `kept: false` when the player's stock was full (crossed safely, left in place, still flagged). */
   | { kind: 'defuse'; idx: number; player: number; kept: boolean }
   | { kind: 'eliminated'; victim: number; by: number }
   | { kind: 'captureCity'; idx: number; player: number }

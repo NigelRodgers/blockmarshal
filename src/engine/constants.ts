@@ -7,8 +7,20 @@ export const MINE_STUN_TICKS = 6;
 /** Flags a player may have placed at once. */
 export const MAX_FLAGS = 5;
 
-/** Unplanted mines a player can hold. With a full stock a flagged mine is disarmed but not kept. */
+/**
+ * Unplanted mines a player can hold. With a full stock a flagged mine is crossed safely and
+ * left where it is (to collect later), not kept.
+ */
 export const MAX_MINE_STOCK = 5;
+
+/** Mines in every player's stock at the start. */
+export const START_MINE_STOCK = 5;
+
+/**
+ * A stock below MAX_MINE_STOCK gains one mine every this-many ticks (30 turns). The countdown
+ * starts when the stock drops below full and pauses while it is full.
+ */
+export const STOCK_REFILL_TICKS = 60;
 
 /** A blast mark stays visible to everyone for this long (10 turns), then the tile is ordinary again. */
 export const CRATER_TICKS = 20;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOT_ACTION_DELAY_TICKS, CRATER_TICKS, MAX_FLAGS, MAX_MINE_STOCK, MINE_DAMAGE, RELOCATE_COOLDOWN_TICKS } from '../src/engine/constants';
+import { BOT_ACTION_DELAY_TICKS, CRATER_TICKS, MAX_FLAGS, MAX_MINE_STOCK, MINE_DAMAGE, RELOCATE_COOLDOWN_TICKS, START_MINE_STOCK, STOCK_REFILL_TICKS } from '../src/engine/constants';
 import { Bot, BOT_OPENING_TICKS } from '../src/ai/bot';
 import { pickUpMine, plantMine, queueMove, relocate, schedule, step, toggleFlag } from '../src/engine/game';
 import { mulberry32 } from '../src/engine/rng';
@@ -447,8 +447,9 @@ describe('bot tactics', () => {
     const mine = 2 * 7 + 4;
     expect(s.crater[mine]).toBe(0);
     expect(s.mine[mine] === 0 || s.mineOwner[mine] === B).toBe(true);
+    // Captured (not tripped); the stock may also have gained a refill by now.
     const banked = s.players[B].stock.length + s.mineOwner.filter((o) => o === B).length;
-    expect(banked).toBe(1);
+    expect(banked).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -500,24 +501,59 @@ describe('delayed actions (bots)', () => {
 });
 
 describe('mine stock limit', () => {
-  it('a full stock disarms a flagged mine without keeping it, and blocks pick-ups', () => {
+  it('a full stock crosses a flagged mine safely and leaves it there, flagged, to collect later', () => {
     const s = board();
     give(s, A, MAX_MINE_STOCK);
     s.army[NEXT_TO_MINE] = 20;
     toggleFlag(s, A, MINE);
     queueMove(s, A, NEXT_TO_MINE, MINE);
     step(s);
-    expect(s.mine[MINE]).toBe(0);
+    expect(s.mine[MINE]).toBe(1); // still there
     expect(s.crater[MINE]).toBe(0); // no blast
+    expect(s.owner[MINE]).toBe(A);
+    expect(s.players[A].flags.has(MINE)).toBe(true);
     expect(s.players[A].stock.length).toBe(MAX_MINE_STOCK);
     expect(s.events.some((e) => e.kind === 'defuse' && !e.kept)).toBe(true);
+    // A knows it is there (shown as a grey mine); B does not.
+    expect(buildView(s, A).keptMines).toEqual([MINE]);
+    expect(buildView(s, B).keptMines).toEqual([]);
 
-    expect(plantMine(s, A, 0)).toBe(true); // one out: room again
-    expect(pickUpMine(s, A, 0)).toBe(true);
-    expect(pickUpMine(s, A, 0)).toBe(false); // nothing there now
+    // Room in stock again: stepping back onto it collects it.
+    expect(plantMine(s, A, 0)).toBe(true);
+    s.army[NEXT_TO_MINE] = 10;
+    queueMove(s, A, NEXT_TO_MINE, MINE);
+    step(s);
+    expect(s.mine[MINE]).toBe(0);
+    expect(s.players[A].stock.length).toBe(MAX_MINE_STOCK);
+    expect(s.players[A].flags.has(MINE)).toBe(false);
+  });
+
+  it('a full stock blocks pick-ups', () => {
+    const s = board();
+    give(s, A, 1);
     expect(plantMine(s, A, 0)).toBe(true);
     give(s, A, MAX_MINE_STOCK);
-    expect(pickUpMine(s, A, 0)).toBe(false); // full
+    expect(pickUpMine(s, A, 0)).toBe(false);
+    give(s, A, 0);
+    expect(pickUpMine(s, A, 0)).toBe(true);
+    expect(pickUpMine(s, A, 0)).toBe(false); // nothing there now
+  });
+
+  it('an enemy taking a kept mine without a flag sets it off', () => {
+    const s = board();
+    give(s, A, MAX_MINE_STOCK);
+    s.army[NEXT_TO_MINE] = 20;
+    toggleFlag(s, A, MINE);
+    queueMove(s, A, NEXT_TO_MINE, MINE);
+    step(s);
+    // B walks in from below.
+    s.owner[MINE + 7] = B;
+    s.army[MINE + 7] = 60;
+    queueMove(s, B, MINE + 7, MINE);
+    step(s);
+    expect(s.mine[MINE]).toBe(0);
+    expect(s.crater[MINE]).toBeGreaterThan(0);
+    expect(s.players[A].flags.has(MINE)).toBe(false); // the flag came back
   });
 });
 
@@ -565,5 +601,46 @@ describe('bot opening', () => {
     }
     expect(firstMove).toBeGreaterThanOrEqual(BOT_OPENING_TICKS);
     expect(firstMove).toBeLessThan(BOT_OPENING_TICKS + 6);
+  });
+});
+
+describe('mine quota', () => {
+  it('every player starts a generated game with a full stock', async () => {
+    const { createGame } = await import('../src/engine/game');
+    const s = createGame({ w: 11, h: 17, seed: 1, players: [{ name: 'a', isBot: false }, { name: 'b', isBot: true }] });
+    for (const p of s.players) expect(p.stock.length).toBe(START_MINE_STOCK);
+    expect(buildView(s, 0).refillTurns).toBe(0); // full: no countdown
+  });
+
+  it('refills one mine every 30 turns while the stock is short, and pauses when full', () => {
+    const s = board();
+    give(s, A, MAX_MINE_STOCK - 2);
+    step(s); // the countdown starts
+    expect(buildView(s, A).refillTurns).toBe(STOCK_REFILL_TICKS / 2);
+    for (let t = 1; t < STOCK_REFILL_TICKS; t++) step(s);
+    expect(s.players[A].stock.length).toBe(MAX_MINE_STOCK - 2);
+    step(s);
+    expect(s.players[A].stock.length).toBe(MAX_MINE_STOCK - 1);
+    for (let t = 0; t < STOCK_REFILL_TICKS; t++) step(s);
+    expect(s.players[A].stock.length).toBe(MAX_MINE_STOCK);
+    for (let t = 0; t < STOCK_REFILL_TICKS * 3; t++) step(s);
+    expect(s.players[A].stock.length).toBe(MAX_MINE_STOCK); // no banking time while full
+    expect(buildView(s, A).refillTurns).toBe(0);
+  });
+
+  it('a refilled mine can be planted on the general\'s land', () => {
+    const s = board();
+    for (let t = 0; t <= STOCK_REFILL_TICKS; t++) step(s);
+    expect(s.players[A].stock).toEqual([{ from: -1 }]);
+    expect(plantMine(s, A, NEXT_TO_MINE)).toBe(true);
+  });
+
+  it('picking up a mine brings back every flag on it', () => {
+    const s = board();
+    give(s, A, 1);
+    expect(plantMine(s, A, NEXT_TO_MINE)).toBe(true);
+    s.players[B].flags.add(NEXT_TO_MINE); // B suspected it
+    expect(pickUpMine(s, A, NEXT_TO_MINE)).toBe(true);
+    expect(s.players[B].flags.has(NEXT_TO_MINE)).toBe(false);
   });
 });

@@ -60,6 +60,9 @@ export function buildView(state: GameState, pid: number, reveal = false): Player
 
   const myMines: number[] = [];
   for (let i = 0; i < n; i++) if (state.mine[i] && state.mineOwner[i] === pid) myMines.push(i);
+  // You crossed these safely with a full stock, so you know they are there.
+  const keptMines: number[] = [];
+  for (const i of me.flags) if (state.owner[i] === pid && state.mine[i] && state.mineOwner[i] !== pid) keptMines.push(i);
 
   let mines: number[] | null = null;
   if (over) {
@@ -82,8 +85,10 @@ export function buildView(state: GameState, pid: number, reveal = false): Player
     crater,
     flags: [...me.flags],
     minesInStock: me.stock.length,
+    refillTurns: me.refillAt >= 0 ? Math.ceil((me.refillAt - state.tick) / 2) : 0,
     stockAnchors: me.stock.map((m) => stockAnchor(state, pid, m.from)),
     myMines,
+    keptMines,
     moveCooldowns,
     mines,
     queue: me.queue.slice(),

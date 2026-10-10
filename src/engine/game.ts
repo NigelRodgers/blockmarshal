@@ -7,6 +7,8 @@ import {
   MINE_STUN_TICKS,
   MAX_FLAGS,
   MAX_MINE_STOCK,
+  START_MINE_STOCK,
+  STOCK_REFILL_TICKS,
   CRATER_TICKS,
   PLAYER_COLORS,
   RELOCATE_COOLDOWN_TICKS,
@@ -58,6 +60,8 @@ export interface StartOptions {
   generalArmy?: number[];
   /** Extra tiles player 0 starts with (1 troop each). */
   owned?: number[];
+  /** Mines in each stock at the start (default START_MINE_STOCK). */
+  stock?: number;
 }
 
 /** Turn a finished map (generated or hand-drawn) into a ready-to-play state. */
@@ -88,7 +92,8 @@ export function buildState(
     stunUntil: -1,
     minesLost: 0,
     flags: new Set<number>(),
-    stock: [],
+    stock: Array.from({ length: opts.stock ?? START_MINE_STOCK }, () => ({ from: -1 })),
+    refillAt: -1,
   }));
 
   const state: GameState = {
@@ -296,7 +301,7 @@ export function island(state: GameState, pid: number, idx: number): Uint8Array {
 
 /** Where a stocked mine may be planted: the land around the tile it came from, or the general's if that's lost. */
 export function stockAnchor(state: GameState, pid: number, from: number): number {
-  return state.owner[from] === pid ? from : state.players[pid].general;
+  return from >= 0 && state.owner[from] === pid ? from : state.players[pid].general;
 }
 
 /** Index in the player's stock of a mine that may be planted at idx, or -1. */
@@ -358,7 +363,8 @@ export function pickUpMine(state: GameState, pid: number, idx: number): boolean 
   state.mine[idx] = 0;
   state.mineOwner[idx] = -1;
   state.mineCount--;
-  state.players[pid].flags.delete(idx);
+  // Every flag on it comes back: the mine is gone from that tile.
+  for (const pl of state.players) pl.flags.delete(idx);
   state.players[pid].stock.push({ from: idx });
   return true;
 }
@@ -452,11 +458,27 @@ export function step(state: GameState): void {
     for (let i = 0; i < state.size; i++) if (state.owner[i] >= 0) state.army[i]++;
   }
 
+  refillStocks(state);
   expireCraters(state);
   updateMemory(state);
   // A one-player board (tutorial sandbox) never ends by elimination.
   const alive = state.players.filter((p) => p.alive);
   if (alive.length === 1 && state.players.length > 1) state.winner = alive[0].id;
+}
+
+/** A stock below full gains a mine every STOCK_REFILL_TICKS; the countdown pauses while it is full. */
+function refillStocks(state: GameState): void {
+  for (const p of state.players) {
+    if (!p.alive || p.stock.length >= MAX_MINE_STOCK) {
+      p.refillAt = -1;
+      continue;
+    }
+    if (p.refillAt < 0) p.refillAt = state.tick + STOCK_REFILL_TICKS;
+    else if (state.tick >= p.refillAt) {
+      p.stock.push({ from: -1 });
+      p.refillAt = p.stock.length < MAX_MINE_STOCK ? state.tick + STOCK_REFILL_TICKS : -1;
+    }
+  }
 }
 
 /** Blast marks fade back to ordinary tiles after CRATER_TICKS. */
@@ -487,7 +509,8 @@ function executeNext(state: GameState, p: Player): void {
  * - flagged by you and planted by you: pass over it, it stays armed;
  * - flagged by you otherwise: capture it into your stock, no blast, unless it's
  *   locked (freshly planted, see mineLocked): then it goes off anyway. With a full
- *   stock (MAX_MINE_STOCK) it's disarmed but not kept;
+ *   stock (MAX_MINE_STOCK) you cross it safely and it stays there, still flagged:
+ *   step on it again once your stock has room to collect it;
  * - not flagged by you (including your own planted mines): it goes off.
  */
 function arrive(state: GameState, p: Player, to: number, amount: number): void {
@@ -497,12 +520,14 @@ function arrive(state: GameState, p: Player, to: number, amount: number): void {
     if (flagged && state.mineOwner[to] === p.id) {
       // Safe passage over your own flagged mine.
     } else if (flagged && !mineLocked(state, to)) {
-      state.mine[to] = 0;
-      state.mineOwner[to] = -1;
-      state.mineCount--;
-      p.flags.delete(to);
       const kept = p.stock.length < MAX_MINE_STOCK;
-      if (kept) p.stock.push({ from: to });
+      if (kept) {
+        state.mine[to] = 0;
+        state.mineOwner[to] = -1;
+        state.mineCount--;
+        for (const pl of state.players) pl.flags.delete(to);
+        p.stock.push({ from: to });
+      }
       state.events.push({ kind: 'defuse', idx: to, player: p.id, kept });
     } else {
       amount = detonate(state, to, p, amount);

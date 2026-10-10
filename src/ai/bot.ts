@@ -197,7 +197,13 @@ export class Bot {
   /** A known enemy or natural mine we've flagged: walking onto it banks it. */
   private prize(ctx: Ctx, i: number): boolean {
     if (ctx.me.stock.length >= MAX_MINE_STOCK) return false; // a full stock can't keep it
+    if (this.kept(ctx, i)) return true;
     return ctx.me.flags.has(i) && this.knownMine(ctx, i) && !this.ownMine(ctx, i) && !mineLocked(ctx.s, i);
+  }
+
+  /** A mine we crossed with a full stock: on our land, still flagged (a player sees these too). */
+  private kept({ s, me }: Ctx, i: number): boolean {
+    return s.owner[i] === this.pid && s.mine[i] === 1 && s.mineOwner[i] !== this.pid && me.flags.has(i);
   }
 
   /** Dijkstra over the grid; unknown tiles cost extra in proportion to mine risk. */
@@ -451,7 +457,11 @@ export class Bot {
   private handleMines(ctx: Ctx, busy: boolean): void {
     const { s, me, k } = ctx;
     // Drop flags on mines that are gone (someone else took or tripped them).
-    for (const f of [...me.flags]) if (!k.mine[f] || me.memory[f] === Memory.Crater) toggleFlag(s, this.pid, f);
+    // (Mines we crossed with a full stock keep their flag: it is what keeps them safe for us.)
+    for (const f of [...me.flags]) {
+      if (this.kept(ctx, f)) continue;
+      if (!k.mine[f] || me.memory[f] === Memory.Crater) toggleFlag(s, this.pid, f);
+    }
     // Flag known mines next to our land: paths then walk onto them to bank them. Like a human,
     // only between plans: an army already marching doesn't react to a mine it just uncovered.
     for (let i = 0; i < s.size && !busy && me.flags.size < MAX_FLAGS; i++) {
@@ -534,6 +544,20 @@ export class Bot {
     return frontOnly && bestScore < 10 ? -1 : best;
   }
 
+  /**
+   * Out of flags: take back one that isn't keeping us safe (on a kept mine, or on this path),
+   * so a flag can mark our own mine for passage. With full stocks and flags, bots used to
+   * stall behind their own traps.
+   */
+  private freeFlag(ctx: Ctx, path: number[]): boolean {
+    const { s, me } = ctx;
+    for (const f of me.flags) {
+      if (this.kept(ctx, f) || path.includes(f)) continue;
+      return toggleFlag(s, this.pid, f);
+    }
+    return false;
+  }
+
   private queuePath(ctx: Ctx, path: number[]): void {
     const { s, me } = ctx;
     const end = path[path.length - 1];
@@ -546,7 +570,12 @@ export class Bot {
       // passage (stock full, can't lift). If neither works, stop short of it, unless the
       // target is a general: then take the blast (simulate counted it), or with a full stock
       // and no flags left the bot would stall in front of a general it can beat.
-      const blocked = this.ownMine(ctx, to) && !me.flags.has(to) && !pickUpMine(s, this.pid, to) && !toggleFlag(s, this.pid, to);
+      const blocked =
+        this.ownMine(ctx, to) &&
+        !me.flags.has(to) &&
+        !pickUpMine(s, this.pid, to) &&
+        !toggleFlag(s, this.pid, to) &&
+        !(this.freeFlag(ctx, path) && toggleFlag(s, this.pid, to));
       if (blocked && !forGeneral) return;
       queueMove(s, this.pid, path[n], to);
     }
