@@ -1255,3 +1255,10 @@ $('btn-pause').addEventListener('click', () => {
   setPaused(true);
 });
 $('btn-resume').addEventListener('click', () => setPaused(false));
+
+// Leaving the page (switching apps, locking the phone, another tab) pauses it too: browsers
+// slow down timers in hidden pages, so the bots would keep playing while you can't.
+// Coming back shows the Paused panel, so you pick up when you're ready.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && !gamePaused && !endShown) setPaused(true);
+});
