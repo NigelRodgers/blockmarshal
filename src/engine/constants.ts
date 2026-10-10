@@ -61,7 +61,8 @@ export const MATCH_PLAYERS = 6;
 
 /**
  * Free-for-all (six generals) or a 1 vs 1 duel on a smaller board (bigger tiles, shorter games).
- * Duels have twice the mines and 10% more mountains.
+ * Duels: 1.7x the mines (twice, less 15%) and about 27% more mountains (+10%, then +15%),
+ * and each general starts within 4 rows of the top or bottom edge.
  */
 export type GameMode = 'ffa' | 'duel';
 export interface ModeConfig {
@@ -70,10 +71,12 @@ export interface ModeConfig {
   h: number;
   mineRate: number;
   mountainRate: number;
+  /** Two players: one general starts in the top this-many rows, the other in the bottom ones. */
+  spawnEdgeRows?: number;
 }
 export const MODES: Record<GameMode, ModeConfig> = {
   ffa: { players: MATCH_PLAYERS, w: MAP_W, h: MAP_H, mineRate: DEFAULT_MINE_RATE, mountainRate: DEFAULT_MOUNTAIN_RATE },
-  duel: { players: 2, w: 11, h: 17, mineRate: DEFAULT_MINE_RATE * 2, mountainRate: DEFAULT_MOUNTAIN_RATE * 1.1 },
+  duel: { players: 2, w: 11, h: 17, mineRate: DEFAULT_MINE_RATE * 2 * 0.85, mountainRate: DEFAULT_MOUNTAIN_RATE * 1.1 * 1.15, spawnEdgeRows: 4 },
 };
 
 export function isMode(x: unknown): x is GameMode {

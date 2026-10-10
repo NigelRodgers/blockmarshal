@@ -35,8 +35,8 @@ const MAX_TICKS = 40_000;
 const OPS = new Set(['move', 'undo', 'clear', 'flag', 'drop', 'pickup', 'relocate']);
 
 export function replayConfig(r: ReplayRecord): GameConfig {
-  const { w, h, mineRate, mountainRate } = MODES[r.mode];
-  return { w, h, seed: r.seed, players: r.players, mineRate, mountainRate };
+  const { w, h, mineRate, mountainRate, spawnEdgeRows } = MODES[r.mode];
+  return { w, h, seed: r.seed, players: r.players, mineRate, mountainRate, spawnEdgeRows };
 }
 
 /** Turns per human-readable game length. */

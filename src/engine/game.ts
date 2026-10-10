@@ -31,6 +31,8 @@ export interface GameConfig {
   mountainRate?: number;
   cities?: number;
   towers?: number;
+  /** See ModeConfig.spawnEdgeRows. */
+  spawnEdgeRows?: number;
 }
 
 export function createGame(cfg: GameConfig): GameState {
@@ -46,6 +48,7 @@ export function createGame(cfg: GameConfig): GameState {
     mountainRate: cfg.mountainRate ?? DEFAULT_MOUNTAIN_RATE,
     cities: cfg.cities ?? Math.round(size / 50),
     towers: cfg.towers ?? TOWERS_PER_MATCH,
+    spawnEdgeRows: cfg.spawnEdgeRows,
   });
   return buildState({ w, h, seed, players: cfg.players, mineRate }, map);
 }

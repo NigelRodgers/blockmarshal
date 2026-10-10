@@ -12,6 +12,8 @@ export interface MapOptions {
   mountainRate: number;
   cities: number;
   towers: number;
+  /** Two players only: one general in the top this-many rows, the other in the bottom ones. */
+  spawnEdgeRows?: number;
 }
 
 export interface GeneratedMap {
@@ -42,6 +44,13 @@ function tryGenerate(o: MapOptions, rng: Rng, attempt: number): GeneratedMap | n
   // Spread generals out by area per player; relax the requirement the longer we fail.
   const minDist = Math.max(4, Math.floor(Math.sqrt((w * h) / o.players) * 1.3 * (1 - attempt / 300)));
   const generals: number[] = [];
+  if (o.spawnEdgeRows && o.players === 2) {
+    // Opposite edges (which player gets which is random): far apart by construction.
+    const rows = Math.min(o.spawnEdgeRows, Math.floor(h / 2));
+    const top = randInt(rng, rows) * w + randInt(rng, w);
+    const bottom = (h - 1 - randInt(rng, rows)) * w + randInt(rng, w);
+    generals.push(...(rng() < 0.5 ? [top, bottom] : [bottom, top]));
+  }
   for (let tries = 0; generals.length < o.players && tries < 500; tries++) {
     const c = randInt(rng, size);
     if (generals.every((g) => manhattan(w, g, c) >= minDist)) generals.push(c);

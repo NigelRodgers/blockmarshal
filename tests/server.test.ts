@@ -318,8 +318,8 @@ describe('replays', () => {
     expect(ops.has('flag')).toBe(true);
     expect(ops.has('relocate')).toBe(true);
 
-    const { w, h, mineRate, mountainRate } = MODES.duel;
-    const cfg = { w, h, seed: 99, mineRate, mountainRate, players: s.players.map((p) => ({ name: p.name, isBot: p.isBot })) };
+    const { w, h, mineRate, mountainRate, spawnEdgeRows } = MODES.duel;
+    const cfg = { w, h, seed: 99, mineRate, mountainRate, spawnEdgeRows, players: s.players.map((p) => ({ name: p.name, isBot: p.isBot })) };
     const again = replay(cfg, 'normal', s.log, s.tick);
     expect(again.tick).toBe(s.tick);
     expect([...again.owner]).toEqual([...s.owner]);
