@@ -51,6 +51,8 @@ let replayView: PlayerView | null = null;
 let replayTimer = 0;
 let replaySpeed = 1;
 let replayPaused = false;
+/** The "replay no longer matches" notice was shown for the replay being watched. */
+let replayWarned = false;
 let lobbyEndsAt = 0;
 /** Set while playing a browser-only match against bots. */
 let local: LocalGame | null = null;
@@ -880,12 +882,12 @@ function placeToast(b: { w: number; h: number }): void {
 }
 
 let toastTimer = 0;
-function toast(msg: string): void {
+function toast(msg: string, ms = 1800): void {
   const el = $('toast');
   el.textContent = msg;
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => el.classList.remove('show'), 1800);
+  toastTimer = window.setTimeout(() => el.classList.remove('show'), ms);
 }
 
 function buzz(pattern: number | number[]): void {
@@ -1036,6 +1038,7 @@ function watchReplay(r: ReplayRecord): void {
   setScreen('replay');
   replayer = new ReplayPlayer(r);
   replayPaused = false;
+  replayWarned = false;
   ($('rp-seek') as HTMLInputElement).max = String(r.ticks);
   fitted = false;
   showReplayFrame();
@@ -1057,6 +1060,11 @@ function showReplayFrame(): void {
   }
   for (const ev of replayView.events) {
     if (ev.kind === 'explode') fx.explode((ev.idx % replayView.w) + 0.5, Math.floor(ev.idx / replayView.w) + 0.5);
+  }
+  if (replayer.diverged && !replayWarned) {
+    replayWarned = true;
+    const made = replayer.record.build ? `build ${replayer.record.build}` : 'an older version';
+    toast(`Made on ${made}, so this replay no longer matches the real game.`, 6000);
   }
   renderReplayBar();
 }

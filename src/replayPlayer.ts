@@ -34,6 +34,14 @@ export class ReplayPlayer {
     return this.state.winner >= 0 || this.state.tick >= this.record.ticks;
   }
 
+  /**
+   * At the end: the rebuilt game didn't finish the way the recorded one did. Happens
+   * when the replay was made by a build whose bots or rules differ from this one.
+   */
+  get diverged(): boolean {
+    return this.done && (this.state.winner !== this.record.winner || this.state.tick !== this.record.ticks);
+  }
+
   /** Advance one tick. */
   step(): void {
     if (this.done) return;

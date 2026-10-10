@@ -13,7 +13,7 @@
  *   --keep   download but don't delete from the server
  */
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,8 +48,16 @@ function log(line) {
 
 mkdirSync(dir, { recursive: true });
 const summary = join(dir, 'summary.csv');
+const HEADER = 'id,ended_at,mode,source,humans,turns,winner,winner_is_bot,players,file,build';
 if (!existsSync(summary)) {
-  writeFileSync(summary, 'id,ended_at,mode,source,humans,turns,winner,winner_is_bot,players,file\n');
+  writeFileSync(summary, HEADER + '\n');
+} else {
+  // Files from before the build column: add it, empty for the old rows.
+  const old = readFileSync(summary, 'utf8');
+  if (!old.startsWith(HEADER)) {
+    const lines = old.split('\n').filter(Boolean);
+    writeFileSync(summary, [HEADER, ...lines.slice(1).map((l) => l + ',')].join('\n') + '\n');
+  }
 }
 
 let total = 0;
@@ -78,6 +86,7 @@ try {
           winner ? winner.isBot : '',
           r.players.map((p) => (p.isBot ? `${p.name} (bot)` : p.name)).join('; '),
           `${month}/${name}`,
+          r.build ?? '',
         ]
           .map(csv)
           .join(',') + '\n',

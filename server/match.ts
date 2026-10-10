@@ -35,6 +35,8 @@ export interface MatchOptions {
   source?: ReplayRecord['source'];
   /** Called once with the replay when a game that started ends (won or abandoned). */
   onReplay?: (r: ReplayRecord) => void;
+  /** Build id stamped on the replay (see src/buildId.ts). */
+  build?: string;
 }
 
 const MAX_QUEUE = 200;
@@ -232,6 +234,7 @@ export class Match {
       winner: s.winner,
       startedAt: this.startedAt,
       endedAt: this.now(),
+      build: this.opts.build ?? 'dev',
     };
   }
 }

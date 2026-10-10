@@ -4,6 +4,12 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-10
 
+**Replays carry their build** (not live yet)
+- Every replay now records the short git hash of the code that played it (`build`). Browser games use the client build; server games get it from the Worker's `BUILD` var, which `npm run deploy` (now `scripts/deploy.mjs`) sets to the git hash.
+- Bots are re-simulated when a replay plays, so a replay made by an older build can play out differently. The replay viewer now notices when the rebuilt game doesn't end the way the real one did and says so ("Made on build …, so this replay no longer matches the real game"). Replay notices show at the top (the controls cover the bottom) and wrap on phones.
+- `npm run replays`: `summary.csv` gets a `build` column (empty for older games; existing files are upgraded in place), so results can be split by bot version.
+- Checked against the 18 downloaded games: the 2 played before the softer bots no longer rebuild correctly; all 15 since do.
+
 **The repository is public** (GPL-3.0): https://github.com/NigelRodgers/blockmarshal
 - History rewritten first: the two YouTube sound clips and the owner's email were removed from every old commit, so **every commit id changed**. Old build ids (start screen, screenshots, feedback, replays) map to new commits in [docs/history-rewrite.md](docs/history-rewrite.md). The ids in this changelog are the new ones.
 - Feedback email address moved to a Worker secret (`FEEDBACK_EMAIL`); `LICENSE` added.

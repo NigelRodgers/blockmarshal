@@ -9,7 +9,7 @@
     "build": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json && vite build",
     "preview": "vite preview --host",
     "test": "vitest run",
-    "deploy": "npm run build && wrangler deploy",
+    "deploy": "npm run build && node scripts/deploy.mjs",
     "server": "wrangler dev --port 8787",
     "types": "wrangler types worker/worker-configuration.d.ts",
     "feedback": "wrangler d1 execute blockmarshal-feedback --remote --command \"SELECT id, created_at, rating, confusing, improve, context FROM feedback ORDER BY id DESC LIMIT 50\"",

@@ -22,6 +22,11 @@ export interface ReplayRecord {
   winner: number;
   startedAt: number;
   endedAt: number;
+  /**
+   * Short git hash of the code that played the game (missing on replays from before
+   * 2026-10-10). Bots are re-simulated, so a replay only rebuilds exactly on its own build.
+   */
+  build?: string;
 }
 
 /** Biggest replay accepted from a browser (a long human game is ~100 KB). */
@@ -55,6 +60,7 @@ export function validateReplay(x: unknown, sources: ReplayRecord['source'][] = [
   if (!Number.isInteger(r.ticks) || r.ticks! < 0 || r.ticks! > MAX_TICKS) return null;
   if (!Number.isInteger(r.winner) || r.winner! < -1 || r.winner! >= n) return null;
   if (!Number.isFinite(r.startedAt) || !Number.isFinite(r.endedAt)) return null;
+  if (r.build !== undefined && (typeof r.build !== 'string' || !/^[a-z0-9]{1,12}$/.test(r.build))) return null;
   if (!Array.isArray(r.log)) return null;
   const size = MODES[r.mode].w * MODES[r.mode].h;
   const tile = (v: unknown) => Number.isInteger(v) && (v as number) >= -1 && (v as number) < size;

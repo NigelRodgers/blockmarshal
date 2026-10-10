@@ -111,6 +111,7 @@ export class MatchDO extends DurableObject<Env> {
       lobbyMs: lobbyMs(this.env),
       soloHandoff: true,
       mode,
+      build: this.env.BUILD,
       onReplay: (r) => this.ctx.waitUntil(saveReplay(this.env, r).catch(() => {})),
     });
     // The lobby countdown. The game loop itself runs on Match's own interval.

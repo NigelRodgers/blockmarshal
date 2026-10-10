@@ -1,6 +1,7 @@
 import type { GameMode } from './engine/constants';
 import type { ClientMessage, ServerMessage } from './net/protocol';
 import { cleanName, Match, type Conn } from '../server/match';
+import { BUILD_HASH } from './buildId';
 
 /**
  * A match against bots running entirely in this browser. It uses the same
@@ -19,6 +20,7 @@ export class LocalGame {
       lobbyMs: 0,
       mode,
       source: 'browser',
+      build: BUILD_HASH,
       onReplay: (replay) => onMessage({ t: 'replay', replay }),
     });
     this.match.add(this.conn);

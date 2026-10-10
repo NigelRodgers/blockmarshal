@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { BUILD_HASH } from '../src/buildId';
 import { LocalGame } from '../src/local';
 import type { ServerMessage } from '../src/net/protocol';
 import { validateReplay, type ReplayRecord } from '../src/replay';
@@ -12,9 +13,9 @@ function conn(id: string): Conn & { inbox: ServerMessage[] } {
 }
 
 /** Plays a duel with one idle human until it ends, returning the replay the match produced. */
-function finishedDuel(): { replay: ReplayRecord; match: Match } {
+function finishedDuel(build?: string): { replay: ReplayRecord; match: Match } {
   let replay: ReplayRecord | null = null;
-  const match = new Match('m', () => {}, { autoRun: false, lobbyMs: 0, seed: 3, mode: 'duel', onReplay: (r) => (replay = r) });
+  const match = new Match('m', () => {}, { autoRun: false, lobbyMs: 0, seed: 3, mode: 'duel', build, onReplay: (r) => (replay = r) });
   match.add(conn('Ann'));
   for (let t = 0; t < 5000 && match.phase === 'playing'; t++) match.tick();
   return { replay: replay!, match };
@@ -30,6 +31,16 @@ describe('replay records', () => {
     while (!p.done) p.step();
     expect(p.tick).toBe(replay.ticks);
     expect(p.view(0).winner).toBe(replay.winner);
+    expect(p.diverged).toBe(false);
+  }, 30_000);
+
+  it('carry the build that made them, and notice when they no longer rebuild the game', () => {
+    const { replay } = finishedDuel('abc1234');
+    expect(replay.build).toBe('abc1234');
+    // Stand-in for a build whose bots play differently: same log, different game.
+    const p = new ReplayPlayer({ ...replay, seed: replay.seed + 1 });
+    while (!p.done) p.step();
+    expect(p.diverged).toBe(true);
   }, 30_000);
 
   it('can seek backwards and forwards', () => {
@@ -49,6 +60,8 @@ describe('replay records', () => {
     const r = inbox.find((m) => m.t === 'replay');
     expect(r?.t === 'replay' && r.replay.source).toBe('browser');
     expect(r?.t === 'replay' && r.replay.winner).toBe(-1);
+    expect(r?.t === 'replay' && r.replay.build).toBe(BUILD_HASH);
+    expect(BUILD_HASH).toMatch(/^[a-z0-9]{1,12}$/); // the short hash, not the date shown on the start screen
   });
 
   it('uploads are checked: shape, sizes, ranges, and only browser games', () => {
@@ -64,6 +77,10 @@ describe('replay records', () => {
     expect(validateReplay({ ...browser, log: [{ tick: 1, pid: 0, op: 'move', from: 99999, to: 1, half: false }] })).toBeNull();
     expect(validateReplay({ ...browser, log: [{ tick: 1, pid: 7, op: 'undo' }] })).toBeNull();
     expect(validateReplay({ ...browser, log: [{ tick: 1, pid: 0, op: 'nuke' }] })).toBeNull();
+    expect(validateReplay({ ...browser, build: 'abc1234' })).toBeTruthy();
+    expect(validateReplay({ ...browser, build: undefined })).toBeTruthy(); // replays from before builds were stamped
+    expect(validateReplay({ ...browser, build: '<b>' })).toBeNull();
+    expect(validateReplay({ ...browser, build: 7 })).toBeNull();
   }, 30_000);
 });
 
