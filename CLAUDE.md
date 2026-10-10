@@ -3,7 +3,7 @@
 Real-time territory war (generals.io-style) on a hidden minefield: 6-player free-for-all or 1 vs 1. Mobile-first web game.
 
 - **Live:** https://blockmarshal.rodgersnigel.workers.dev (start screen shows `Build <git hash> · <time>`)
-- **Repo:** github.com/NigelRodgers/blockmarshal (PRIVATE, branch `main`)
+- **Repo:** https://github.com/NigelRodgers/blockmarshal (PUBLIC, GPL-3.0, branch `main`). History was rewritten on 2026-10-10 before going public: see [docs/history-rewrite.md](docs/history-rewrite.md) for old build ids -> new commit ids.
 - **Player rules + every number:** [Blockmarshal: Game Rules & Numbers](https://claude.ai/code/artifact/e88a1b81-7a45-4e71-872f-f065ac6019a5) (Claude Doc). Update it whenever a rule or number changes.
 - **What shipped, when:** [CHANGELOG.md](CHANGELOG.md). **Open work:** the Backlog below (single source of truth).
 - History of design decisions: [PLAN.md](PLAN.md). Hosting, costs, feedback storage: [DEPLOY.md](DEPLOY.md).
@@ -32,7 +32,7 @@ Two games share one rules engine (`src/engine`) but are separate concepts. Don't
 2. Read the top of CHANGELOG.md and the Backlog below.
 3. Start local servers (Claude Code preview names in `.claude/launch.json` and `C:\Users\User\.claude\launch.json`):
    - `blockmarshal-server`: `wrangler dev` on :8787 (Worker + Durable Objects + local D1). Serves `dist/`, so run `npm run build` first.
-   - `blockmarshal`: Vite on :5199 (hot reload; proxies `/api` and `/ws` to :8787). Phones on the same Wi-Fi: `http://<PC LAN IP>:5199` (was <PC LAN IP>).
+   - `blockmarshal`: Vite on :5199 (hot reload; proxies `/api` and `/ws` to :8787). Phones on the same Wi-Fi: `http://<PC LAN IP>:5199`.
 4. Locally, `.dev.vars` sets `LOBBY_SECONDS=0`, so Play starts a solo game instantly (handed off to the browser). To test lobbies with two tabs, set it to e.g. 25 and restart `blockmarshal-server`, then set it back to 0.
 
 ## Commands
@@ -73,9 +73,10 @@ Before every commit: `npx tsc --noEmit && npx tsc --noEmit -p tsconfig.server.js
 
 ## Secrets, accounts, settings
 
-- **Cloudflare** account [owner email: Worker secret]; wrangler is logged in on this PC. Worker `blockmarshal`; D1 `blockmarshal-feedback` (id in wrangler.jsonc).
+- **Cloudflare** account: the owner's (wrangler is logged in on this PC). Worker `blockmarshal`; D1 `blockmarshal-feedback` (id in wrangler.jsonc).
 - **PostHog EU** project key lives only in `.env.local` (gitignored). Deploying from elsewhere without it silently turns analytics off.
-- **Resend** API key (send-only) is a Worker secret `RESEND_API_KEY`; feedback emails go to `FEEDBACK_EMAIL` ([owner email: Worker secret]) from `onboarding@resend.dev` (may land in Spam).
+- **Resend** API key (send-only) is a Worker secret `RESEND_API_KEY`; feedback emails go to the owner's address in the Worker secret `FEEDBACK_EMAIL`, from `onboarding@resend.dev` (may land in Spam).
+- **The repo is public** (GPL-3.0). No personal email, keys or account details in tracked files; they live in Worker secrets and gitignored files.
 - Never commit keys; never echo them back in chat.
 - **Replays** download to `%BLOCKMARSHAL_REPLAYS%` or `Documents\Blockmarshal Replays` via the Windows scheduled task "Blockmarshal replays" (daily 09:00, catches up if the PC was off). Its `pull.log` says what each run did.
 - **Recorder** button shows only in browsers opened once with `?recorder=on` (`?recorder=off` hides it). Not a secret: it only records your own screen.

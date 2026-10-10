@@ -114,18 +114,19 @@ async function saveFeedback(req: Request, env: Env, ctx: ExecutionContext): Prom
 }
 
 /**
- * Copy of the feedback to FEEDBACK_EMAIL via Resend. Does nothing until the
- * RESEND_API_KEY secret is set; failures never affect the player.
+ * Copy of the feedback to the owner via Resend. Both the RESEND_API_KEY and the
+ * FEEDBACK_EMAIL address are Worker secrets (kept out of the public repo); without
+ * them this does nothing. Failures never affect the player.
  */
 async function emailFeedback(env: Env, record: FeedbackRecord): Promise<void> {
-  const key = (env as Env & { RESEND_API_KEY?: string }).RESEND_API_KEY;
-  if (!key || !env.FEEDBACK_EMAIL) return;
+  const { RESEND_API_KEY: key, FEEDBACK_EMAIL: to } = env as Env & { RESEND_API_KEY?: string; FEEDBACK_EMAIL?: string };
+  if (!key || !to) return;
   const { subject, text } = feedbackEmail(record);
   try {
     await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: 'Blockmarshal <onboarding@resend.dev>', to: [env.FEEDBACK_EMAIL], subject, text }),
+      body: JSON.stringify({ from: 'Blockmarshal <onboarding@resend.dev>', to: [to], subject, text }),
     });
   } catch {
     /* stored in D1 regardless */

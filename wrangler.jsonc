@@ -30,7 +30,8 @@
   // Lobby countdown. Override locally in .dev.vars (e.g. LOBBY_SECONDS=0 to start solo games instantly).
   // FEEDBACK_EMAIL gets a copy of each feedback form, sent via Resend once the
   // RESEND_API_KEY secret is set (`npx wrangler secret put RESEND_API_KEY`).
-  "vars": { "LOBBY_SECONDS": "60", "FEEDBACK_EMAIL": "[owner email: Worker secret]" },
+  // FEEDBACK_EMAIL and RESEND_API_KEY are Worker secrets (`wrangler secret put`), not vars: the repo is public.
+  "vars": { "LOBBY_SECONDS": "60" },
   // Per-IP request limits (counted per Cloudflare location). Period must be 10 or 60 seconds.
   "ratelimits": [
     { "name": "JOIN_LIMIT", "namespace_id": "1001", "simple": { "limit": 30, "period": 60 } },
