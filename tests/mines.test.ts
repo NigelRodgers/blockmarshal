@@ -644,3 +644,30 @@ describe('mine quota', () => {
     expect(s.players[B].flags.has(NEXT_TO_MINE)).toBe(false);
   });
 });
+
+describe('reported in a 1 vs 1 game (2026-10-11, build 5b0ee0c)', () => {
+  it('a mine you crossed and kept draws no dots for you (it shows as a grey mine)', () => {
+    const s = board();
+    give(s, A, MAX_MINE_STOCK);
+    s.army[NEXT_TO_MINE] = 20;
+    expect(buildView(s, A).dots[NEXT_TO_MINE]).not.toBe(0); // the natural mine at (3,0)
+    toggleFlag(s, A, MINE);
+    queueMove(s, A, NEXT_TO_MINE, MINE);
+    step(s);
+    expect(buildView(s, A).keptMines).toEqual([MINE]);
+    expect(buildView(s, A).dots[NEXT_TO_MINE]).toBe(0);
+  });
+
+  it('taking a flagged tile with no mine clears the flag, so the next long-press plants', () => {
+    const s = board();
+    const EMPTY = 2 * 7 + 1; // (1,2): no mine
+    s.army[7 + 1] = 10; // the general at (1,1)
+    toggleFlag(s, A, EMPTY);
+    queueMove(s, A, 7 + 1, EMPTY);
+    step(s);
+    expect(s.owner[EMPTY]).toBe(A);
+    expect(s.players[A].flags.has(EMPTY)).toBe(false);
+    give(s, A, 1);
+    expect(plantMine(s, A, EMPTY)).toBe(true);
+  });
+});

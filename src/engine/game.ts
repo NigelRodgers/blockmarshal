@@ -543,6 +543,8 @@ function arrive(state: GameState, p: Player, to: number, amount: number): void {
     army[to] = amount - army[to];
     owner[to] = p.id;
     gainTile(state, p.id, to);
+    // You walked in safely, so there was no mine: your flag there is done. (A kept mine keeps it.)
+    if (!state.mine[to]) p.flags.delete(to);
     if (state.terrain[to] === Terrain.City) state.events.push({ kind: 'captureCity', idx: to, player: p.id });
     if (state.terrain[to] === Terrain.Tower) state.events.push({ kind: 'captureTower', idx: to, player: p.id });
     if (prev >= 0 && state.terrain[to] === Terrain.General) eliminate(state, prev, p.id, to);

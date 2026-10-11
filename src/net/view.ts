@@ -29,6 +29,11 @@ export function buildView(state: GameState, pid: number, reveal = false): Player
   const crater = new Array<number>(n);
   const lockedDots = new Array<number>(n);
 
+  // You crossed these safely with a full stock, so you know they are there (drawn as grey mines).
+  const keptMines: number[] = [];
+  for (const i of me.flags) if (state.owner[i] === pid && state.mine[i] && state.mineOwner[i] !== pid) keptMines.push(i);
+  const kept = new Set(over ? [] : keptMines);
+
   for (let i = 0; i < n; i++) {
     const seen = vis[i] === 1;
     visible[i] = seen ? 1 : 0;
@@ -45,8 +50,9 @@ export function buildView(state: GameState, pid: number, reveal = false): Player
     // Blasts are public: everyone sees the mark until it fades.
     crater[i] = state.crater[i] ? Math.max(0, state.crater[i] - state.tick) : 0;
     // A replay draws every mine, so the dots pointing at them would only be clutter.
-    dots[i] = !reveal && (me.revealed[i] || over) ? mineDots(state, i, over ? -2 : pid) : 0;
-    lockedDots[i] = dots[i] ? lockedMask(state, i, over ? -2 : pid) : 0;
+    // Like your own mines, the ones you crossed and kept draw no dots for you.
+    dots[i] = !reveal && (me.revealed[i] || over) ? withoutKept(state, i, mineDots(state, i, over ? -2 : pid), kept) : 0;
+    lockedDots[i] = dots[i] ? lockedMask(state, i, over ? -2 : pid) & dots[i] : 0;
   }
 
   const moveCooldowns: { idx: number; turns: number }[] = [];
@@ -60,9 +66,6 @@ export function buildView(state: GameState, pid: number, reveal = false): Player
 
   const myMines: number[] = [];
   for (let i = 0; i < n; i++) if (state.mine[i] && state.mineOwner[i] === pid) myMines.push(i);
-  // You crossed these safely with a full stock, so you know they are there.
-  const keptMines: number[] = [];
-  for (const i of me.flags) if (state.owner[i] === pid && state.mine[i] && state.mineOwner[i] !== pid) keptMines.push(i);
 
   let mines: number[] | null = null;
   if (over) {
@@ -108,4 +111,22 @@ export function buildView(state: GameState, pid: number, reveal = false): Player
     ),
     winner: state.winner,
   };
+}
+
+/** Clears the dot bits (mineDots order) that point at a kept mine. */
+function withoutKept(state: GameState, idx: number, mask: number, kept: Set<number>): number {
+  if (!mask || !kept.size) return mask;
+  const x = idx % state.w;
+  const y = Math.floor(idx / state.w);
+  let bit = 0;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx >= 0 && ny >= 0 && nx < state.w && ny < state.h && kept.has(ny * state.w + nx)) mask &= ~(1 << bit);
+      bit++;
+    }
+  }
+  return mask;
 }

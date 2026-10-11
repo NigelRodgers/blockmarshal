@@ -354,8 +354,15 @@ function flagGesture(idx: number): void {
   if (v.owner[idx] === v.you) {
     // Your own land: your mines and buildings get a menu, open tiles get a mine if you have one.
     if (v.myMines.includes(idx)) return openMineMenu(idx);
-    // A flag left on a tile you've since taken: the gesture takes it off (it never plants there).
-    if (v.flags.includes(idx)) return toggleFlag(idx);
+    // A mine you crossed with a full stock: its flag is what keeps it safe for you, so it stays.
+    if (v.keptMines.includes(idx)) {
+      toast(
+        v.minesInStock < MAX_MINE_STOCK
+          ? 'A mine you crossed: move onto it to collect it'
+          : `A mine you crossed: plant one (stock ${MAX_MINE_STOCK}/${MAX_MINE_STOCK}), then move onto it to collect it`,
+      );
+      return;
+    }
     if (v.terrain[idx] === Terrain.General || v.terrain[idx] === Terrain.City) return openBuildMenu(idx);
     if (v.terrain[idx] === Terrain.Plain && v.minesInStock > 0) {
       if (plantableAnchor(v, idx) >= 0) return plantMine(idx);
