@@ -2,6 +2,12 @@
 
 Newest first. Build ids match the `Build <hash>` line on the start screen. Live: https://blockmarshal.rodgersnigel.workers.dev
 
+## 2026-10-11
+
+**Lighter replay list; pulled replays are verified** (not live yet)
+- Replays menu (#9): reads one small summary per game instead of loading every stored replay in full (up to 50 games, 1-5 MB) each time it opens; a replay loads in full only when you open it. Replays already in your browser are summarised once, automatically.
+- `npm run replays` (#14): every downloaded replay is rebuilt from its seed and checked against its recorded result. `summary.csv` gets a `verified` column: `yes`, `no` (same build, different result: forged or a bug), `stale-build` (played on another build, so it can't tell) or `error`; `pull.log` counts them. Browser games upload their own results, so this flags forged ones before they skew tuning.
+
 ## 2026-10-10
 
 **Bring your own mines** (live in `1803cd0`; designed in a grilling session, see PLAN.md and ADR-0004)

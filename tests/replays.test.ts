@@ -118,3 +118,17 @@ describe('origin check', () => {
     expect(sameOrigin(req('http://192.168.1.5:5199'), dev)).toBe(true);
   });
 });
+
+describe('replay verification (npm run replays)', () => {
+  it('passes a genuine replay, catches a forged result, and blames other builds only as stale', async () => {
+    const { verifyReplay } = await import('../src/replayVerify');
+    const { replay } = finishedDuel('abc1234');
+    expect(verifyReplay(replay, 'abc1234')).toBe('yes');
+    expect(verifyReplay(replay, 'fff0000')).toBe('yes'); // still rebuilds: fine whatever the build
+    const forged = { ...replay, winner: 1 - replay.winner };
+    expect(verifyReplay(forged, 'abc1234')).toBe('no');
+    expect(verifyReplay(forged, 'fff0000')).toBe('stale-build');
+    expect(verifyReplay({ ...forged, build: undefined }, 'abc1234')).toBe('stale-build');
+    expect(verifyReplay({ ...replay, mode: 'nope' as never }, 'abc1234')).toBe('error');
+  }, 60_000);
+});

@@ -6,7 +6,10 @@
  *
  *   Folder:  %BLOCKMARSHAL_REPLAYS% or "Documents\Blockmarshal Replays"
  *   Files:   <YYYY-MM>/<date>_<mode>_<id>.json   one replay each (watch with Replays > Import, or analyse)
- *            summary.csv                          one row per game, for spreadsheets
+ *            summary.csv                          one row per game, for spreadsheets. `verified`: does the
+ *                                                 replay rebuild its recorded result? (yes / no / stale-build /
+ *                                                 error, see src/replayVerify.ts) Browser games upload their own
+ *                                                 result, so this flags forged ones.
  *            pull.log                             what each run did
  *
  *   --local  read the `wrangler dev` database instead (testing)
@@ -16,7 +19,7 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const wrangler = join(root, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
@@ -48,17 +51,38 @@ function log(line) {
 
 mkdirSync(dir, { recursive: true });
 const summary = join(dir, 'summary.csv');
-const HEADER = 'id,ended_at,mode,source,humans,turns,winner,winner_is_bot,players,file,build';
+const HEADER = 'id,ended_at,mode,source,humans,turns,winner,winner_is_bot,players,file,build,verified';
 if (!existsSync(summary)) {
   writeFileSync(summary, HEADER + '\n');
 } else {
-  // Files from before the build column: add it, empty for the old rows.
+  // Files from before the newer columns (build, verified): add them, empty for the old rows.
   const old = readFileSync(summary, 'utf8');
-  if (!old.startsWith(HEADER)) {
+  if (!old.startsWith(HEADER + '\n')) {
     const lines = old.split('\n').filter(Boolean);
-    writeFileSync(summary, [HEADER, ...lines.slice(1).map((l) => l + ',')].join('\n') + '\n');
+    const pad = ','.repeat(HEADER.split(',').length - lines[0].split(',').length);
+    writeFileSync(summary, [HEADER, ...lines.slice(1).map((l) => l + pad)].join('\n') + '\n');
   }
 }
+
+// The engine is TypeScript: bundle the verifier once per run (esbuild comes with wrangler).
+const verifier = join(root, 'node_modules', '.cache', 'blockmarshal', 'verify-replays.mjs');
+const esbuild = await import('esbuild');
+await esbuild.build({
+  entryPoints: [join(root, 'src', 'replayVerify.ts')],
+  bundle: true,
+  format: 'esm',
+  platform: 'node',
+  outfile: verifier,
+  logLevel: 'silent',
+});
+const { verifyReplay } = await import(pathToFileURL(verifier).href);
+let build = 'dev';
+try {
+  build = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+} catch {
+  /* not a git checkout: every mismatch counts as stale-build */
+}
+const tally = {};
 
 let total = 0;
 try {
@@ -73,6 +97,8 @@ try {
       mkdirSync(join(dir, month), { recursive: true });
       writeFileSync(join(dir, month, name), JSON.stringify(r));
       const winner = r.players[r.winner];
+      const verdict = verifyReplay(r, build);
+      tally[verdict] = (tally[verdict] ?? 0) + 1;
       appendFileSync(
         summary,
         [
@@ -87,6 +113,7 @@ try {
           r.players.map((p) => (p.isBot ? `${p.name} (bot)` : p.name)).join('; '),
           `${month}/${name}`,
           r.build ?? '',
+          verdict,
         ]
           .map(csv)
           .join(',') + '\n',
@@ -97,7 +124,8 @@ try {
     // Only after every file in the batch is written.
     d1(`DELETE FROM replays WHERE id IN (${rows.map((r) => `'${String(r.id).replace(/[^a-z0-9-]/g, '')}'`).join(',')})`);
   }
-  log(`pulled ${total} game(s) from ${local ? 'local' : 'production'} into ${dir}`);
+  const checked = Object.entries(tally).map(([k, n]) => `${n} ${k}`).join(', ');
+  log(`pulled ${total} game(s) from ${local ? 'local' : 'production'} into ${dir}${checked ? ` (verified: ${checked})` : ''}`);
 } catch (err) {
   log(`FAILED after ${total} game(s): ${String(err.stderr || err.message).split('\n').filter(Boolean).slice(-3).join(' | ')}`);
   process.exit(1);
