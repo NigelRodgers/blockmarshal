@@ -5,7 +5,7 @@ Real-time territory war (generals.io-style) on a hidden minefield: 6-player free
 - **Live:** https://blockmarshal.rodgersnigel.workers.dev (start screen shows `Build <git hash> · <time>`)
 - **Repo:** https://github.com/NigelRodgers/blockmarshal (PUBLIC, GPL-3.0, branch `main`). History was rewritten on 2026-10-10 before going public: see [docs/history-rewrite.md](docs/history-rewrite.md) for old build ids -> new commit ids.
 - **Player rules + every number:** [Blockmarshal: Game Rules & Numbers](https://claude.ai/code/artifact/e88a1b81-7a45-4e71-872f-f065ac6019a5) (Claude Doc). Update it whenever a rule or number changes.
-- **What shipped, when:** [CHANGELOG.md](CHANGELOG.md). **Open work:** the Backlog below (single source of truth).
+- **What shipped, when:** [CHANGELOG.md](CHANGELOG.md). **Open work:** [GitHub Issues](https://github.com/NigelRodgers/blockmarshal/issues) (single source of truth); direction in "Open work" below.
 - History of design decisions: [PLAN.md](PLAN.md). Hosting, costs, feedback storage: [DEPLOY.md](DEPLOY.md).
 
 ## Vision (2026-10-10)
@@ -29,7 +29,7 @@ Two games share one rules engine (`src/engine`) but are separate concepts. Don't
 ## Start of every session
 
 1. `git status` and `git log --oneline -5` (the working tree should be clean; the newest commit should match CHANGELOG's top entry).
-2. Read the top of CHANGELOG.md and the Backlog below.
+2. Read the top of CHANGELOG.md, the "Open work" plan below, and `gh issue list --state open`.
 3. Start local servers (Claude Code preview names in `.claude/launch.json` and `C:\Users\User\.claude\launch.json`):
    - `blockmarshal-server`: `wrangler dev` on :8787 (Worker + Durable Objects + local D1). Serves `dist/`, so run `npm run build` first.
    - `blockmarshal`: Vite on :5199 (hot reload; proxies `/api` and `/ws` to :8787). Phones on the same Wi-Fi: `http://<PC LAN IP>:5199`.
@@ -85,35 +85,29 @@ Before every commit: `npx tsc --noEmit && npx tsc --noEmit -p tsconfig.server.js
 
 - Quick test on any device: open the live site (or the Vite URL) with `?quick` (free-for-all) or `?quick=duel` (1 vs 1) to skip the lobby and play bots in the browser at once.
 - The user tests on a phone and usually ends a request with "go live": deploy with `npm run deploy`, then confirm the deployed build id (`grep` the hash in `dist/assets/index-*.js`) and spot-check the live site.
-- Every shipped change: commit (message ends with the Co-Authored-By line), push, add a CHANGELOG entry, update the rules doc if rules/numbers changed, and move items in/out of the Backlog here.
+- Every shipped change: commit (message ends with the Co-Authored-By line), push, add a CHANGELOG entry, update the rules doc if rules/numbers changed, and open/close GitHub issues (reference them in commits, e.g. `Fixes #9`).
 - Tunable numbers belong in `src/engine/constants.ts` (or the named file in the rules doc's reference table).
 - Browser testing in the Claude preview pane: dev builds expose `window.__bm` (`renderer`, `net`, `sounds`, `send`, `getView`). Synthetic `PointerEvent`s on `#board` drive taps/long-presses/drags. The pane throttles timers when hidden, so keep scripted waits short and split long flows across calls.
 - Game rules are server-authoritative; anything players must not see is filtered in `src/net/view.ts`. Add a test there for any new hidden info.
 
-## Backlog (open issues and next ideas)
+## Agent skills
 
-**Bugs / unconfirmed reports**
-1. **"Map is still draggable"** on the user's phone. Not reproducible on desktop (real drags, wheel, page lock all hold). Waiting on: phone + browser, whether the whole screen or only the grid moves, one finger or pinch, and the build id shown. Possibly the address bar resizing the page.
-2. **Bots stuck behind natural mines**: not reproducible in 10+ simulated matches; map generation guarantees no sealed areas. Stall breaker added (40 ticks, 20+ troops). Ask for a screenshot + build id if seen again.
+### Issue tracker
 
-**Before a wider launch**
-3. Trademark search for "Blockmarshal" (USPTO, WIPO) before buying a domain.
-4. Custom domain (about $20/yr; per-IP request limits already in the Worker); Workers Paid ($5/mo) before any big traffic push (free plan ~170 ten-minute server matches/day).
-5. Reconnect to a running match after a dropped connection (currently you can't rejoin).
-6. Matchmaking that groups humans better (beyond "fullest open lobby").
+GitHub Issues on NigelRodgers/blockmarshal via `gh` (public repo; external PRs are not a triage surface). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`; type labels (`bug`, `enhancement`, `accessibility`...) sit alongside. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: [CONTEXT.md](CONTEXT.md) (glossary) + [docs/adr/](docs/adr/) at the root. See `docs/agents/domain.md`.
+
+## Open work
+
+**Issues:** https://github.com/NigelRodgers/blockmarshal/issues (single source of truth for bugs, ideas and tuning questions). `gh issue list --state open` shows them; `ready-for-agent` ones are fully specified for an agent.
 
 **Plan (agreed 2026-10-09, updated 2026-10-10)**
 - **Now: harden the original for feedback** (see Vision), focused on 1 vs 1 vs bot. Read replays (`summary.csv`: human win rate vs the bot in 1 vs 1, target 35-50%) and analytics; fix what shows up. Bot difficulty: one level (normal), tuned to ~60% vs the pre-upgrade bot (`b4e7976`).
 - **From Fri 2026-10-16** (a scheduled reminder, "Blockmarshal: start Reddit edition dev & design", fires at 09:30): start the **Reddit edition** (Devvit Web), a separate game on the shared engine: `reddit/` folder; new pieces (towers back, pre-filled boards, kamikaze drones, turrets...) switched on per mode; a daily map per date seed, generated a week ahead, bot-checked with a par score, hand-editable until it goes live at 00:00 UTC; both turn-based (default) and real-time "Blitz" with separate leaderboards, compared after 2 weeks. Start with a design session for the new pieces, before any code. Engine changes for it must stay switched off here.
-
-**Balance / design questions**
-7. Bots hide their general and cities and use mines (`a7235f5`); softened in `875d6f8` (no moves before turn 13, slower decisions, 2-turn reactions, build-up until turn 40, 1 in 5 hides skipped). Re-tune against the pre-upgrade bot: copy `git show b4e7976:src/ai/bot.ts` to a temp file and play 80+ duels per setting (noise is about ±6 points).
-8. Bot-only games are longer (median ~615 turns since hiding, ~500 with towers).
-
-**Portals (undecided)**: CrazyGames Basic Launch first (no SDK needed), Poki only if numbers are strong (web exclusivity). Needs: shorter lobby (~15 s), a portal build without the service worker/install button, SDK hooks (gameplay start/stop, ads between matches, invite rooms on CrazyGames).
-
-**Replays**: the browser list loads every stored game in full (`listReplays()` → IndexedDB `getAll()`, up to 50 x 20-100 KB) just to draw the menu: keep a small summary store for the list. Replays have no id/URL of their own and no share button; that waits for server-side storage (with a leaderboard and a way to pay for it).
-
-**Free-for-all board** under the new mine stock (6 players x 5 mines + refills on top of the old natural mines): tune its mine/mountain rates once there's data.
-
-**Mechanic ideas**: turrets; walls you can build and that can be blasted; flares (reveal 5x5); rivers + bridges; decoy crown; armory/mine charges; watchtowers back on (`TOWERS_PER_MATCH`).
