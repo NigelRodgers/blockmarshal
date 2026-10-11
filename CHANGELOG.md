@@ -4,7 +4,7 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-10
 
-**Bring your own mines** (not live yet; designed in a grilling session, see PLAN.md)
+**Bring your own mines** (live in `1803cd0`; designed in a grilling session, see PLAN.md and ADR-0004)
 - **Mine stock, every mode:** everyone starts with **5 mines** in stock (the cap). Below 5, you get **+1 every 30 turns**; the countdown starts when your stock drops below full and pauses while it's full. The stock shows the countdown (`💣4 ⏱29`). Refill mines can be planted anywhere on your general's stretch of land. Captures still count toward the cap.
 - **Full stock no longer wastes mines:** walking onto a flagged mine with a full stock crosses it safely and leaves it there, still flagged. You see it as a grey mine on your land; step on it again once your stock has room to collect it. An enemy who takes that tile without a flag sets it off.
 - **Flags come back** when a flagged mine is captured or picked up by its owner (as they already did when it exploded).
@@ -13,12 +13,12 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 - Bots play the new stock: they keep flags on mines they crossed, collect them later, and take back a spare flag to pass their own mines when stock and flags are both full (with full stocks from the start, they stalled behind their own traps).
 - Bot strength unchanged: 41 of 80 duels against the live bot's code on the same rules (51%). Bot-vs-bot duels: median 368 turns, about 8.5 blasts a game.
 
-**Bots finish off a general that holds out** (not live yet)
+**Bots finish off a general that holds out** (live in `1803cd0`)
 - A replay showed a bot taking 780 turns to beat a player who never moved. Once it owned everything else, no single stack of its could beat the idle general (which grows every turn), so it did nothing, with thousands of troops spread over its land. Now, with nothing else to do, it **gathers**: it marches its biggest stacks to a tile beside the enemy general it has seen (else onto its biggest stack), then attacks once one stack can win. Its own general stays home.
 - A second stall: the attack path crossed one of the bot's own mines, and with a full stock and no flags left it could neither lift nor flag it, so it stopped short every turn. On the way to a general it now takes the blast.
 - Against an idle player over 30 duel maps: median 245 turns (was 344), slowest 550; before, 3 maps never ended within 3000 turns. Normal play is unchanged: 39 of 80 duels against the bot from before this change (49%).
 
-**Notices are see-through** (not live yet)
+**Notices are see-through** (live in `1803cd0`)
 - In-game notices (blasts, captures) have a 55% see-through background with a text shadow, so they hide less of the board.
 
 **Games against bots pause when you leave the page** (live in `4d021c7`)
