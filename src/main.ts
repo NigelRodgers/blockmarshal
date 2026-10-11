@@ -4,7 +4,7 @@ import { MAX_FLAGS, MAX_MINE_STOCK, MINE_STUN_TICKS, TICK_MS, isMode, type GameM
 import { Terrain, type Move } from './engine/types';
 import { LocalGame } from './local';
 import { findMatch, Net, uploadReplay } from './net/client';
-import { replayTurns, validateReplay, type ReplayRecord } from './replay';
+import { replaySeat, replayTurns, validateReplay, type ReplayRecord } from './replay';
 import { ReplayPlayer } from './replayPlayer';
 import { getReplay, listReplays, saveReplay } from './replayStore';
 import type { ClientMessage, PlayerView, ServerMessage } from './net/protocol';
@@ -1048,10 +1048,6 @@ function watchReplay(r: ReplayRecord): void {
   renderReplayBar();
 }
 
-function replaySeat(r: ReplayRecord): number {
-  return Math.max(0, r.players.findIndex((p) => !p.isBot));
-}
-
 function showReplayFrame(): void {
   if (!replayer) return;
   replayView = replayer.view(replaySeat(replayer.record));
@@ -1138,8 +1134,7 @@ async function openReplayList(): Promise<void> {
   ul.innerHTML = list.length
     ? list
         .map((r) => {
-          const me = replaySeat(r);
-          const result = r.winner < 0 ? 'Unfinished' : r.winner === me ? 'Won' : 'Lost';
+          const result = r.winner < 0 ? 'Unfinished' : r.winner === r.seat ? 'Won' : 'Lost';
           const when = new Date(r.endedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
           const what = r.mode === 'duel' ? '1 vs 1' : 'Free-for-all';
           return `<li><button data-id="${escapeHtml(r.id)}"><b>${result}</b> · ${what} · ${replayTurns(r)} turns<span>${when}</span></button></li>`;

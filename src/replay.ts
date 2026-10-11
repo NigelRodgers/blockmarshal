@@ -39,8 +39,28 @@ export function replayConfig(r: ReplayRecord): GameConfig {
   return { w, h, seed: r.seed, players: r.players, mineRate, mountainRate, spawnEdgeRows };
 }
 
+/** What the replay list shows, kept apart from the full record so the list loads only these. */
+export interface ReplaySummary {
+  id: string;
+  mode: GameMode;
+  ticks: number;
+  winner: number;
+  endedAt: number;
+  /** The seat the list judges Won/Lost from: the first human. */
+  seat: number;
+}
+
+export function summarize(r: ReplayRecord): ReplaySummary {
+  return { id: r.id, mode: r.mode, ticks: r.ticks, winner: r.winner, endedAt: r.endedAt, seat: replaySeat(r) };
+}
+
+/** The first human's seat (whose view a replay plays from). */
+export function replaySeat(r: Pick<ReplayRecord, 'players'>): number {
+  return Math.max(0, r.players.findIndex((p) => !p.isBot));
+}
+
 /** Turns per human-readable game length. */
-export function replayTurns(r: ReplayRecord): number {
+export function replayTurns(r: Pick<ReplayRecord, 'ticks'>): number {
   return Math.floor(r.ticks / 2);
 }
 

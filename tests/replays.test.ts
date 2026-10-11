@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BUILD_HASH } from '../src/buildId';
 import { LocalGame } from '../src/local';
 import type { ServerMessage } from '../src/net/protocol';
-import { validateReplay, type ReplayRecord } from '../src/replay';
+import { summarize, validateReplay, type ReplayRecord } from '../src/replay';
 import { ReplayPlayer } from '../src/replayPlayer';
 import { Match, type Conn } from '../server/match';
 import { MessageBudget } from '../worker/security';
@@ -41,6 +41,12 @@ describe('replay records', () => {
     const p = new ReplayPlayer({ ...replay, seed: replay.seed + 1 });
     while (!p.done) p.step();
     expect(p.diverged).toBe(true);
+  }, 30_000);
+
+  it('summarise to what the list needs, judged from the first human seat', () => {
+    const { replay } = finishedDuel();
+    const s = summarize({ ...replay, players: [{ name: 'Bot', isBot: true }, { name: 'Ann', isBot: false }] });
+    expect(s).toEqual({ id: replay.id, mode: 'duel', ticks: replay.ticks, winner: replay.winner, endedAt: replay.endedAt, seat: 1 });
   }, 30_000);
 
   it('can seek backwards and forwards', () => {
