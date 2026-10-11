@@ -4,7 +4,7 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-11
 
-**Replay links, downloads, feedback with your last game; two mine fixes** (not live yet)
+**Replay links, downloads, feedback with your last game; two mine fixes** (live in `7a0401c`)
 - **Replays menu:** each game shows a short id (`#72b05c6b`), a 🔗 button that copies (or, on phones, shares) a link anyone can open for 60 days, and ⬇ to save the file.
 - **Links** `/?replay=<id>` open that game's replay straight away. The server now keeps replays for 60 days instead of deleting them once they're on the PC; `npm run replays` downloads only new ones (ADR-0005). Sharing uploads a browser game first, even with analytics off.
 - **Feedback** has "Attach my last game" (ticked by default, shown once you have a game): the feedback email and `npm run feedback` carry its replay link. Needs `npm run db:migrate` (`0003_feedback_replay.sql`) before deploying.
