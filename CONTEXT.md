@@ -143,6 +143,10 @@ _Avoid_: AI (fine in prose), CPU, NPC
 The record of a finished match (seed, settings, human inputs, build) from which the whole game is rebuilt.
 _Avoid_: Recording (that's the owner's video capture), demo
 
+**Replay link**:
+A URL that opens one replay for anyone who has it, for 60 days after the game.
+_Avoid_: Share code
+
 **Recording**:
 An owner-only video capture of the board, turned into an MP4.
 

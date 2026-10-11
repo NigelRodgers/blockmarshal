@@ -291,6 +291,16 @@ describe('feedback email', () => {
     expect(text).toContain('Anything confusing?\ndots');
     expect(text).toContain('(blank)');
     expect(text).toContain('Context: screen=end, turn=40');
+    expect(text).toContain('Last game: not attached');
+  });
+
+  it('links the attached last game; a malformed replay id is dropped', () => {
+    const r = cleanFeedback({ improve: 'bug', replayId: '72b05c6b-1111-4222-8333-444455556666' })!;
+    expect(feedbackEmail(r, 'https://bm.example').text).toContain(
+      'Last game: https://bm.example/?replay=72b05c6b-1111-4222-8333-444455556666',
+    );
+    expect(cleanFeedback({ improve: 'bug', replayId: '<script>' })!.replayId).toBeNull();
+    expect(cleanFeedback({ improve: 'bug', replayId: 42 })!.replayId).toBeNull();
   });
 });
 

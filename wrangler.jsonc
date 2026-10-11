@@ -38,7 +38,9 @@
     { "name": "JOIN_LIMIT", "namespace_id": "1001", "simple": { "limit": 30, "period": 60 } },
     { "name": "SOCKET_LIMIT", "namespace_id": "1002", "simple": { "limit": 40, "period": 60 } },
     { "name": "FEEDBACK_LIMIT", "namespace_id": "1003", "simple": { "limit": 5, "period": 60 } },
-    { "name": "REPLAY_LIMIT", "namespace_id": "1004", "simple": { "limit": 10, "period": 60 } }
+    { "name": "REPLAY_LIMIT", "namespace_id": "1004", "simple": { "limit": 10, "period": 60 } },
+    // Opening replay links (GET /api/replay/<id>).
+    { "name": "REPLAY_READ_LIMIT", "namespace_id": "1005", "simple": { "limit": 60, "period": 60 } }
   ],
   // Daily clean-up of old replays (03:17 UTC).
   "triggers": { "crons": ["17 3 * * *"] },

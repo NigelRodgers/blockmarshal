@@ -45,7 +45,7 @@ npm run feedback   # latest 50 feedback rows from production D1
 npm run db:migrate # apply D1 migrations to production (db:migrate:local for wrangler dev)
 npm run types      # regenerate worker/worker-configuration.d.ts after editing wrangler.jsonc
 npm run sounds     # regenerate public/sounds/*.mp3 from scripts/make-sounds.mjs (needs ffmpeg on PATH)
-npm run replays    # download finished games to Documents\Blockmarshal Replays, then clear them on the server (daily Windows task "Blockmarshal replays", 09:00)
+npm run replays    # download new finished games to Documents\Blockmarshal Replays, verified (daily Windows task "Blockmarshal replays", 09:00); the server keeps them 60 days for replay links
 npm run video -- rec.webm [--title "..."] [--music x.mp3]   # board recording -> MP4 with intro/outro (once: npm run video:setup)
 ```
 

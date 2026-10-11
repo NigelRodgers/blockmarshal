@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * Downloads finished games from the production database to this PC, then deletes them
- * from the server (the PC copy is the archive). Run by `npm run replays`, daily by the
- * Windows scheduled task "Blockmarshal replays".
+ * Downloads finished games from the production database to this PC (the PC copy is the
+ * archive). Games stay on the server so replay links (/?replay=<id>) keep working; the
+ * Worker's daily cron deletes them after 60 days. Only games not yet in summary.csv are
+ * downloaded. Run by `npm run replays`, daily by the Windows scheduled task "Blockmarshal replays".
  *
  *   Folder:  %BLOCKMARSHAL_REPLAYS% or "Documents\Blockmarshal Replays"
  *   Files:   <YYYY-MM>/<date>_<mode>_<id>.json   one replay each (watch with Replays > Import, or analyse)
@@ -13,7 +14,6 @@
  *            pull.log                             what each run did
  *
  *   --local  read the `wrangler dev` database instead (testing)
- *   --keep   download but don't delete from the server
  */
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -24,7 +24,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const wrangler = join(root, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
 const local = process.argv.includes('--local');
-const keep = process.argv.includes('--keep');
 const dir = process.env.BLOCKMARSHAL_REPLAYS || join(homedir(), 'Documents', 'Blockmarshal Replays');
 const BATCH = 50;
 
@@ -84,11 +83,23 @@ try {
 }
 const tally = {};
 
+// Games already downloaded (their ids are in summary.csv).
+const have = new Set(
+  readFileSync(summary, 'utf8')
+    .split('\n')
+    .slice(1)
+    .map((l) => l.slice(0, l.indexOf(',')))
+    .filter(Boolean),
+);
+
 let total = 0;
 try {
-  for (;;) {
-    const rows = d1(`SELECT id, data FROM replays ORDER BY created_at LIMIT ${BATCH}`);
-    if (!rows.length) break;
+  const fresh = d1('SELECT id FROM replays ORDER BY created_at')
+    .map((r) => String(r.id).replace(/[^a-z0-9-]/g, ''))
+    .filter((id) => id && !have.has(id));
+  for (let b = 0; b < fresh.length; b += BATCH) {
+    const ids = fresh.slice(b, b + BATCH);
+    const rows = d1(`SELECT id, data FROM replays WHERE id IN (${ids.map((id) => `'${id}'`).join(',')}) ORDER BY created_at`);
     for (const row of rows) {
       const r = JSON.parse(row.data);
       const ended = new Date(r.endedAt);
@@ -120,9 +131,6 @@ try {
       );
     }
     total += rows.length;
-    if (keep) break;
-    // Only after every file in the batch is written.
-    d1(`DELETE FROM replays WHERE id IN (${rows.map((r) => `'${String(r.id).replace(/[^a-z0-9-]/g, '')}'`).join(',')})`);
   }
   const checked = Object.entries(tally).map(([k, n]) => `${n} ${k}`).join(', ');
   log(`pulled ${total} game(s) from ${local ? 'local' : 'production'} into ${dir}${checked ? ` (verified: ${checked})` : ''}`);

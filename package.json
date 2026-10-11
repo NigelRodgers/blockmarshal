@@ -12,7 +12,7 @@
     "deploy": "npm run build && node scripts/deploy.mjs",
     "server": "wrangler dev --port 8787",
     "types": "wrangler types worker/worker-configuration.d.ts",
-    "feedback": "wrangler d1 execute blockmarshal-feedback --remote --command \"SELECT id, created_at, rating, confusing, improve, context FROM feedback ORDER BY id DESC LIMIT 50\"",
+    "feedback": "wrangler d1 execute blockmarshal-feedback --remote --command \"SELECT id, created_at, rating, confusing, improve, context, replay_id FROM feedback ORDER BY id DESC LIMIT 50\"",
     "db:migrate": "wrangler d1 migrations apply blockmarshal-feedback --remote",
     "db:migrate:local": "wrangler d1 migrations apply blockmarshal-feedback --local",
     "replays": "node scripts/pull-replays.mjs",

@@ -3,12 +3,14 @@ import { isMode, type GameMode } from '../src/engine/constants';
 import { MAX_REPLAY_BYTES, validateReplay } from '../src/replay';
 import { MatchDO } from './matchDO';
 import { MatchmakerDO } from './matchmakerDO';
-import { pruneReplays, saveReplay } from './replays';
+import { loadReplay, pruneReplays, saveReplay } from './replays';
 import { forbidden, readCapped, sameOrigin, tooMany, underLimit } from './security';
 
 export { MatchDO, MatchmakerDO };
 
 const MATCH_ID = /^\/ws\/([a-z0-9]{6,32})$/;
+/** Same id shape validateReplay accepts. */
+const REPLAY_ID = /^\/api\/replay\/([a-z0-9-]{8,40})$/;
 const MAX_FEEDBACK_BYTES = 8192;
 const MAX_JOIN_BYTES = 256;
 
@@ -16,18 +18,29 @@ const MAX_JOIN_BYTES = 256;
  * Routes:
  *   POST /api/join      -> body { mode?: 'ffa' | 'duel' }; the matchmaker picks a lobby, returns { matchId }
  *   POST /api/feedback  -> anonymous feedback into the private D1 database (write-only)
- *   POST /api/replay    -> a finished browser-run game (vs bot / solo) for game analytics (write-only)
+ *   POST /api/replay    -> a finished browser-run game (vs bot / solo), for analytics and replay links
+ *   GET  /api/replay/:id -> one stored replay, for replay links (/?replay=<id>)
  *   GET  /ws/:matchId   -> WebSocket into that match's Durable Object
  *   everything else     -> static client (handled by the assets binding)
  *
  * Every API and socket request must come from this site (Origin check) and stays under a
- * per-IP rate limit; bodies are size-capped before parsing.
+ * per-IP rate limit; bodies are size-capped before parsing. Replay reads skip the Origin check
+ * (browsers send no Origin on same-origin GETs, and a link is meant to be opened by anyone):
+ * ids are random UUIDs, so a replay can only be read by someone who was given its link.
  */
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
     const ws = MATCH_ID.exec(url.pathname);
     const api = url.pathname.startsWith('/api/');
+    const replayId = REPLAY_ID.exec(url.pathname);
+    if (replayId && req.method === 'GET') {
+      if (!(await underLimit(env.REPLAY_READ_LIMIT, req, 'replay-read'))) return tooMany();
+      const data = await loadReplay(env, replayId[1]);
+      if (!data) return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+      // A stored replay never changes.
+      return new Response(data, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, max-age=86400' } });
+    }
     if ((api || ws) && !sameOrigin(req, url)) return forbidden();
 
     if (url.pathname === '/api/join' && req.method === 'POST') {
@@ -105,10 +118,10 @@ async function saveFeedback(req: Request, env: Env, ctx: ExecutionContext): Prom
   const record = cleanFeedback(input ?? {});
   // Spam and empty submissions get the same quiet success, so bots learn nothing.
   if (record) {
-    await env.FEEDBACK_DB.prepare('INSERT INTO feedback (rating, confusing, improve, context) VALUES (?, ?, ?, ?)')
-      .bind(record.rating, record.confusing, record.improve, record.context)
+    await env.FEEDBACK_DB.prepare('INSERT INTO feedback (rating, confusing, improve, context, replay_id) VALUES (?, ?, ?, ?, ?)')
+      .bind(record.rating, record.confusing, record.improve, record.context, record.replayId)
       .run();
-    ctx.waitUntil(emailFeedback(env, record));
+    ctx.waitUntil(emailFeedback(env, record, new URL(req.url).origin));
   }
   return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
 }
@@ -118,10 +131,10 @@ async function saveFeedback(req: Request, env: Env, ctx: ExecutionContext): Prom
  * FEEDBACK_EMAIL address are Worker secrets (kept out of the public repo); without
  * them this does nothing. Failures never affect the player.
  */
-async function emailFeedback(env: Env, record: FeedbackRecord): Promise<void> {
+async function emailFeedback(env: Env, record: FeedbackRecord, origin: string): Promise<void> {
   const { RESEND_API_KEY: key, FEEDBACK_EMAIL: to } = env as Env & { RESEND_API_KEY?: string; FEEDBACK_EMAIL?: string };
   if (!key || !to) return;
-  const { subject, text } = feedbackEmail(record);
+  const { subject, text } = feedbackEmail(record, origin);
   try {
     await fetch('https://api.resend.com/emails', {
       method: 'POST',

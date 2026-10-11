@@ -13,6 +13,12 @@ export async function saveReplay(env: Env, r: ReplayRecord): Promise<void> {
     .run();
 }
 
+/** One stored replay as its JSON text, or null (unknown id, or pruned after REPLAY_RETENTION_DAYS). */
+export async function loadReplay(env: Env, id: string): Promise<string | null> {
+  const row = await env.FEEDBACK_DB.prepare('SELECT data FROM replays WHERE id = ?').bind(id).first<{ data: string }>();
+  return row?.data ?? null;
+}
+
 /** Daily cron: forget replays older than the retention window (the PC keeps its copies). */
 export async function pruneReplays(env: Env, now = Date.now()): Promise<void> {
   const cutoff = now - REPLAY_RETENTION_DAYS * 24 * 3600 * 1000;

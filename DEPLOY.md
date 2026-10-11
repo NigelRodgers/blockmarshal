@@ -68,11 +68,11 @@ The single-player build at `blockmarshal.pages.dev` (Pages project `blockmarshal
 
 ## Replays (private)
 
-Every finished game is a row in the D1 table `replays` (migration `0002_replays.sql`). Run `npm run db:migrate` once before the first deploy that writes replays. `npm run replays` downloads rows to the PC and deletes them from D1; a daily cron (03:17 UTC) deletes anything older than 60 days. Browser-run games are uploaded by the player's browser to `POST /api/replay` unless they turned analytics off.
+Every finished game is a row in the D1 table `replays` (migration `0002_replays.sql`). Run `npm run db:migrate` once before the first deploy that writes replays. `npm run replays` downloads rows not yet on the PC (by id, against `summary.csv`) and leaves them in D1, so replay links keep working; a daily cron (03:17 UTC) deletes anything older than 60 days. Browser-run games are uploaded by the player's browser to `POST /api/replay` unless they turned analytics off; sharing a replay or attaching it to feedback uploads it regardless. `GET /api/replay/<id>` serves one replay to anyone with its id (a random UUID), for links like `/?replay=<id>` (ADR-0005). Feedback can carry the sender's last replay id (`replay_id`, migration `0003_feedback_replay.sql`).
 
 ## Request limits
 
-Rate-limit bindings in `wrangler.jsonc` (`ratelimits`): join 30/min, sockets 40/min, feedback 5/min, replay uploads 10/min per IP. Counted per Cloudflare location, so approximate. The Worker also refuses API/socket requests from other sites (Origin check) and caps body sizes; each match socket has a message budget and a match takes at most 24 sockets.
+Rate-limit bindings in `wrangler.jsonc` (`ratelimits`): join 30/min, sockets 40/min, feedback 5/min, replay uploads 10/min, replay link reads 60/min per IP. Counted per Cloudflare location, so approximate. The Worker also refuses API/socket requests from other sites (Origin check; replay reads are exempt, see ADR-0005) and caps body sizes; each match socket has a message budget and a match takes at most 24 sockets.
 
 ## Post-deploy checklist
 

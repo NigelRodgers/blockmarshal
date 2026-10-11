@@ -4,6 +4,8 @@ export interface FeedbackInput {
   confusing?: unknown;
   improve?: unknown;
   context?: unknown;
+  /** The sender's last game, if they left "Attach my last game" ticked. */
+  replayId?: unknown;
   /** Honeypot: hidden from people, so only bots fill it in. */
   website?: unknown;
 }
@@ -13,6 +15,7 @@ export interface FeedbackRecord {
   confusing: string | null;
   improve: string | null;
   context: string;
+  replayId: string | null;
 }
 
 export const MAX_TEXT = 1000;
@@ -40,7 +43,7 @@ function context(v: unknown): string {
 }
 
 /** Plain-text email for one submission. */
-export function feedbackEmail(r: FeedbackRecord): { subject: string; text: string } {
+export function feedbackEmail(r: FeedbackRecord, origin = ''): { subject: string; text: string } {
   const faces = ['', '😖', '🙁', '😐', '🙂', '🤩'];
   const fun = r.rating ? `${r.rating}/5 ${faces[r.rating]}` : 'no rating';
   const ctx = JSON.parse(r.context) as Record<string, unknown>;
@@ -58,6 +61,7 @@ export function feedbackEmail(r: FeedbackRecord): { subject: string; text: strin
       `Context: ${Object.entries(ctx)
         .map(([k, v]) => `${k}=${v}`)
         .join(', ') || 'none'}`,
+      `Last game: ${r.replayId ? `${origin}/?replay=${r.replayId}` : 'not attached'}`,
       '',
       'All responses: npm run feedback (or Cloudflare dashboard > D1 > blockmarshal-feedback).',
     ].join('\n'),
@@ -72,5 +76,6 @@ export function cleanFeedback(input: FeedbackInput): FeedbackRecord | null {
   const confusing = text(input.confusing);
   const improve = text(input.improve);
   if (rating === null && !confusing && !improve) return null;
-  return { rating, confusing, improve, context: context(input.context) };
+  const replayId = typeof input.replayId === 'string' && /^[a-z0-9-]{8,40}$/.test(input.replayId) ? input.replayId : null;
+  return { rating, confusing, improve, context: context(input.context), replayId };
 }

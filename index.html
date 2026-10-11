@@ -134,6 +134,7 @@
         <label for="fb-improve">What would make you play again?</label>
         <textarea id="fb-improve" maxlength="1000" rows="3"></textarea>
         <input id="fb-website" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" />
+        <label id="fb-attach-row" class="check"><input id="fb-attach" type="checkbox" checked /> Attach my last game (its replay), so we can see what happened</label>
         <button id="fb-send" type="submit" class="primary">Send</button>
         <button id="fb-cancel" type="button">Cancel</button>
       </form>
@@ -150,7 +151,7 @@
     <div id="replays" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="replays-title">
       <div class="panel small">
         <h2 id="replays-title">Replays</h2>
-        <p class="sub">Your last 50 games, kept in this browser.</p>
+        <p class="sub">Your last 50 games, kept in this browser. 🔗 copies a link anyone can open (for 60 days); ⬇ saves the file.</p>
         <ul id="replay-list"></ul>
         <button id="btn-replay-file" class="ghost">Open a replay file…</button>
         <input id="replay-file" type="file" accept=".json,application/json" class="hidden" />

@@ -3,7 +3,7 @@ import { analyticsConfigured, analyticsOptedOut, setAnalyticsOptOut, track } fro
 import { MAX_FLAGS, MAX_MINE_STOCK, MINE_STUN_TICKS, TICK_MS, isMode, type GameMode } from './engine/constants';
 import { Terrain, type Move } from './engine/types';
 import { LocalGame } from './local';
-import { findMatch, Net, uploadReplay } from './net/client';
+import { fetchReplay, findMatch, Net, replayLink, storeReplay, uploadReplay } from './net/client';
 import { replaySeat, replayTurns, validateReplay, type ReplayRecord } from './replay';
 import { ReplayPlayer } from './replayPlayer';
 import { getReplay, listReplays, saveReplay } from './replayStore';
@@ -735,7 +735,17 @@ function openFeedback(): void {
   fbRating = 0;
   $<HTMLFormElement>('feedback-form').reset();
   document.querySelectorAll('#fb-rating button').forEach((b) => b.classList.remove('on'));
+  // "Attach my last game" only shows when there is one.
+  show('fb-attach-row', false);
+  void listReplays().then((list) => show('fb-attach-row', list.length > 0));
   show('feedback', true);
+}
+
+/** The id of the newest replay in this browser, put on the server first; null if none or it failed. */
+async function lastReplayId(): Promise<string | null> {
+  const newest = (await listReplays())[0];
+  const r = newest && (await getReplay(newest.id));
+  return r && (await storeReplay(r)) ? r.id : null;
 }
 
 /** Where the player was when they wrote it. Nothing that identifies them. */
@@ -775,6 +785,8 @@ $('feedback-form').addEventListener('submit', async (e) => {
   const send = $<HTMLButtonElement>('fb-send');
   send.disabled = true;
   try {
+    const attach = !$('fb-attach-row').classList.contains('hidden') && $<HTMLInputElement>('fb-attach').checked;
+    const replayId = attach ? await lastReplayId() : null;
     const res = await fetch('./api/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -784,12 +796,13 @@ $('feedback-form').addEventListener('submit', async (e) => {
         improve,
         context: feedbackContext(),
         website: $<HTMLInputElement>('fb-website').value,
+        replayId,
       }),
     });
     if (!res.ok) throw new Error(String(res.status));
     show('feedback', false);
     toast('Thanks! Your feedback was sent.');
-    track('feedback_sent', { rating: fbRating || null });
+    track('feedback_sent', { rating: fbRating || null, replay: !!replayId });
   } catch {
     toast("Couldn't send. Check your connection and try again.");
   } finally {
@@ -1022,6 +1035,8 @@ if (import.meta.env.DEV) {
 if (QUICK) {
   startLocal();
   track('quick_start', { game: gameMode });
+} else if (params.get('replay')) {
+  void openReplayLink(params.get('replay')!);
 }
 
 // ---------- Replays ----------
@@ -1144,7 +1159,13 @@ async function openReplayList(): Promise<void> {
           const result = r.winner < 0 ? 'Unfinished' : r.winner === r.seat ? 'Won' : 'Lost';
           const when = new Date(r.endedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
           const what = r.mode === 'duel' ? '1 vs 1' : 'Free-for-all';
-          return `<li><button data-id="${escapeHtml(r.id)}"><b>${result}</b> · ${what} · ${replayTurns(r)} turns<span>${when}</span></button></li>`;
+          const id = escapeHtml(r.id);
+          return (
+            `<li><button data-id="${id}"><b>${result}</b> · ${what} · ${replayTurns(r)} turns` +
+            `<span>${when} · <span class="rid">#${id.slice(0, 8)}</span></span></button>` +
+            `<button class="act" data-share="${id}" aria-label="Copy a link to this replay">🔗</button>` +
+            `<button class="act" data-download="${id}" aria-label="Save this replay as a file">⬇</button></li>`
+          );
         })
         .join('')
     : '<li class="empty">No games yet. Finished games show up here.</li>';
@@ -1152,11 +1173,49 @@ async function openReplayList(): Promise<void> {
 }
 
 $('replay-list').addEventListener('click', async (e) => {
-  const id = (e.target as HTMLElement).closest('button')?.dataset.id;
-  if (!id) return;
+  const b = (e.target as HTMLElement).closest('button');
+  const id = b?.dataset.id ?? b?.dataset.share ?? b?.dataset.download;
+  if (!b || !id) return;
   const r = await getReplay(id);
-  if (r) watchReplay(r);
+  if (!r) return;
+  if (b.dataset.share) return void shareReplay(r);
+  if (b.dataset.download) return downloadReplay(r);
+  watchReplay(r);
 });
+
+/** Put the replay on the server (a browser game may not be there yet), then share or copy its link. */
+async function shareReplay(r: ReplayRecord): Promise<void> {
+  if (!(await storeReplay(r))) return toast("Couldn't upload this replay. Check your connection and try again.");
+  const url = replayLink(r.id);
+  track('replay_shared');
+  try {
+    if (navigator.share) return void (await navigator.share({ title: 'Blockmarshal replay', url }));
+  } catch {
+    return; // closed the share sheet
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    toast('Replay link copied (it works for 60 days)', 3000);
+  } catch {
+    prompt('Replay link (works for 60 days):', url);
+  }
+}
+
+function downloadReplay(r: ReplayRecord): void {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(r)], { type: 'application/json' }));
+  a.download = `blockmarshal-replay-${new Date(r.endedAt).toISOString().slice(0, 10)}-${r.id.slice(0, 8)}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/** `?replay=<id>`: open a shared replay. */
+async function openReplayLink(id: string): Promise<void> {
+  const r = validateReplay(await fetchReplay(id), ['server', 'browser']);
+  if (!r) return toast('That replay is gone (links last 60 days) or the link is wrong', 4000);
+  track('replay_link_opened');
+  watchReplay(r);
+}
 $('btn-replays').addEventListener('click', () => void openReplayList());
 $('btn-replays-close').addEventListener('click', () => show('replays', false));
 

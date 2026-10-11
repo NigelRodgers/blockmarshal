@@ -4,6 +4,12 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-11
 
+**Replay links, downloads, feedback with your last game; two mine fixes** (not live yet)
+- **Replays menu:** each game shows a short id (`#72b05c6b`), a 🔗 button that copies (or, on phones, shares) a link anyone can open for 60 days, and ⬇ to save the file.
+- **Links** `/?replay=<id>` open that game's replay straight away. The server now keeps replays for 60 days instead of deleting them once they're on the PC; `npm run replays` downloads only new ones (ADR-0005). Sharing uploads a browser game first, even with analytics off.
+- **Feedback** has "Attach my last game" (ticked by default, shown once you have a game): the feedback email and `npm run feedback` carry its replay link. Needs `npm run db:migrate` (`0003_feedback_replay.sql`) before deploying.
+- **Fix (`9f8d1c2`):** mines you crossed and kept (grey) drew dots for you; they no longer do. A flag left on a tile you later took swallowed your next long-press there (it removed the flag instead of planting); taking the tile now clears it. Long-pressing a kept mine used to remove its flag, turning it back into a hidden mine under your own land; it now tells you how to collect it. All three seen in a reported game (replay `72b05c6b`).
+
 **Lighter replay list; pulled replays are verified** (live in `5b0ee0c`)
 - Replays menu (#9): reads one small summary per game instead of loading every stored replay in full (up to 50 games, 1-5 MB) each time it opens; a replay loads in full only when you open it. Replays already in your browser are summarised once, automatically.
 - `npm run replays` (#14): every downloaded replay is rebuilt from its seed and checked against its recorded result. `summary.csv` gets a `verified` column: `yes`, `no` (same build, different result: forged or a bug), `stale-build` (played on another build, so it can't tell) or `error`; `pull.log` counts them. Browser games upload their own results, so this flags forged ones before they skew tuning.

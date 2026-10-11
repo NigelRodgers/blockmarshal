@@ -21,6 +21,37 @@ export function uploadReplay(replay: ReplayRecord): void {
   fetch(new URL('/api/replay', backend()), { method: 'POST', body: JSON.stringify(replay), keepalive: true }).catch(() => {});
 }
 
+/**
+ * Make sure a replay is on the server (for a link or feedback): uploads it if it was played
+ * in this browser. Server games are stored by the server already. True once it is there.
+ */
+export async function storeReplay(replay: ReplayRecord): Promise<boolean> {
+  if (replay.source !== 'browser') return true;
+  try {
+    const res = await fetch(new URL('/api/replay', backend()), { method: 'POST', body: JSON.stringify(replay) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** A replay from its link (`/?replay=<id>`), or null if unknown or pruned (kept 60 days). */
+export async function fetchReplay(id: string): Promise<unknown> {
+  try {
+    const res = await fetch(new URL(`/api/replay/${encodeURIComponent(id)}`, backend()));
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The link that opens a replay for anyone. */
+export function replayLink(id: string): string {
+  const url = new URL(location.pathname, location.origin);
+  url.searchParams.set('replay', id);
+  return url.toString();
+}
+
 function socketUrl(matchId: string): string {
   const url = new URL(`/ws/${matchId}`, backend());
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';

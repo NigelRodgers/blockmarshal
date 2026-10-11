@@ -485,6 +485,23 @@ b.white {
   text-align: left;
 }
 
+#feedback-form label.check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 8px 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+#feedback-form label.check input {
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+
 #feedback-form h2 {
   text-align: center;
 }
@@ -721,6 +738,26 @@ input {
   width: 100%;
   color: var(--muted);
   font-size: 12px;
+}
+
+#replay-list li {
+  display: flex;
+  gap: 6px;
+}
+
+#replay-list li > button.act {
+  width: auto;
+  min-width: 44px;
+  flex: none;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  font-size: 18px;
+}
+
+#replay-list button span.rid {
+  width: auto;
+  font-family: ui-monospace, monospace;
 }
 
 #replay-list .empty {
