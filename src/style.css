@@ -630,6 +630,17 @@ input {
   pointer-events: auto;
 }
 
+/* Menu, pause and record side by side along the top. */
+.hud-row {
+  display: flex;
+  gap: 6px;
+}
+
+/* Wide screens: the menu stays open beside the board, so its toggle has nothing to do. */
+#hud.pinned #btn-menu-hud {
+  display: none;
+}
+
 .hud-fab {
   position: relative;
   width: 44px;
@@ -805,12 +816,13 @@ input {
 
 /* ---------- Recorder (owner only) ---------- */
 
-/* Second in the HUD column, under the menu button. In replays it's the only HUD item shown. */
+/* In the HUD row after the menu and pause buttons. In replays it's the only HUD item shown. */
 body.replaying #hud.hidden {
   display: flex !important;
 }
 
-body.replaying #hud > :not(.rec-row) {
+body.replaying #hud > :not(.hud-row),
+body.replaying .hud-row > :not(.rec-row) {
   display: none !important;
 }
 
@@ -829,7 +841,7 @@ body.replaying #hud > :not(.rec-row) {
   color: #fff;
 }
 
-/* Record and its cancel sit side by side under the menu button. */
+/* Record and its cancel sit side by side. */
 .rec-row {
   display: flex;
   gap: 6px;
@@ -843,7 +855,7 @@ body.replaying #hud > :not(.rec-row) {
   font-size: 16px;
 }
 
-body.replaying #hud > .rec-row {
+body.replaying .hud-row > .rec-row {
   display: flex !important;
 }
 

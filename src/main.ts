@@ -77,6 +77,7 @@ function setScreen(next: Screen): void {
   if (next !== 'replay') stopReplay();
   if (next !== 'game') closeGameMenu();
   if (next !== 'game') show('gameover', false);
+  if (next !== 'game') applyMenuPin();
 }
 
 function playerName(): string {
@@ -167,6 +168,7 @@ function toStart(): void {
   net.close();
   view = null;
   setScreen('start');
+  if (updateReady) location.reload(); // a newer build arrived during the game
 }
 
 // ---------- Server messages ----------
@@ -229,6 +231,7 @@ function onView(v: PlayerView): void {
     measureInsets();
     renderer.fit(v);
     placeToast(v);
+    applyMenuPin();
     fitted = true;
   }
 
@@ -626,6 +629,14 @@ const DIRS: Record<string, [number, number]> = {
   ArrowLeft: [-1, 0], a: [-1, 0], ArrowRight: [1, 0], d: [1, 0],
 };
 
+// Esc: close whatever is open on top of the board; with nothing open, leave the game or replay.
+window.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || e.target instanceof HTMLTextAreaElement) return;
+  const menuOpen = menuTile >= 0 || buildTile >= 0 || relocating || (gameMenuOpen && !menuPinned);
+  if (screen === 'replay') $('rp-close').click();
+  else if (screen === 'game' && !menuOpen && !gamePaused) $('btn-leave').click();
+});
+
 window.addEventListener('keydown', (e) => {
   if (!view || screen !== 'game' || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
   const dir = DIRS[e.key];
@@ -885,9 +896,25 @@ function updateHud(): void {
  * The HUD floats over the board, so in a game the board gets the whole screen. A replay
  * keeps room at the bottom for its control bar.
  */
+/** Tablets and desktops get a band above and below the board; phones use every pixel. */
+const LARGE_SCREEN_PX = 768;
+const LARGE_SCREEN_PAD = 40;
+
 function measureInsets(): void {
-  renderer.insetTop = 0;
-  renderer.insetBottom = screen === 'replay' ? $('replay-bar').offsetHeight + 10 || 54 : 0;
+  const pad = window.innerWidth >= LARGE_SCREEN_PX ? LARGE_SCREEN_PAD : 0;
+  renderer.insetTop = pad;
+  renderer.insetBottom = screen === 'replay' ? $('replay-bar').offsetHeight + 10 || 54 : pad;
+}
+
+/** Room the pinned game menu needs on the left (its width plus margins). */
+const MENU_ROOM_PX = 376;
+/** Wide screens: the game menu stays open in the free space left of the board. */
+let menuPinned = false;
+
+function applyMenuPin(): void {
+  menuPinned = screen === 'game' && renderer.toScreen(0, 0)[0] >= MENU_ROOM_PX;
+  $('hud').classList.toggle('pinned', menuPinned);
+  if (menuPinned) openGameMenu();
 }
 
 /**
@@ -928,6 +955,9 @@ window.addEventListener('resize', () => {
     renderer.fit(shown);
     placeToast(shown);
   }
+  const wasPinned = menuPinned;
+  applyMenuPin();
+  if (wasPinned && !menuPinned) closeGameMenu(); // window got narrower: back to the floating menu
 });
 
 // ---------- Floating game menu ----------
@@ -942,6 +972,7 @@ function openGameMenu(): void {
 }
 
 function closeGameMenu(): void {
+  if (menuPinned && screen === 'game') return; // stays open beside the board
   gameMenuOpen = false;
   show('game-menu', false);
   $('btn-menu-hud').setAttribute('aria-expanded', 'false');
@@ -1016,6 +1047,30 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
     });
   });
 }
+
+/**
+ * Phones keep a tab or installed app alive for days without reloading it, so a deploy
+ * never reached them. When the app comes back to the foreground (and every 30 minutes),
+ * ask for the page; if it names a different script than the one running, reload, but
+ * only on the start screen so no game or replay is cut short.
+ */
+let updateReady = false;
+async function checkForUpdate(): Promise<void> {
+  if (!import.meta.env.PROD || !navigator.onLine) return;
+  const mine = document.querySelector<HTMLScriptElement>('script[src*="assets/index-"]')?.src.split('/').pop();
+  try {
+    const html = await (await fetch('./', { cache: 'no-store' })).text();
+    const live = /assets\/(index-[\w-]+\.js)/.exec(html)?.[1];
+    if (mine && live && live !== mine) updateReady = true;
+  } catch {
+    return; // offline: try again later
+  }
+  if (updateReady && screen === 'start') location.reload();
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) void checkForUpdate();
+});
+setInterval(() => void checkForUpdate(), 30 * 60 * 1000);
 
 try {
   $<HTMLInputElement>('name').value = localStorage.getItem(NAME_KEY) ?? '';

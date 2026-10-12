@@ -2,6 +2,15 @@
 
 Newest first. Build ids match the `Build <hash>` line on the start screen. Live: https://blockmarshal.rodgersnigel.workers.dev
 
+## 2026-10-12
+
+**Esc, pinned menu on wide screens, HUD in a row, auto-update; kept-mine fix** (not live yet)
+- **Fix (`138d674`):** the flag on a mine you crossed and kept could still be removed, leaving a hidden mine under your own land that drew dots. Seen in 6 of your games today, all on the old cached build `5b0ee0c`; the server now refuses it as well as the client.
+- **Auto-update:** phones kept a tab or installed app alive for days, so new builds never arrived (today's games still ran `5b0ee0c`). When the app comes back to the foreground, and every 30 minutes, it checks for a newer build and reloads on the start screen (or right after the game you're in).
+- **Esc** closes an open menu; with nothing open it leaves the game (asking first if it's still running) or closes a replay.
+- **Wide screens:** the game menu stays open in the free space left of the board (when there's 376 px or more); tablets and desktops get a 40 px band above and below the board again. Phones are unchanged.
+- **HUD:** menu, pause and record buttons sit side by side along the top instead of stacked.
+
 ## 2026-10-11
 
 **Replay links, downloads, feedback with your last game; two mine fixes** (live in `7a0401c`)

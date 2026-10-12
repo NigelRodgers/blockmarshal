@@ -16,6 +16,7 @@
 
     <!-- Floating HUD: a translucent menu button over the board; everything else lives in its panel. -->
     <div id="hud" class="hidden">
+      <div class="hud-row">
       <button id="btn-menu-hud" class="hud-fab" aria-label="Game menu" aria-expanded="false">&#9776;<span id="hud-badge" class="hud-badge"></span></button>
       <!-- Games against bots in this browser can be paused. -->
       <button id="btn-pause" class="hud-fab hidden" aria-label="Pause game">❚❚</button>
@@ -23,6 +24,7 @@
       <div class="rec-row">
         <button id="btn-rec" class="hud-fab rec-btn hidden" aria-label="Start recording" aria-pressed="false">●</button>
         <button id="btn-rec-cancel" class="hud-fab hidden" aria-label="Cancel recording (discard it)">✕</button>
+      </div>
       </div>
       <div id="stun" class="hidden" title="Stunned by a mine: turns until you can move"><span class="ring"></span>Stunned <b id="stun-n">3</b></div>
       <div id="game-menu" class="game-menu hidden">
