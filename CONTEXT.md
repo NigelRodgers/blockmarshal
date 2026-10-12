@@ -1,6 +1,6 @@
 # Blockmarshal
 
-A real-time territory war on a hidden minefield: players grow armies, take land and hunt each other's general while reading dot clues to avoid (or capture) mines.
+A real-time territory war on a hidden minefield: players grow armies, take land and hunt each other's general while reading mine-border clues to avoid (or capture) mines.
 
 ## Match
 
@@ -41,11 +41,11 @@ One square of the board.
 _Avoid_: Cell, block, square
 
 **Plain**:
-An ordinary open tile: the only kind that can hold a mine or a moved building.
+An ordinary open tile (not terrain): the only kind that can hold a mine or a moved building.
 
-**Mountain**:
-An impassable tile.
-_Avoid_: Wall, rock
+**Terrain**:
+An impassable tile, drawn dark grey with stripes. (`Terrain.Mountain` in code.)
+_Avoid_: Mountain, wall, rock
 
 **Land**:
 The tiles a player owns.
@@ -102,9 +102,9 @@ _Avoid_: Explosion (fine in prose), trip, detonation
 **Crater**:
 The public mark a blast leaves for a few turns.
 
-**Dots**:
-The clues on a player's tiles: one dot on each side that faces a neighbouring mine. Red for an ordinary mine, white for a locked one.
-_Avoid_: Numbers, hints
+**Mine border**:
+The clue on a player's tile: a red border on each side that faces a neighbouring mine (a corner mark for a diagonal one); white for a locked mine.
+_Avoid_: Numbers, hints, dots (the old drawing; still `dots` in code)
 
 **Flag**:
 A private marker a player puts on a tile they believe holds a mine; walking onto a flagged mine captures it (or crosses it) instead of setting it off.

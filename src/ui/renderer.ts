@@ -27,12 +27,14 @@ const C = {
   plain: '#c9d0d9',
   fog: '#3a4049',
   fogKnown: '#4a515b',
-  mountain: '#2f343c',
-  mountainPeak: '#8d96a3',
+  /** Terrain (impassable): dark grey with stripes; darker where you can't see it now. */
+  terrain: '#2f343c',
+  terrainFog: '#22262c',
   neutralCity: '#7c818a',
   neutralTower: '#4f7a82',
+  /** Tile edges facing a mine. */
   dot: '#ff2d2d',
-  /** Dots toward a locked mine (freshly planted, can't be captured): white, so they differ in lightness too. */
+  /** Edges toward a locked mine (freshly planted, can't be captured): white, so they differ in lightness too. */
   dotLocked: '#ffffff',
   dotEdge: '#0b0d11',
   darkText: '#111418',
@@ -182,24 +184,23 @@ export class Renderer {
     const t = v.terrain[i];
     const own = v.owner[i];
     const seen = v.visible[i] === 1;
-    const g = Math.max(1, s * 0.05);
-
+    // No borders between tiles: terrain and anything out of sight are striped instead.
     let tile = C.fog;
     if (t === -1) {
-      this.flat(x, y, s, g, C.fog);
+      this.striped(x, y, s, C.fog);
     } else if (t === Terrain.Mountain) {
-      this.mountain(x, y, s, g, !seen);
+      this.striped(x, y, s, seen ? C.terrain : C.terrainFog);
     } else if (own >= 0) {
       tile = v.players[own].color;
-      this.flat(x, y, s, g, tile);
+      this.flat(x, y, s, tile);
       this.icon(t, x, y, s, 1);
     } else if (!seen) {
       tile = C.fogKnown;
-      this.flat(x, y, s, g, tile);
+      this.striped(x, y, s, tile);
       this.icon(t, x, y, s, 0.45);
     } else {
       tile = t === Terrain.City ? C.neutralCity : t === Terrain.Tower ? C.neutralTower : C.plain;
-      this.flat(x, y, s, g, tile);
+      this.flat(x, y, s, tile);
       this.icon(t, x, y, s, 0.9);
     }
 
@@ -218,24 +219,37 @@ export class Renderer {
   }
 
   /**
-   * Dots on the tile's edge, pointing at each neighbouring mine: red, or white for a
-   * locked mine (freshly planted, can't be captured). A solid dark rim keeps them
-   * readable on every tile colour, whatever the viewer's colour vision.
+   * A red border on each side of the tile that faces a neighbouring mine (an L in the
+   * corner for a diagonal one); white for a locked mine (freshly planted, can't be
+   * captured). A dark rim inside keeps it readable on every tile colour.
    */
   private dots(x: number, y: number, s: number, mask: number, locked: number): void {
     const { ctx } = this;
-    const r = Math.max(2.5, s * 0.09);
-    const reach = s * 0.5 - r - Math.max(1, s * 0.05);
-    ctx.strokeStyle = C.dotEdge;
-    ctx.lineWidth = Math.max(1.2, s * 0.035);
-    for (let bit = 0; bit < 8; bit++) {
-      if (!(mask & (1 << bit))) continue;
-      const [dx, dy] = DOT_OFFSETS[bit];
-      ctx.fillStyle = locked & (1 << bit) ? C.dotLocked : C.dot;
-      ctx.beginPath();
-      ctx.arc(x + s / 2 + dx * reach, y + s / 2 + dy * reach, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+    const w = Math.max(2.5, s * 0.1);
+    const rim = Math.max(1, s * 0.03);
+    const arm = s * 0.32;
+    for (const pass of [0, 1]) {
+      for (let bit = 0; bit < 8; bit++) {
+        if (!(mask & (1 << bit))) continue;
+        const [dx, dy] = DOT_OFFSETS[bit];
+        // Rim first (a touch wider, dark), then the colour on top.
+        const t = pass ? w : w + rim;
+        ctx.fillStyle = pass ? (locked & (1 << bit) ? C.dotLocked : C.dot) : C.dotEdge;
+        const left = x;
+        const right = x + s - t;
+        const top = y;
+        const bottom = y + s - t;
+        if (dx && dy) {
+          const cx = dx < 0 ? left : x + s - arm;
+          const cy = dy < 0 ? top : y + s - arm;
+          ctx.fillRect(cx, dy < 0 ? top : bottom, arm, t);
+          ctx.fillRect(dx < 0 ? left : right, cy, t, arm);
+        } else if (dy) {
+          ctx.fillRect(x, dy < 0 ? top : bottom, s, t);
+        } else {
+          ctx.fillRect(dx < 0 ? left : right, y, t, s);
+        }
+      }
     }
   }
 
@@ -257,23 +271,39 @@ export class Renderer {
     }
   }
 
-  private flat(x: number, y: number, s: number, g: number, color: string): void {
+  private flat(x: number, y: number, s: number, color: string): void {
     this.ctx.fillStyle = color;
-    this.ctx.fillRect(x + g / 2, y + g / 2, s - g, s - g);
+    // A hair over size so neighbouring tiles leave no seam.
+    this.ctx.fillRect(x, y, s + 0.5, s + 0.5);
   }
 
-  private mountain(x: number, y: number, s: number, g: number, fog: boolean): void {
-    const { ctx } = this;
-    this.flat(x, y, s, g, fog ? '#22262c' : C.mountain);
-    ctx.fillStyle = fog ? '#4a515b' : C.mountainPeak;
-    ctx.beginPath();
-    ctx.moveTo(x + s * 0.12, y + s * 0.82);
-    ctx.lineTo(x + s * 0.42, y + s * 0.28);
-    ctx.lineTo(x + s * 0.58, y + s * 0.52);
-    ctx.lineTo(x + s * 0.68, y + s * 0.38);
-    ctx.lineTo(x + s * 0.9, y + s * 0.82);
-    ctx.closePath();
-    ctx.fill();
+  private readonly stripeCache = new Map<string, CanvasPattern>();
+
+  /** A flat tile with fine diagonal stripes a little lighter than its colour. */
+  private striped(x: number, y: number, s: number, color: string): void {
+    this.flat(x, y, s, color);
+    let pattern = this.stripeCache.get(color);
+    if (!pattern) {
+      const n = 10;
+      const c = document.createElement('canvas');
+      c.width = c.height = n;
+      const g = c.getContext('2d')!;
+      g.strokeStyle = 'rgba(255,255,255,0.13)';
+      g.lineWidth = 3;
+      g.beginPath();
+      // Two segments so the stripe continues across the pattern tile's edges.
+      g.moveTo(0, n);
+      g.lineTo(n, 0);
+      g.moveTo(-n / 2, n / 2);
+      g.lineTo(n / 2, -n / 2);
+      g.moveTo(n / 2, n * 1.5);
+      g.lineTo(n * 1.5, n / 2);
+      g.stroke();
+      pattern = this.ctx.createPattern(c, 'repeat')!;
+      this.stripeCache.set(color, pattern);
+    }
+    this.ctx.fillStyle = pattern;
+    this.ctx.fillRect(x, y, s + 0.5, s + 0.5);
   }
 
   private generalBorder(x: number, y: number, s: number, alpha: number): void {

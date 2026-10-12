@@ -4,6 +4,11 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 
 ## 2026-10-12
 
+**New board look: no borders, striped terrain, red mine borders** (not live yet)
+- Tiles sit edge to edge with no grid lines. Terrain (what we called mountains) is dark grey with diagonal stripes, no icon; tiles out of sight keep their greys, striped. Visible empty land and owned land stay flat.
+- Instead of red dots, a tile you hold gets a **red border** on each side facing a neighbouring mine, and a corner mark for a diagonal one; white for a locked mine. Same information, easier to read at a glance.
+- "Mountain" is now "terrain" in the help, the glossary and the rules doc.
+
 **Esc, pinned menu on wide screens, HUD in a row, auto-update; kept-mine fix** (live in `64005cd`)
 - **Fix (`138d674`):** the flag on a mine you crossed and kept could still be removed, leaving a hidden mine under your own land that drew dots. Seen in 6 of your games today, all on the old cached build `5b0ee0c`; the server now refuses it as well as the client.
 - **Auto-update:** phones kept a tab or installed app alive for days, so new builds never arrived (today's games still ran `5b0ee0c`). When the app comes back to the foreground, and every 30 minutes, it checks for a newer build and reloads on the start screen (or right after the game you're in).
