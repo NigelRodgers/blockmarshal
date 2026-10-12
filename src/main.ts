@@ -912,7 +912,8 @@ const MENU_ROOM_PX = 376;
 let menuPinned = false;
 
 function applyMenuPin(): void {
-  menuPinned = screen === 'game' && renderer.toScreen(0, 0)[0] >= MENU_ROOM_PX;
+  // A page loaded in the background reports a 0-wide window: never pin on that.
+  menuPinned = screen === 'game' && window.innerWidth >= LARGE_SCREEN_PX && renderer.toScreen(0, 0)[0] >= MENU_ROOM_PX;
   $('hud').classList.toggle('pinned', menuPinned);
   if (menuPinned) openGameMenu();
 }
