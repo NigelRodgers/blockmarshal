@@ -27,7 +27,8 @@ const C = {
   plain: '#c9d0d9',
   fog: '#3a4049',
   fogKnown: '#4a515b',
-  /** Terrain (impassable): dark grey with stripes; darker where you can't see it now. */
+  /** Terrain (impassable): dark grey with stripes; darker where you can't see it now. Fog and visible
+   * uncaptured land (fog, plain) are striped too. */
   terrain: '#2f343c',
   terrainFog: '#22262c',
   neutralCity: '#7c818a',
@@ -62,6 +63,11 @@ const DOT_OFFSETS: [number, number][] = [
   [-1, 0], [1, 0],
   [-1, 1], [0, 1], [1, 1],
 ];
+
+/** Thickness of a mine border (its dark rim included), in pixels for a tile of size s. */
+function mineBorderWidth(s: number): number {
+  return Math.max(3.5, s * 0.13);
+}
 
 export function formatArmy(n: number): string {
   if (n >= 10000) return `${Math.round(n / 1000)}k`;
@@ -153,9 +159,12 @@ export class Renderer {
     if (o.selected >= 0 && v.owner[o.selected] === v.you) {
       const [sx, sy] = this.toScreen(o.selected % v.w, Math.floor(o.selected / v.w));
       if (v.terrain[o.selected] === Terrain.Tower) this.towerArea(v, o.selected);
+      // Inside the band where mine borders sit, so a red border on this tile stays visible.
+      const lw = Math.max(2, s * 0.07);
+      const inset = mineBorderWidth(s) + lw / 2;
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = Math.max(2, s * 0.09);
-      ctx.strokeRect(sx + ctx.lineWidth / 2, sy + ctx.lineWidth / 2, s - ctx.lineWidth, s - ctx.lineWidth);
+      ctx.lineWidth = lw;
+      ctx.strokeRect(sx + inset, sy + inset, s - inset * 2, s - inset * 2);
       if (o.half) {
         ctx.fillStyle = '#fff';
         ctx.font = `700 ${Math.max(8, s * 0.22)}px system-ui, sans-serif`;
@@ -200,7 +209,9 @@ export class Renderer {
       this.icon(t, x, y, s, 0.45);
     } else {
       tile = t === Terrain.City ? C.neutralCity : t === Terrain.Tower ? C.neutralTower : C.plain;
-      this.flat(x, y, s, tile);
+      // Uncaptured land is striped like terrain and fog; only owned land is flat.
+      if (t === Terrain.Plain) this.striped(x, y, s, tile);
+      else this.flat(x, y, s, tile);
       this.icon(t, x, y, s, 0.9);
     }
 
@@ -225,8 +236,8 @@ export class Renderer {
    */
   private dots(x: number, y: number, s: number, mask: number, locked: number): void {
     const { ctx } = this;
-    const w = Math.max(2.5, s * 0.1);
     const rim = Math.max(1, s * 0.03);
+    const w = mineBorderWidth(s) - rim;
     const arm = s * 0.32;
     for (const pass of [0, 1]) {
       for (let bit = 0; bit < 8; bit++) {
@@ -279,7 +290,7 @@ export class Renderer {
 
   private readonly stripeCache = new Map<string, CanvasPattern>();
 
-  /** A flat tile with fine diagonal stripes a little lighter than its colour. */
+  /** A flat tile with fine diagonal stripes: a little lighter on dark tiles, a little darker on light ones. */
   private striped(x: number, y: number, s: number, color: string): void {
     this.flat(x, y, s, color);
     let pattern = this.stripeCache.get(color);
@@ -288,7 +299,7 @@ export class Renderer {
       const c = document.createElement('canvas');
       c.width = c.height = n;
       const g = c.getContext('2d')!;
-      g.strokeStyle = 'rgba(255,255,255,0.13)';
+      g.strokeStyle = luminance(color) > DARK_TEXT_ABOVE ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.13)';
       g.lineWidth = 3;
       g.beginPath();
       // Two segments so the stripe continues across the pattern tile's edges.
