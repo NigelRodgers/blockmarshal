@@ -671,3 +671,17 @@ describe('reported in a 1 vs 1 game (2026-10-11, build 5b0ee0c)', () => {
     expect(plantMine(s, A, EMPTY)).toBe(true);
   });
 });
+
+describe('reported again (2026-10-12, build 5b0ee0c)', () => {
+  it('the flag on a kept mine cannot be removed, so it never turns back into a hidden mine', () => {
+    const s = board();
+    give(s, A, MAX_MINE_STOCK);
+    s.army[NEXT_TO_MINE] = 20;
+    toggleFlag(s, A, MINE);
+    queueMove(s, A, NEXT_TO_MINE, MINE);
+    step(s);
+    expect(toggleFlag(s, A, MINE)).toBe(false);
+    expect(s.players[A].flags.has(MINE)).toBe(true);
+    expect(buildView(s, A).keptMines).toEqual([MINE]);
+  });
+});

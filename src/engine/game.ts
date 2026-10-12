@@ -270,7 +270,13 @@ export function clearQueue(state: GameState, pid: number): void {
 export function toggleFlag(state: GameState, pid: number, idx: number): boolean {
   const p = state.players[pid];
   if (idx < 0 || idx >= state.size || state.terrain[idx] === Terrain.Mountain) return false;
-  if (p.flags.delete(idx)) return true;
+  if (p.flags.has(idx)) {
+    // A mine you crossed and kept: its flag is what keeps it safe for you, so it stays
+    // (removing it left a hidden mine under your own land).
+    if (state.owner[idx] === pid && state.mine[idx] && state.mineOwner[idx] !== pid) return false;
+    p.flags.delete(idx);
+    return true;
+  }
   // On your own land a flag only means something on your own planted mine (safe passage).
   if (state.owner[idx] === pid && !(state.mine[idx] && state.mineOwner[idx] === pid)) return false;
   if (p.flags.size >= MAX_FLAGS) return false;
