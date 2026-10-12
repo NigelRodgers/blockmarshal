@@ -5,7 +5,7 @@ Newest first. Build ids match the `Build <hash>` line on the start screen. Live:
 ## 2026-10-12
 
 **New board look: no borders, striped terrain, red mine borders** (not live yet)
-- Tiles sit edge to edge with no grid lines. Terrain (what we called mountains, `#2F343C`), unexplored land (`#3A4049`) and visible uncaptured land (`#C9D0D9`) are all striped; only owned land is flat. No mountain icon.
+- Tiles sit edge to edge with no grid lines. Terrain (what we called mountains, darkest, `#1C1F25`), unexplored land (`#4D5560`), land seen before but out of sight (`#6B7480`) and visible uncaptured land (`#C9D0D9`) are all striped; only owned land is flat. Neighbouring shades differ by at least 1.5:1 contrast (terrain vs unexplored was 1.2:1). No mountain icon.
 - Instead of red dots, a tile you hold gets a **red border** on each side facing a neighbouring mine, and a corner mark for a diagonal one; white for a locked mine. Same information, easier to read at a glance. The white outline of your selected tile now sits just inside that border, so both show.
 - "Mountain" is now "terrain" in the help, the glossary and the rules doc.
 

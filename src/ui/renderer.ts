@@ -24,13 +24,17 @@ export interface DrawOptions {
 const C = {
   bg: '#12151b',
   frame: '#0b0d11',
+  // Striped greys, darkest to lightest, each step at least 1.5:1 contrast (WCAG luminance)
+  // so they tell apart at a glance: terrain 2.2:1 unexplored 1.6:1 remembered 3:1 visible.
+  /** Terrain (impassable), seen or remembered. */
+  terrain: '#1c1f25',
+  terrainFog: '#1c1f25',
+  /** Never seen. */
+  fog: '#4d5560',
+  /** Seen before, out of sight now. */
+  fogKnown: '#6b7480',
+  /** Visible, nobody's. */
   plain: '#c9d0d9',
-  fog: '#3a4049',
-  fogKnown: '#4a515b',
-  /** Terrain (impassable): dark grey with stripes; darker where you can't see it now. Fog and visible
-   * uncaptured land (fog, plain) are striped too. */
-  terrain: '#2f343c',
-  terrainFog: '#22262c',
   neutralCity: '#7c818a',
   neutralTower: '#4f7a82',
   /** Tile edges facing a mine. */
