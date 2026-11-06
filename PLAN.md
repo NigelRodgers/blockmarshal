@@ -2,6 +2,10 @@
 
 > **This file is the history of design decisions.** For the current state, how to work on the project and the open backlog, start with [CLAUDE.md](CLAUDE.md). Shipped changes: [CHANGELOG.md](CHANGELOG.md). Player-facing rules and numbers: the [rules doc](https://claude.ai/code/artifact/e88a1b81-7a45-4e71-872f-f065ac6019a5).
 
+## On hold, 2026-11-06
+
+The owner put the project on hold. The hardening phase had reached its first target (1 vs 1 vs bot human win rate 45% over 29 games on the latest builds, target 35-50%); the main open design question is [#20](https://github.com/NigelRodgers/blockmarshal/issues/20) (self-blasts on your own mines). The Reddit edition (below) was not started. Everything keeps running unattended (site, daily replay pull, 60-day prune).
+
 ## Direction, 2026-10-10: two games, one engine
 
 - **Blockmarshal (this site) is the passion project.** Focus narrows to **1 vs 1 against bots**; free-for-all and online play stay but come second. The concept is now being shared, so the next phase is hardening (design, security, code, logic, gameplay) in small iterative updates, and player feedback decides what comes after. No new pieces unless feedback asks for them.

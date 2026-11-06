@@ -2,6 +2,12 @@
 
 Real-time territory war (generals.io-style) on a hidden minefield: 6-player free-for-all or 1 vs 1. Mobile-first web game.
 
+> **Status: ON HOLD since 2026-11-06** (owner's decision). Nothing is in progress: the working tree was clean, `main` matched GitHub, and the live site runs `5cc3797` (the last code commit). The site, the daily replay pull ("Blockmarshal replays", 09:00) and the 60-day replay prune keep running unattended. All earlier Claude sessions were deleted; this file, CHANGELOG, PLAN, CONTEXT.md, docs/adr and the GitHub issues hold everything needed to resume.
+>
+> **Where it stood:** 1 vs 1 vs bot human win rate on builds since 2026-10-11: 13 of 29 decided games (45%, inside the 35-50% target; 71 duels in all, 4 player names). Last decision pending: [#20](https://github.com/NigelRodgers/blockmarshal/issues/20) (players blow up their own planted mines, 22 in 317 plants). The Reddit edition was never started (no `reddit/` folder).
+>
+> **To resume:** follow "Start of every session" below. Replays keep arriving daily, so read the newest rows of `summary.csv` (`verified`, `build` columns) and `gh issue list --state open`. Decide #20 first.
+
 - **Live:** https://blockmarshal.rodgersnigel.workers.dev (start screen shows `Build <git hash> · <time>`)
 - **Repo:** https://github.com/NigelRodgers/blockmarshal (PUBLIC, GPL-3.0, branch `main`). History was rewritten on 2026-10-10 before going public: see [docs/history-rewrite.md](docs/history-rewrite.md) for old build ids -> new commit ids.
 - **Player rules + every number:** [Blockmarshal: Game Rules & Numbers](https://claude.ai/code/artifact/e88a1b81-7a45-4e71-872f-f065ac6019a5) (Claude Doc). Update it whenever a rule or number changes.
@@ -108,6 +114,6 @@ Single-context: [CONTEXT.md](CONTEXT.md) (glossary) + [docs/adr/](docs/adr/) at 
 
 **Issues:** https://github.com/NigelRodgers/blockmarshal/issues (single source of truth for bugs, ideas and tuning questions). `gh issue list --state open` shows them; `ready-for-agent` ones are fully specified for an agent.
 
-**Plan (agreed 2026-10-09, updated 2026-10-10)**
+**Plan (agreed 2026-10-09, updated 2026-10-10; paused 2026-11-06, see Status at the top)**
 - **Now: harden the original for feedback** (see Vision), focused on 1 vs 1 vs bot. Read replays (`summary.csv`: human win rate vs the bot in 1 vs 1, target 35-50%) and analytics; fix what shows up. Bot difficulty: one level (normal), tuned to ~60% vs the pre-upgrade bot (`b4e7976`).
 - **From Fri 2026-10-16** (a scheduled reminder, "Blockmarshal: start Reddit edition dev & design", fires at 09:30): start the **Reddit edition** (Devvit Web), a separate game on the shared engine: `reddit/` folder; new pieces (towers back, pre-filled boards, kamikaze drones, turrets...) switched on per mode; a daily map per date seed, generated a week ahead, bot-checked with a par score, hand-editable until it goes live at 00:00 UTC; both turn-based (default) and real-time "Blitz" with separate leaderboards, compared after 2 weeks. Start with a design session for the new pieces, before any code. Engine changes for it must stay switched off here.

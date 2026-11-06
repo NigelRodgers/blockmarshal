@@ -2,6 +2,10 @@
 
 Newest first. Build ids match the `Build <hash>` line on the start screen. Live: https://blockmarshal.rodgersnigel.workers.dev
 
+## 2026-11-06
+
+**Project on hold.** No code change; the live site stays on `5cc3797`. See the Status note at the top of CLAUDE.md for where things stood and how to resume.
+
 ## 2026-10-12
 
 **New board look: no borders, striped terrain, red mine borders** (live in `5cc3797`)
